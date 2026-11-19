@@ -11,8 +11,14 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
   protection baseline can be configured without a private-repository plan upgrade.
 - Keep the MIT license. The repository name is selected; public product branding
   remains open.
-- Plan a lightweight standalone Compose manager for constrained Ubuntu Docker
-  hosts, using Compose Manager as the primary case study.
+- Build toward a lightweight standalone counterpart of the Unraid Compose Manager
+  Plus plugin for constrained Ubuntu Docker hosts. The plugin is the functional
+  baseline, not merely a case study: reuse useful workflows and portable approved
+  business rules, adapting host integration and explicit standalone differences.
+- Use a modern standalone UI, with UniFi as the design/interaction inspiration,
+  rather than reproducing the plugin's Unraid-native presentation. This product
+  direction does not require the entire plugin feature set in the first prototype
+  or approve unresolved source behavior and legacy compatibility machinery.
 - Include network and volume management in product planning. Their exact feature
   set, safety policy and delivery order are not yet approved.
 - Include first-class Git stacks: repository acquisition/pulls, private-repository
@@ -135,6 +141,12 @@ locally usable dashboard/action loop, then refine using implementation and host
 feedback. Reuse portable source business rules, preserve approval/supersession
 qualifications, and ask about consequential adaptations or uncertain behavior.
 This does not authorize runtime implementation or sibling-plugin changes.
+
+The standalone product should remain recognizably Compose Manager Plus in its
+useful workflows, without preserving implementation defects or Unraid-specific
+constraints merely for resemblance. Functional reuse and a redesigned UI do not
+imply a shared backend, plugin rewrite or drop-in plugin migration compatibility.
+Already approved standalone deviations remain authoritative.
 
 Prototype target: status dashboard home, manual addition/on-demand discovery,
 established activation rules, Up/Down/Restart, manual Update and an explicitly

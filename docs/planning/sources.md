@@ -22,6 +22,13 @@ bootstrap publishes their branches or modifies their worktrees.
 
 2026-11-19, direct owner conversation, recorded from product baseline `f4d6148`:
 
+- Owner clarified the overall product as a standalone counterpart/clone of the
+  Unraid Compose Manager Plus plugin, with a modern interface instead of its
+  Unraid-native presentation. This strengthens the plugin's role from case study
+  to functional baseline; it does not approve every source draft, legacy naming
+  behavior or all-feature first-prototype scope. Existing standalone decisions
+  and the bounded local prototype remain in effect. Naming and database details
+  are not approved merely by this broader product description.
 - Owner preferred selecting a project folder during setup, with possible detected
   location suggestions. Suggestion mechanisms and exact root scope remain open.
 - Owner selected automatic listing rather than per-project adoption for listing,
