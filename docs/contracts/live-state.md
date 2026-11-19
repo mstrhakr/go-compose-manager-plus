@@ -48,6 +48,9 @@ exists in the scaffold.
 
 ## Dependencies
 
+- Depends on [AUTH-001/002](authentication.md) for the shared app access boundary.
+  SSE/session expiry and denied access remain unresolved, not separate auth
+  policy owned by a metrics or transport handler.
 - Depends on [RES](project-resolution.md) for accepted identity/inputs and
   [PROJ](project-membership.md) for membership/active state.
 - Depends on [OPS-001](operation-coordination.md) for queued/executing

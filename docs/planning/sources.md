@@ -22,6 +22,11 @@ bootstrap publishes their branches or modifies their worktrees.
 
 2026-11-19, direct owner conversation, recorded from product baseline `f4d6148`:
 
+- Owner requested app login/auth among the first prototype steps, despite intended
+  reverse-proxy/WAF/local-only deployment, with foundations for future methods
+  such as OIDC. [AUTH-001/002](../contracts/authentication.md) record that scope
+  and ownership direction. "Basic auth" remains ambiguous between HTTP Basic and
+  simple form/session login; immediate OIDC was tentative, not approved delivery.
 - Owner clarified the overall product as a standalone counterpart/clone of the
   Unraid Compose Manager Plus plugin, with a modern interface instead of its
   Unraid-native presentation. This strengthens the plugin's role from case study
@@ -182,6 +187,27 @@ approval and supersession sections there. Do not silently use older origin/dev.
 No source-plugin, Docker, stream/recovery or resource measurements were executed.
 This is bounded adoption/research, not full source tracing, a new full-spec audit
 or implementation authorization. Unrelated sibling work remains untouched.
+
+## Authentication Evidence
+
+2026-11-19: scaffold route/configuration and security guidance were inspected;
+there is no app login or session enforcement. The owner's reverse-proxy/WAF
+deployment context does not select a trusted-header identity protocol or remove
+the new [AUTH](../contracts/authentication.md) foundation requirement.
+
+- [RFC 7617](https://www.rfc-editor.org/rfc/rfc7617): HTTP Basic sends Base64
+  user/password credentials and is not secure without external transport
+  protection such as TLS. Base64 is not encryption.
+- [OWASP session management guidance](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html):
+  consulted session/cookie and lifecycle guidance when evaluating form/session
+  login, including protected transport, cookie protections, renewal and expiry.
+  This supports evaluating sessions, not claiming that merely using cookies is
+  secure or selecting a session library/storage mechanism.
+
+The initial mechanism remains unresolved: HTTP Basic is not the same as a simple
+username/password login page. Local form/session login is the assistant's
+recommendation, not an owner-approved choice. OIDC timing and protocol details
+remain open. No auth, proxy, browser or credential-security tests were executed.
 
 ## Operation Queue Evidence
 

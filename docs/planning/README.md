@@ -29,6 +29,11 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
   deferring those controls; unsupported arrangements must be reported, not guessed.
   See [RES-006](../contracts/project-resolution.md). Env/profile details and SDK
   equivalence remain separate review/verification work.
+- Include app login/auth among the first prototype foundations, even behind the
+  owner's local reverse proxy/WAF. Separate method-specific authentication from
+  shared access checks so future methods such as OIDC reuse that boundary.
+  [AUTH-001/002](../contracts/authentication.md) record direction; HTTP Basic
+  versus form/session login, OIDC timing and proxy/security policy remain open.
 - Include network and volume management in product planning. Their exact feature
   set, safety policy and delivery order are not yet approved.
 - Include first-class Git stacks: repository acquisition/pulls, private-repository
@@ -167,11 +172,12 @@ slices, not removed product goals.
 
 | Order | Small batch | Ready-to-implement outcome |
 | --- | --- | --- |
+| 0 | App login/access, [AUTH](../contracts/authentication.md) | Choose initial mechanism and bootstrap/session policy; define proxy/origin trust and shared protection of administrative views, actions and streams. Keep OIDC extensibility without assuming immediate OIDC delivery. |
 | 1 | Identity/inputs, [RES](../contracts/project-resolution.md) | Native naming/selection and safe source/env outcomes settled; close required adoption/env/profile gaps and verify SDK loading. |
 | 2 | Lifecycle/manual Update | Reuse approved action meanings, preparation barriers and stopped/never-deployed safety; decide exact prototype combinations and remaining proposals. |
 | 3 | Jobs/[OPS](../contracts/operation-coordination.md) | Adopt browser-independent outcomes; settle minimum queue order/capacity/full and interruption behavior before mutations, not every future CI variant. |
 | 4 | Dashboard/[LIVE](../contracts/live-state.md) | Agree visible runtime/operation states and bounded live/fallback behavior; measure collection cost. |
-| 5 | Local access/persistence | Establish Docker/path scope, loopback versus authenticated remote access, request protection and saved membership/identity recovery. |
+| 5 | Host scope/persistence | Establish Docker/path scope and saved membership/identity recovery; AUTH handles app authentication/exposure from the start. |
 
 Use the read-only SDK/resolution/dashboard slice as the first implementation
 checkpoint, then add deliberate actions on a disposable Docker target. The
