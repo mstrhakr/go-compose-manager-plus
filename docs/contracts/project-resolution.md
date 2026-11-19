@@ -5,7 +5,8 @@ weight = 7
 # RES: Project Identity And Inputs
 
 **Status:** Draft / RES-002 through RES-005 adopted as portable approved-source
-outcomes; identity acceptance and initial selection policy awaiting review
+outcomes; RES-001 native naming policy approved; identity/adoption edge cases and
+initial input-selection scope awaiting review
 
 **Baseline:** 2026-11-19, product `68ab9d2`; source plugin
 `10e9179cbb0331fb956a0b60ba671e477a74638e`. Source worktree has unrelated
@@ -30,14 +31,33 @@ portable approved rules, not whole source drafts or implementation defects.
 
 ### RES-001: Accepted Runtime Identity Is Not A Display Name
 
-**Proposed:** distinguish manager registration/lifetime, display name, source
-folder and exact runtime project. Display rename must not retarget an established
-runtime identity. Ambiguous/unresolved identity must be resolved before mutation,
-not guessed from a convenient folder name.
+The UI name is display-only, independent of the runtime Compose project. Changing
+it must not rename directories, rewrite Compose inputs or retarget Docker
+operations. Do not apply a manager-specific Compose-name normalization scheme to
+the display label.
 
-**Source/approval:** STK-ID-01/07/11 are proposed source guarantees. Standalone
-adoption is awaiting review; no legacy pin/migration heuristics are inherited.
-Compose project/name chapters define runtime naming, not manager adoption policy.
+Runtime naming follows native Compose resolution: use the Compose configuration's
+top-level `name` where applicable, otherwise native defaults. The prototype has
+no separate manager project-name setting, external project-name flag/override,
+or manager-authored naming env override. Do not automatically rewrite the Compose
+file to insert a name. Passing the natively resolved name to an SDK operation for
+targeting is not a separate user-configured naming policy.
+
+**Approval:** Owner approved display-only UI naming and clarified on 2026-11-19
+that explicit naming belongs in Compose configuration, not a manager setting.
+Support for independently supplied project-name flags is not required for the
+prototype. This replaces the earlier optional-manager-override proposal, which
+was not approved.
+
+**Source provenance:** Source STK-ID-01/07/11 remain proposed source guarantees;
+this naming decision is direct standalone approval, not adoption of legacy pins,
+receipts or migration heuristics. Spec `04-version-and-name.md` defines native
+top-level naming and default behavior, not manager identity-adoption policy.
+
+**Still unresolved:** safe adoption of existing deployments launched under an
+external custom name, collisions, changing native identity after registration,
+and the process-environment/SDK-resolution boundary. No automatic guessing,
+pinning, alias migration or takeover workflow is approved here.
 
 ### RES-002: Source Location And Input Selection Are Separate
 
@@ -112,6 +132,12 @@ distinct evidence; neither UI capability nor implementation equivalence is prove
 
 Adopted outcomes, not implemented/executed tests:
 
+- RES-001: UI display name is `Home Entertainment`, while Compose `name` is
+  `media`; changing the UI label alone preserves runtime targeting and source
+  bytes. No manager project-name override is offered or synthesized.
+- RES-001: Without an applicable explicit native name, resolve Compose's native
+  fallback rather than derive a runtime override from the UI label. Exact SDK
+  equivalence still needs tests.
 - RES-002: Changing source location does not itself change selection algorithm.
 - RES-003: Selecting an existing folder leaves authored bytes unchanged absent
   an explicitly requested file operation.
@@ -119,7 +145,7 @@ Adopted outcomes, not implemented/executed tests:
 - RES-005: Custom env does not disable native selection; explicit Compose files
   do not acquire extra files from `COMPOSE_FILE`.
 
-Pending: identity ambiguity/collision, display rename, overrides/path anchors,
+Pending: identity ambiguity/collision, native-name changes, overrides/path anchors,
 include/environment resolution, profiles, changed queued inputs and host paths.
 
 ## Decisions
@@ -127,7 +153,10 @@ include/environment resolution, profiles, changed queued inputs and host paths.
 - 2026-11-19: Owner authorized source-first reuse and requested review of material
   adaptations, not repeated interviews for portable approved clauses. RES-002
   through RES-005 retain those outcomes and their source qualifications.
-- RES-001/006 remain proposed. No source runtime code, dependency or tests were
+- 2026-11-19: Owner approved native/file-based runtime naming and display-only UI
+  labels, explicitly excluding a separate manager name override for the prototype
+  (RES-001). Existing external-name adoption and native-name changes remain open.
+- RES-006 remains proposed. No source runtime code, dependency or tests were
   imported, and no management implementation is authorized by this record.
 
 ## Verification

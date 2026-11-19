@@ -19,6 +19,11 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
   rather than reproducing the plugin's Unraid-native presentation. This product
   direction does not require the entire plugin feature set in the first prototype
   or approve unresolved source behavior and legacy compatibility machinery.
+- Keep UI names display-only. Runtime names use native Compose configuration and
+  defaults, including top-level `name`; no separate manager project-name override
+  is required or offered in the prototype. See [RES-001](../contracts/project-resolution.md).
+  Existing custom external-name adoption and later native-name changes still need
+  safe handling, without importing plugin naming/migration machinery.
 - Include network and volume management in product planning. Their exact feature
   set, safety policy and delivery order are not yet approved.
 - Include first-class Git stacks: repository acquisition/pulls, private-repository

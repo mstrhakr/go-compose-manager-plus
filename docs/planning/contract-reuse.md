@@ -19,8 +19,10 @@ Approved and Verified as distinct labels. Do not make unpublished GitHub links.
 Current adoption starts in [RES](../contracts/project-resolution.md): selected
 portable outcomes from approved STK-FILES-13/14/18/19 are adopted under the owner's
 reuse direction. Source qualifications are retained; Basic/Advanced, Unraid path
-rules and reopened exact-list proposals are not imported. RES-001/006 remain
-proposed identity/selection choices. [LIVE](../contracts/live-state.md) records
+rules and reopened exact-list proposals are not imported. RES-001 now records
+approved native/file-based runtime naming with display-only UI labels and no
+manager name override for the prototype. Identity/adoption edge cases and
+RES-006's input-selection scope remain open. [LIVE](../contracts/live-state.md) records
 dashboard scope and SSE preference separately from unapproved recovery mechanics.
 
 | Source boundary / IDs | Inspected source status | Portable candidate / proposed acceptance evidence | Standalone adaptation or unresolved choice |

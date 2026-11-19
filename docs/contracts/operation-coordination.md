@@ -68,7 +68,8 @@ ordering, exactly-once execution or complete participant coverage is claimed.
   active membership and the absence of a deactivate action. Identity/removal
   lifetime and queued-work handling still require connected review.
 - Depends on [RES](project-resolution.md) for identity/inputs, whose identity
-  acceptance remains proposed. Lifecycle-action contracts still need adoption;
+  naming policy is approved but adoption/revalidation remains unresolved.
+  Lifecycle-action contracts still need adoption;
   a folder/display name is not proof of a safe runtime target.
 - Consumed by [LIVE](live-state.md) for queued/executing presentation. Metrics and
   viewer transport are not execution ownership or completion evidence.

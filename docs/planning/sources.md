@@ -29,6 +29,12 @@ bootstrap publishes their branches or modifies their worktrees.
   behavior or all-feature first-prototype scope. Existing standalone decisions
   and the bounded local prototype remain in effect. Naming and database details
   are not approved merely by this broader product description.
+- Owner subsequently explicitly clarified native naming: UI labels are
+  display-only; explicit runtime naming belongs in Compose configuration, not a
+  separate manager setting or injected project-name flag. Prototype support for
+  an external override is not needed. [RES-001](../contracts/project-resolution.md)
+  records this approval, excluding legacy normalization/pinning machinery while
+  leaving existing custom-name adoption and native-name changes unresolved.
 - Owner preferred selecting a project folder during setup, with possible detected
   location suggestions. Suggestion mechanisms and exact root scope remain open.
 - Owner selected automatic listing rather than per-project adoption for listing,
@@ -140,7 +146,8 @@ approval and supersession sections there. Do not silently use older origin/dev.
   adopting obviously portable source rules and asking about material adaptations.
 - [RES-002 through RES-005](../contracts/project-resolution.md) adopt selected
   approved STK-FILES-14/18/13/19 outcomes without plugin tier/path/mechanism scope.
-  RES-001/006 retain proposed identity/default-selection choices; no blanket
+  At that batch's creation RES-001/006 retained proposed identity/default-selection
+  choices; subsequent RES-001 naming approval is recorded above. No blanket
   approval of source STK-ID drafts or standalone migration policy is inferred.
 - Spec `03-compose-file.md` and `04-version-and-name.md` were read for native
   file/path and top-level project-name semantics. Those chapters do not select a
