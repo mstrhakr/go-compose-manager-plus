@@ -163,9 +163,10 @@ validation, replay handling and job outcomes still need refinement.
   starts active. Activation itself does not run Compose or enable automation,
   and there is no deactivate action. Active status is not CI deployment opt-in
   or a substitute for shared identity, input and action checks.
-- Depends on unextracted standalone identity/input and lifecycle-action contracts:
-  exact project name, selected files/env/profiles, working directory and permitted
-  pull/build/recreate effects cannot be invented by the Git adapter.
+- Depends on [RES](project-resolution.md) for shared identity/input outcomes;
+  identity acceptance/selection scope and Git-specific input policy remain
+  unresolved. Lifecycle-action contracts still need adoption: the Git adapter
+  cannot invent project names, files/env/profiles or pull/build/recreate effects.
 - Depends on shared credentials, path/storage safety, authentication/authorization,
   and jobs/state-publication policies not yet approved here.
 - Depends on [OPS-001](operation-coordination.md) for bounded queueing and

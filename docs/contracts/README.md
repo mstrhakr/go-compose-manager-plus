@@ -25,6 +25,8 @@ description of every implementation detail or a substitute for tests.
 | [PROJ](project-membership.md) | On-demand discovery, active manual/Git additions, discovery-only activation and no deactivate action | Draft; PROJ-001 through PROJ-009 owner-approved within stated scopes, not implemented or behaviorally verified |
 | [GIT](git-stacks.md) | Git-backed stacks, private-repository credentials and CI/webhook deployment | Draft; GIT-001 through GIT-005 approved within stated scope; remaining behavior/security unresolved, not implemented or verified |
 | [OPS](operation-coordination.md) | Shared same-stack manual/CI mutation coordination | Draft; OPS-001 bounded queueing approved, detailed queue/lifecycle policies unresolved; not implemented or verified |
+| [RES](project-resolution.md) | Runtime identity and Compose inputs | Draft; RES-002 through RES-005 adopted portable source outcomes; RES-001/006 proposed; not implemented or verified |
+| [LIVE](live-state.md) | Dashboard home and live delivery | Draft; scope and SSE preference recorded, detailed recovery/collection/history policies proposed; not implemented or verified |
 
 ## Shared Format
 

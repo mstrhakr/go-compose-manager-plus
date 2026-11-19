@@ -16,6 +16,13 @@ Approved and Verified as distinct labels. Do not make unpublished GitHub links.
 
 ## First Connected Slice
 
+Current adoption starts in [RES](../contracts/project-resolution.md): selected
+portable outcomes from approved STK-FILES-13/14/18/19 are adopted under the owner's
+reuse direction. Source qualifications are retained; Basic/Advanced, Unraid path
+rules and reopened exact-list proposals are not imported. RES-001/006 remain
+proposed identity/selection choices. [LIVE](../contracts/live-state.md) records
+dashboard scope and SSE preference separately from unapproved recovery mechanics.
+
 | Source boundary / IDs | Inspected source status | Portable candidate / proposed acceptance evidence | Standalone adaptation or unresolved choice |
 | --- | --- | --- | --- |
 | STK-ID-01/02/07/11 | Draft; 02's saved-pin trust policy individually approved in plugin | Distinguish registration/display/path/runtime identity; preserve explicit identity across display rename; unresolved identity cannot silently retarget an action. Test two projects, rename, daemon failure and missing inputs. | No legacy-plugin naming/migration rules imported. Decide name precedence, explicit adoption, duplicates and retargeting/active-work policy. Saved metadata is not proof of Docker ownership. |

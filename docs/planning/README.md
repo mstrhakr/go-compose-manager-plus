@@ -111,7 +111,8 @@ approval. This direction authorizes planning, not implementation.
 
 ## Delivery Gates
 
-No schedule or effort estimate is committed. Only stage 0 is authorized now.
+No schedule or effort estimate is committed. Contract adoption/refinement is the
+current work; management implementation still requires bounded authorization.
 
 | Stage | Bounded deliverable | Exit evidence / approval gate |
 | --- | --- | --- |
@@ -123,12 +124,60 @@ No schedule or effort estimate is committed. Only stage 0 is authorized now.
 | 5: Deliberate resource actions | Selected network/volume create/remove and any approved attachment workflow | Separate destructive-action contracts, coordination, fresh identity/use checks, confirmations, partial-failure tests and recovery evidence |
 | 6: Deployment | Native Ubuntu service and container evaluation | Path parity, permissions, credentials, data lifecycle, self-management/recovery and measured manager overhead on the target VM |
 
-**Recommended next bounded experiment:** stage 2's read-only project-resolution
-spike, after stage 1 approval. It can expose SDK/tooling and path-resolution risk
-without introducing a mutating daemon service. No SDK dependency is installed now.
-Network and volume management are real product workstreams, not excluded because
-the Compose proof of concept comes first; inspection may be combined with the
-first slice only by explicit scope agreement.
+The original stage table is a dependency overview, not the current prototype
+scope or an instruction to complete every workstream before local use. The
+near-term triage below takes priority. No SDK dependency is installed now.
+
+## Local Prototype Contract Triage
+
+**Owner direction, 2026-11-19:** do enough foundational contract work to start a
+locally usable dashboard/action loop, then refine using implementation and host
+feedback. Reuse portable source business rules, preserve approval/supersession
+qualifications, and ask about consequential adaptations or uncertain behavior.
+This does not authorize runtime implementation or sibling-plugin changes.
+
+Prototype target: status dashboard home, manual addition/on-demand discovery,
+established activation rules, Up/Down/Restart, manual Update and an explicitly
+selected small set of combined actions. Exact combinations and action details
+still need the lifecycle/update adoption batch. Git Deploy/acquisition/private
+credentials/webhooks, network/volume management and history are later delivery
+slices, not removed product goals.
+
+| Order | Small batch | Ready-to-implement outcome |
+| --- | --- | --- |
+| 1 | Identity/inputs, [RES](../contracts/project-resolution.md) | Adopt safe source/env rules; settle identity acceptance and initial selection/profile scope; map to native SDK loading. |
+| 2 | Lifecycle/manual Update | Reuse approved action meanings, preparation barriers and stopped/never-deployed safety; decide exact prototype combinations and remaining proposals. |
+| 3 | Jobs/[OPS](../contracts/operation-coordination.md) | Adopt browser-independent outcomes; settle minimum queue order/capacity/full and interruption behavior before mutations, not every future CI variant. |
+| 4 | Dashboard/[LIVE](../contracts/live-state.md) | Agree visible runtime/operation states and bounded live/fallback behavior; measure collection cost. |
+| 5 | Local access/persistence | Establish Docker/path scope, loopback versus authenticated remote access, request protection and saved membership/identity recovery. |
+
+Use the read-only SDK/resolution/dashboard slice as the first implementation
+checkpoint, then add deliberate actions on a disposable Docker target. The
+unauthenticated starter binds all interfaces by default; local installation alone
+is not a secure exposure boundary. Implementation needs approval of its bounded
+slice. Inspect the VM script if supplied, without blocking unrelated fixture work
+or inventing script behavior.
+
+### Live State And Future History
+
+UniFi is the owner's visual/interaction reference: an operational dashboard,
+coherent live views and later correlation of operations with resource incidents.
+Do not make a marketing home page or import branding/assets. Go/htmx rendering
+remains the foundation.
+
+SSE is preferred for browser updates; LIVE keeps fallback/reconnect details
+proposed. Docker events plus authoritative reconciliation serve runtime state;
+metrics and operation outcomes are distinct inputs. No events may mean nothing
+changed, not a dead connection. The Engine stats API is per container; shared SSE
+delivery does not remove collection cost. Missing metrics do not prove stopped
+containers. Do not duplicate complete collectors per tab; viewer-aware collection,
+limits and any safety polling require measurement/review, not constant discovery.
+
+For later history, distinguish identity/lifetime, operation intent/outcome and
+timestamps from disposable current projections and metric samples. These are
+proposed boundaries, not a mandate for an event store, time-series service,
+retention policy or always-on idle collection now. History/incident detection
+must be separately approved and measured.
 
 ## Git Stacks And CI Deployment
 

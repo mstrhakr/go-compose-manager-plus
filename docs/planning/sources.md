@@ -8,7 +8,7 @@ an exhaustive inventory, fresh forum audit or source implementation review.
 | Source | Revision / scope | Qualifications |
 | --- | --- | --- |
 | Product scaffold | `mstrhakr/go-template`, published `main`, `f281859b8c912ab7e251c7b2a6ddcaf6e663393b` | Fetched main; exported tracked files without Git history or ignored outputs. Kept MIT and htmx notices. Current local template branch was not used. |
-| Compose Manager | Local `/code/compose_plugin`, `feat/basic-advanced-foundation`, `5ba0c341c7e985004c8ef3802f80793ecbfae509` | Worktree clean at inspection. More recent than handoff HEAD `57b6993`; reviewed documents are local authority/evidence, not claims about origin/main or published availability. No plugin runtime changes or tests performed. |
+| Compose Manager | Refreshed local HEAD `10e9179cbb0331fb956a0b60ba671e477a74638e`; original staging baseline `5ba0c341c7e985004c8ef3802f80793ecbfae509` | Refreshed 2026-11-19: worktree has unrelated planning/source-register/development/e2e changes. Read affected unchanged source contracts, runtime-plan passages and metrics-publisher boundaries; no sibling edits/tests or assumption of remote publication. Original clean staging evidence retains its original scope. |
 | Docker Networks | Local `/code/docker.networks`, `main`, `d8d392f758250bdbfb181a196b283b14429f8a69` | Worktree clean; local main reported one commit behind origin/main. Used local checkout as supplied, not a claim to latest remote behavior. |
 | Compose Specification | Local `/code/compose-spec`, `3a4a6995e4a971f6173dff9130cb3e38e6738651` | Clean worktree at the bounded 2026-11-19 reading of Compose files, include, build Git contexts and deploy purpose. Not a complete spec audit; network/volume chapters remain to inspect for those workstreams. No sibling files changed. |
 | VM script | Pending upload to `scratch/` | Not supplied or inspected. No inferred storage format, credential handling, operations or deployment model. |
@@ -122,6 +122,48 @@ GitHub blob links. The reuse map provides a self-contained bounded summary, not
 a complete source snapshot. Before implementation on another machine, obtain
 this pinned checkout or an owner-approved documentation snapshot; recheck
 approval and supersession sections there. Do not silently use older origin/dev.
+
+## Foundation Adoption And Live State
+
+2026-11-19, following product checkpoint `68ab9d2`:
+
+- Owner redirected work toward enough foundational contracts for a locally usable
+  dashboard, basic Compose actions, manual Update and selected combinations.
+  Git Deploy and broader features remain later slices. The owner authorized
+  adopting obviously portable source rules and asking about material adaptations.
+- [RES-002 through RES-005](../contracts/project-resolution.md) adopt selected
+  approved STK-FILES-14/18/13/19 outcomes without plugin tier/path/mechanism scope.
+  RES-001/006 retain proposed identity/default-selection choices; no blanket
+  approval of source STK-ID drafts or standalone migration policy is inferred.
+- Spec `03-compose-file.md` and `04-version-and-name.md` were read for native
+  file/path and top-level project-name semantics. Those chapters do not select a
+  standalone registration/pinning workflow or prove SDK invocation equivalence.
+- Source `docs/ui-runtime-plan.md`, bounded runtime/transport/recovery passages,
+  distinguishes runtime observations, operation results and metrics; it describes
+  Nchan WebSocket metrics and proposes shared Docker events with debounced
+  invalidations plus authoritative reconciliation. Bootstrap/reconnect refresh
+  and rejection of obsolete responses are source design evidence, not a fully
+  approved standalone live-state contract.
+- Source `nchan/compose_info` producer boundaries were inspected: the CLI stats
+  process is given Compose-managed container IDs and publications are coalesced
+  instead of broadcasting the whole map per incoming stats line. This mechanism
+  is observed evidence, not Go code to import or a selected sampling policy.
+- [Official Engine API source](https://github.com/moby/moby/blob/master/api/swagger.yaml)
+  was retrieved on 2026-11-19 from a moving upstream branch. The stats endpoint
+  `/containers/{id}/stats` streams one container's resource statistics; `/events`
+  streams lifecycle events, including container state and health events. No one
+  all-container stats endpoint, event-replay guarantee or SDK support matrix was
+  inferred. The plugin's one CLI stats process is not equivalent to one Engine
+  API stats stream for every container.
+- Owner prefers SSE, tentatively described fallback polling and wants later
+  UniFi-inspired historical tracing of operations/resource incidents. [LIVE](../contracts/live-state.md)
+  records scope/preferences while keeping heartbeat/fallback, collection budgets,
+  retention, thresholds and idle collection proposed. Absence of lifecycle events
+  is not itself proof of a failed stream. No history backend is selected now.
+
+No source-plugin, Docker, stream/recovery or resource measurements were executed.
+This is bounded adoption/research, not full source tracing, a new full-spec audit
+or implementation authorization. Unrelated sibling work remains untouched.
 
 ## Operation Queue Evidence
 

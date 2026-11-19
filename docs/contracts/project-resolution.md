@@ -1,0 +1,137 @@
++++
+title = 'Project Identity And Inputs'
+weight = 7
++++
+# RES: Project Identity And Inputs
+
+**Status:** Draft / RES-002 through RES-005 adopted as portable approved-source
+outcomes; identity acceptance and initial selection policy awaiting review
+
+**Baseline:** 2026-11-19, product `68ab9d2`; source plugin
+`10e9179cbb0331fb956a0b60ba671e477a74638e`. Source worktree has unrelated
+documentation/e2e changes; the affected source contract was not locally modified.
+Documentation-only adoption, not implementation or verification.
+
+## Purpose And Scope
+
+Resolve a local project's identity, location and inputs once for inspection and
+actions. Reuse approved plugin outcomes without importing Unraid paths, legacy
+migration, Basic/Advanced tiers or PHP/shell mechanisms.
+
+## Ownership
+
+RES owns the accepted project description, separate from PROJ membership, action
+effects, OPS execution ownership and LIVE presentation. Native SDK loading should
+implement Compose semantics, not a second manager-owned YAML engine. Actual SDK
+support needs verification. The owner's reuse direction authorizes selected
+portable approved rules, not whole source drafts or implementation defects.
+
+## Requirements
+
+### RES-001: Accepted Runtime Identity Is Not A Display Name
+
+**Proposed:** distinguish manager registration/lifetime, display name, source
+folder and exact runtime project. Display rename must not retarget an established
+runtime identity. Ambiguous/unresolved identity must be resolved before mutation,
+not guessed from a convenient folder name.
+
+**Source/approval:** STK-ID-01/07/11 are proposed source guarantees. Standalone
+adoption is awaiting review; no legacy pin/migration heuristics are inherited.
+Compose project/name chapters define runtime naming, not manager adoption policy.
+
+### RES-002: Source Location And Input Selection Are Separate
+
+A source directory is a location, not a separate Compose input-selection
+algorithm. Keep location separate from native discovery versus deliberately
+selected files. Selecting an exact Compose file is explicit input selection.
+
+**Approval:** Portable outcome adopted under owner reuse authorization,
+2026-11-19, from individually approved STK-FILES-14. Its separation principle
+survives the reopened source exact-list design; no replacement UI is adopted.
+
+### RES-003: Source Reference Changes Do Not Imply File Changes
+
+Choosing or changing source location alone changes a reference, without copying,
+moving, deleting or otherwise editing authored files. File operations require
+explicit approval of intended operation/scope, which may be part of the same
+workflow. Deliberate editor saves already authorize their disclosed target writes;
+no extra confirmation for every low-level write is implied.
+
+**Approval:** Portable outcome adopted under owner reuse authorization,
+2026-11-19, from STK-FILES-18 (approved 2026-11-11, clarified 2026-11-13).
+No source-transfer UI, overwrite policy or import mechanism is selected.
+
+### RES-004: Missing Explicit Interpolation Env Blocks Execution
+
+If an explicitly selected interpolation env file is missing, block affected
+execution with an explicit error and preserve the selection for repair or a
+deliberate change. Do not silently substitute a local `.env` file.
+
+**Approval:** Portable outcome adopted under owner reuse authorization,
+2026-11-19, from approved STK-FILES-13. This does not decide absent optional
+defaults, missing extra YAML inputs or editor capabilities.
+
+### RES-005: Interpolation Env Does Not Change File-Selection Mode
+
+Interpolation env selection is independent of native versus explicit Compose-file
+selection. Custom interpolation env must not silently disable native discovery.
+Without explicit Compose files, honor applicable native `COMPOSE_FILE`; explicit
+file selection retains native precedence instead of appending env-selected files.
+Service-level `env_file` is a separate concern.
+
+**Approval:** Portable outcome adopted under owner reuse authorization,
+2026-11-19, from approved STK-FILES-19. Multiple env files, process-environment
+sourcing and exact SDK options remain to review/verify; no Git-specific env
+precedence is inherited.
+
+### RES-006: Native Compose Inputs By Default
+
+**Proposed:** resolve local projects using native discovery/filename precedence,
+merge/include and interpolation semantics by default, with deliberate overrides
+where approved prototype scope supports them. Do not freeze native discovery into
+a generated explicit list or silently append extra inputs.
+
+**Source/approval:** STK-FILES-15 approves native defaults with qualified plugin
+tier/settings behavior. Standalone selection/control scope awaits review; that
+entire feature set is not copied. Spec text, CLI precedence and SDK support are
+distinct evidence; neither UI capability nor implementation equivalence is proven.
+
+## Dependencies
+
+- Consumed by [PROJ](project-membership.md) for identifying selected projects;
+  membership and active state stay PROJ-owned.
+- Consumed by [OPS-001](operation-coordination.md) for target/input descriptions
+  and execution-time revalidation. Preview is not an immutable source snapshot.
+- Consumed by proposed local actions and the [LIVE dashboard](live-state.md).
+  Action/update effects are not owned by resolution.
+- Also consumed by [GIT](git-stacks.md) for shared identity/input outcomes;
+  future Git acquisition/revision/credential policy stays with GIT. No Git
+  default, source ownership or plugin migration compatibility is adopted here.
+
+## Acceptance Cases
+
+Adopted outcomes, not implemented/executed tests:
+
+- RES-002: Changing source location does not itself change selection algorithm.
+- RES-003: Selecting an existing folder leaves authored bytes unchanged absent
+  an explicitly requested file operation.
+- RES-004: Missing selected interpolation env causes refusal, not `.env` fallback.
+- RES-005: Custom env does not disable native selection; explicit Compose files
+  do not acquire extra files from `COMPOSE_FILE`.
+
+Pending: identity ambiguity/collision, display rename, overrides/path anchors,
+include/environment resolution, profiles, changed queued inputs and host paths.
+
+## Decisions
+
+- 2026-11-19: Owner authorized source-first reuse and requested review of material
+  adaptations, not repeated interviews for portable approved clauses. RES-002
+  through RES-005 retain those outcomes and their source qualifications.
+- RES-001/006 remain proposed. No source runtime code, dependency or tests were
+  imported, and no management implementation is authorized by this record.
+
+## Verification
+
+Source approval text and local Compose chapters were read; no SDK build, Docker
+behavior, source tests or standalone acceptance cases were executed. Structure
+checks do not prove semantic equivalence. See the [source register](../planning/sources.md).

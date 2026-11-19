@@ -67,8 +67,11 @@ ordering, exactly-once execution or complete participant coverage is claimed.
 - Depends on [PROJ-002/008/009](project-membership.md) for entry-path-specific
   active membership and the absence of a deactivate action. Identity/removal
   lifetime and queued-work handling still require connected review.
-- Depends on unextracted standalone runtime identity/input and lifecycle-action
-  contracts; a folder/display name is not proof of a safe runtime target.
+- Depends on [RES](project-resolution.md) for identity/inputs, whose identity
+  acceptance remains proposed. Lifecycle-action contracts still need adoption;
+  a folder/display name is not proof of a safe runtime target.
+- Consumed by [LIVE](live-state.md) for queued/executing presentation. Metrics and
+  viewer transport are not execution ownership or completion evidence.
 - Consumed by [GIT-002/003/005](git-stacks.md): CI deployment is unattended after
   explicit enablement/request and retains its selected Git commit while waiting.
   Queue policy cannot silently replace the commit within an accepted request.

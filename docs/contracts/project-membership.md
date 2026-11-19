@@ -230,9 +230,11 @@ previous open question about a possible deactivation workflow.
 
 ## Dependencies
 
-- Depends on unextracted standalone identity/input contracts before any action:
-  listing and activation cannot establish which runtime project is safe to target.
-  Source STK-ID/STK-FILES are candidates, not automatically adopted requirements.
+- Depends on [RES](project-resolution.md) before actions: listing and active state
+  cannot establish a safe target. RES has adopted portable input rules; identity
+  acceptance and selection scope remain proposed, not fully resolved.
+- Consumed by [LIVE](live-state.md) for membership/active-state presentation;
+  runtime refresh is not automatic discovery or activation.
 - Depends on [OPS-001](operation-coordination.md) for bounded queueing and
   serialization of same-stack mutations. Activation-state lifecycle rules,
   including removal/recreation and queued/running actions, need further review.
