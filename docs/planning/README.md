@@ -149,7 +149,10 @@ acceptance is not completion, and contention behavior is still unresolved.
 
 CI deployment targets the immutable source commit selected by CI, not a newer
 branch head when execution starts ([GIT-003](../contracts/git-stacks.md)). Use
-existing provider/event metadata where applicable; supported integrations,
+existing provider/event metadata where applicable. The initial CI integration
+targets GitHub ([GIT-004](../contracts/git-stacks.md)); GitLab/other providers
+are potential later extensions, not part of that initial slice. This is not a
+GitHub-only repository-hosting rule. Exact GitHub event/API mapping,
 repository/ref authorization and event-success rules still need definition.
 This pins Git source only, not mutable image tags or all build dependencies.
 

@@ -5,7 +5,7 @@ weight = 5
 # GIT: Git Stacks And Deployment
 
 **Status:** Draft / capability scope, unattended enabled-CI deployment and
-CI-selected immutable Git revision approved;
+CI-selected immutable Git revision plus GitHub-first CI scope approved;
 remaining behavioral/security policies awaiting review
 
 **Baseline:** Owner scope addition on 2026-11-19, from product revision `557b9ec`
@@ -109,10 +109,30 @@ service `deploy` settings do not define a manager webhook or CI-selected checkou
 protocol. See the [bounded spec reading](../planning/sources.md#compose-specification-evidence).
 GIT-003 is manager integration policy, not a claimed Compose requirement.
 
-**Enforcement:** Not implemented. Supported providers/events, missing or unusable
+**Enforcement:** Not implemented. GIT-004 selects GitHub first; event mapping, missing or unusable
 revision handling, allowed refs/repositories and validation rules remain open;
 none permits a silent latest-head fallback. This requirement pins Git source,
 not mutable image tags, external dependencies or overall build reproducibility.
+
+### GIT-004: GitHub First For CI Deployment Integration
+
+The initial CI/deployment integration targets GitHub. GitLab and other provider
+integrations are outside that initial slice, not permanently excluded or promised
+for a particular release. Keep GIT-002/003's shared deployment outcomes distinct
+from provider-specific event handling rather than building multiple adapters now.
+
+This selects the first CI integration, not a GitHub-only restriction on repository
+hosting. It does not choose Git transport/authentication, the triggering GitHub
+event, GitHub.com versus Enterprise support, or the inbound authentication scheme.
+
+**Approval:** Owner selected GitHub-first option A on 2026-11-19, rather than
+including GitHub and GitLab in the initial integration scope.
+
+**Source provenance:** Direct standalone owner scope decision; provider revision
+research identifies available fields, not a reason to require multiple providers.
+
+**Enforcement:** Not implemented. Exact GitHub event/API contract and security
+boundaries still require refinement. No adapter framework is authorized here.
 
 ## Dependencies
 
@@ -132,7 +152,7 @@ not mutable image tags, external dependencies or overall build reproducibility.
 
 ## Acceptance Cases
 
-Owner-approved outcome scenarios for GIT-002/003, not implemented or executed tests:
+Owner-approved outcome scenarios for GIT-002/003/004, not implemented or executed tests:
 
 - An active stack has CI deployment explicitly enabled; a valid authenticated,
   authorized trigger submits deployment without a per-run UI confirmation.
@@ -143,6 +163,9 @@ Owner-approved outcome scenarios for GIT-002/003, not implemented or executed te
 - GIT-003: CI selects X; the configured branch advances to Y before execution.
   The deployment still targets X, not Y. Missing/unusable revision behavior needs
   refinement, but must not silently substitute the latest branch head.
+- GIT-004: The first CI integration is defined and validated for its selected
+  GitHub flow. That evidence does not claim GitLab, other provider or Enterprise
+  support. Repository-host support remains separately specified.
 
 Remaining candidate scenarios for refinement, not approved detailed outcomes:
 
@@ -178,6 +201,9 @@ Remaining candidate scenarios for refinement, not approved detailed outcomes:
   existing provider conventions rather than invent choices already supplied by
   CI. Provider research confirms available SHA/ref fields, not one universal
   deployment webhook format or proof that any event represents passing CI.
+- 2026-11-19: Owner selected GitHub first for CI integration (GIT-004), with
+  other providers possible later. This does not resolve repository-host scope,
+  credential choices, event selection or GitHub Enterprise compatibility.
 - Open: Clone versus adopting an existing checkout, permitted paths, refs/subdirs,
   local-file preservation, Git library versus executable, submodules and LFS.
 - Open: Credential types/providers, storage, host verification and rotation;

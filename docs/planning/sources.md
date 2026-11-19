@@ -65,6 +65,10 @@ bootstrap publishes their branches or modifies their worktrees.
   [GIT-003](../contracts/git-stacks.md#git-003-deploy-the-immutable-revision-selected-by-ci)
   records that outcome. Provider/event mapping and authorization remain open;
   research is qualified under [CI revision conventions](#ci-revision-conventions).
+- Owner selected GitHub-first CI integration over initial GitHub plus GitLab
+  support. [GIT-004](../contracts/git-stacks.md#git-004-github-first-for-ci-deployment-integration)
+  records this scope choice, without inferring GitHub-only repository hosting,
+  Enterprise support, credential types or a specific GitHub trigger event.
 - Owner requested considering the local Compose Specification during contract
   work. The three contract skills now include that evidence step, preserving
   the distinction between normative Compose semantics, implementation support

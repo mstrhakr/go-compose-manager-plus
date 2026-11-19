@@ -74,6 +74,11 @@ existing provider metadata should be used where applicable. Enablement mechanism
 provider/event mapping, repository/ref authorization, authentication details,
 replay/order and contention remain open.
 
+Standalone GIT-004 selects GitHub as the first CI integration. The GitLab research
+above remains comparative evidence, not an initial-delivery requirement. This
+provider priority does not define repository-host restrictions or add a generic
+multi-provider framework; exact GitHub event mapping still needs refinement.
+
 ## Network And Volume Candidates
 
 No existing volume-management contract was supplied. Network-plugin behavior is
