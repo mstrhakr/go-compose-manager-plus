@@ -1,0 +1,50 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      npm-security-minor-patch:
+        applies-to: security-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      go-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      go-security-minor-patch:
+        applies-to: security-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      actions-security-minor-patch:
+        applies-to: security-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      docker-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      docker-security-minor-patch:
+        applies-to: security-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]

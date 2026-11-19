@@ -1,0 +1,57 @@
+name: Dev image (opt-in)
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  source:
+    if: vars.PUBLISH_CONTAINER == 'true' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.source.outputs.publish }}
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: source
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          WORKFLOW_PATH: ${{ github.event.workflow_run.path }}
+        run: |
+          node --input-type=module -e '
+          import {execFileSync} from "node:child_process";
+          import {appendFileSync} from "node:fs";
+          import {classify} from "./scripts/ci.mjs";
+          if(process.env.WORKFLOW_PATH!==".github/workflows/ci.yml")throw new Error("Unexpected producer workflow");
+          const sha=process.env.SHA;
+          if(!/^[a-f0-9]{40}$/.test(sha))throw new Error("Invalid source revision");
+          const current=execFileSync("git",["rev-parse","origin/main"],{encoding:"utf8"}).trim();
+          const files=execFileSync("git",["diff-tree","--root","--no-commit-id","--name-only","-r",sha],{encoding:"utf8"}).trim().split("\n");
+          const affected=classify(files);
+          appendFileSync(process.env.GITHUB_OUTPUT,`sha=${sha}\npublish=${sha===current&&(affected.go||affected.container)}\n`);
+          '
+
+  publish:
+    needs: source
+    if: needs.source.outputs.publish == 'true'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    uses: ./.github/workflows/image.yml
+    with:
+      sha: ${{ needs.source.outputs.sha }}
+      tag: sha-${{ needs.source.outputs.sha }}
+      alias: dev
+      channel: dev

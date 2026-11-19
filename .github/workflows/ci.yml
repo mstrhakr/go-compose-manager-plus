@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  workflow_dispatch:
+  schedule:
+    - cron: '23 7 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      go: ${{ steps.detect.outputs.go }}
+      js: ${{ steps.detect.outputs.js }}
+      browser: ${{ steps.detect.outputs.browser }}
+      docs: ${{ steps.detect.outputs.docs }}
+      contracts: ${{ steps.detect.outputs.contracts }}
+      container: ${{ steps.detect.outputs.container }}
+      security: ${{ steps.detect.outputs.security }}
+      workflows: ${{ steps.detect.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - id: detect
+        env:
+          PUBLISH_CONTRACTS: ${{ vars.PUBLISH_CONTRACTS }}
+        run: node scripts/ci.mjs detect
+
+  checks:
+    needs: changes
+    uses: ./.github/workflows/validate.yml
+    with:
+      ref: ${{ github.sha }}
+      go: ${{ needs.changes.outputs.go == 'true' }}
+      js: ${{ needs.changes.outputs.js == 'true' }}
+      browser: ${{ needs.changes.outputs.browser == 'true' }}
+      docs: ${{ needs.changes.outputs.docs == 'true' }}
+      contracts: ${{ needs.changes.outputs.contracts == 'true' }}
+      container: ${{ needs.changes.outputs.container == 'true' }}
+      security: ${{ needs.changes.outputs.security == 'true' }}
+      workflows: ${{ needs.changes.outputs.workflows == 'true' }}
+
+  gate:
+    name: CI gate
+    if: always()
+    needs: [changes, checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require successful detection and validation
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          CHECKS: ${{ needs.checks.result }}
+        run: test "$CHANGES" = success && test "$CHECKS" = success
