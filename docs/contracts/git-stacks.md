@@ -33,7 +33,7 @@ These credential guarantees still need standalone extraction and approval.
 
 Before implementation, trace UI/CI submitters, webhook delivery/retry, credential
 readers, fetch/checkout preparation, validation, operation execution, status
-readers, failure publication, cleanup, deactivation and deletion/recreation.
+readers, failure publication, cleanup and deletion/recreation.
 The external Git host and CI system do not participate in local manager locks.
 
 ## Requirements
@@ -60,10 +60,11 @@ webhook endpoint or deployment executor exists.
 
 ## Dependencies
 
-- Depends on [PROJ-002/003](project-membership.md): activation precedes project
-  management changes and activation alone does not run Compose or enable
-  automation. How explicitly requested Git acquisition interacts with inactive
-  projects needs review; no pre-activation mutation exception is assumed.
+- Depends on [PROJ-002/003/008/009](project-membership.md): the activation gate is
+  for discovery-added stacks; explicit creation of a new Git stack by cloning
+  starts active. Activation itself does not run Compose or enable automation,
+  and there is no deactivate action. Active status is not CI deployment opt-in
+  or a substitute for shared identity, input and action checks.
 - Depends on unextracted standalone identity/input and lifecycle-action contracts:
   exact project name, selected files/env/profiles, working directory and permitted
   pull/build/recreate effects cannot be invented by the Git adapter.
@@ -85,7 +86,7 @@ Candidate scenarios for refinement, not approved detailed outcomes or run tests:
   and revision; distinguish accepted work from completed deployment.
 - Reject unauthenticated/unauthorized triggers and handle duplicate, replayed,
   delayed and out-of-order deliveries without inventing success or safe retries.
-- Exercise inactive/deactivated projects, same-name recreation, simultaneous
+- Exercise inactive discovery-added projects, same-name recreation, simultaneous
   manual/CI actions, failed preparation, partial Compose effects and restart.
 - Keep Git secrets and secret-bearing URLs out of ordinary output. Specify
   repository-host trust, request/network scope and secret lifecycle before use.
@@ -96,6 +97,11 @@ Candidate scenarios for refinement, not approved detailed outcomes or run tests:
   pulling from repositories, private-repository credentials and webhook/CI
   deployment options. The previous blanket deferral of Git deployment is replaced
   by this workstream, without expanding the first prototype automatically.
+- 2026-11-19: Owner clarified that cloning a repository as a new Git stack starts
+  active, with no second activation step or later deactivate option. PROJ-008/009
+  own this policy; the former clone-before-activation question is resolved for
+  new Git-stack creation. Partial failures and existing-checkout adoption remain
+  separate. The CI approval-mode question is still unanswered.
 - Open: Clone versus adopting an existing checkout, permitted paths, refs/subdirs,
   local-file preservation, Git library versus executable, submodules and LFS.
 - Open: Credential types/providers, storage, host verification and rotation;
@@ -103,8 +109,8 @@ Candidate scenarios for refinement, not approved detailed outcomes or run tests:
 - Open: Explicit deployment opt-in, exact revision versus moving branch,
   replay/idempotency and ordering, approvals, job contention, cancellation,
   retained revision history and truthful partial-failure/recovery semantics.
-- Open: Relationship of clone/setup to activation, and when repository changes
-  may be applied. No background Git polling or automatic deployment defaults are
+- Open: Failed/partial creation, adopting an existing checkout, and when later
+  repository changes may be applied. No background Git polling or automatic deployment defaults are
   approved merely by requesting Git-stack support.
 
 ## Verification

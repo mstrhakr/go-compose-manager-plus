@@ -48,6 +48,12 @@ bootstrap publishes their branches or modifies their worktrees.
   private-repository credentials and CI-triggered deployment through webhooks or
   similar integration. [GIT-001](../contracts/git-stacks.md) records scope, not
   detailed authentication, activation, deployment or automation policy approval.
+- Owner then clarified that the extra activation gate is only for discovery-added
+  stacks. Explicit manual additions and cloning a repository as a new Git stack
+  start active; there is no deactivate option. PROJ-002/007 were amended with
+  supersession notes and PROJ-008/009 record the explicit entry-path and
+  no-deactivation rules. This did not answer the pending per-deployment CI approval
+  question or enable CI automation merely through active membership.
 - Owner raised possible backend reuse with the plugin and requested an opinion
   before deciding. The supplied other-agent excerpt is architectural context,
   not fresh implementation evidence, an approved shared-service design or plugin

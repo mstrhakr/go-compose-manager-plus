@@ -4,7 +4,7 @@ weight = 4
 +++
 # PROJ: Project Membership And Activation
 
-**Status:** Draft / seven individually approved requirements; not wholly approved
+**Status:** Draft / nine individually approved requirements; not wholly approved
 or implemented.
 
 **Baseline:** Owner refinement on 2026-11-19, from product revision `f4d6148`.
@@ -15,8 +15,9 @@ created because the product still contains only the runnable scaffold.
 
 Separate project inclusion from permission to change a project. Requested
 discovery uses the selected root; individual folder selection is another entry
-path. Activation grants eligibility
-for management, not proof of runtime identity or permission to ignore action
+path. Discovery-added stacks require activation; explicit manual addition and
+new Git-stack creation establish active membership immediately. Active status
+grants eligibility for management, not proof of runtime identity or permission to ignore action
 policy. This contract does not define Compose inputs, naming, filesystem ownership,
 specific action effects, automation schedules or plugin migration.
 
@@ -28,11 +29,13 @@ PROJ-007; every manager-initiated project mutation,
 whether manual or automatic, consumes PROJ-002. Activation must not become a
 browser-only affordance while another manager entry point bypasses the policy.
 Activation surfaces consume PROJ-003's permission-only effects.
+Explicit-add and Git-creation surfaces consume PROJ-008; PROJ-009 rules out a
+deactivate action without defining removal or deletion.
 No package, API, persistence format or lock mechanism is selected here.
 
 Discovery readers, action submitters, background executors and activation-state
 writers will need one consistent policy. Persisted identity, restart/recreation,
-deactivation, in-flight work and publication/acknowledgement boundaries still need
+in-flight work and publication/acknowledgement boundaries still need
 refinement before implementation. External Docker/Compose clients do not become
 participants in manager policy merely because a project is listed.
 
@@ -58,7 +61,7 @@ See the [reuse map](../planning/contract-reuse.md).
 
 **Enforcement:** Not implemented. No discovery, registry or activation store exists.
 
-### PROJ-002: Activation Before Any Management Change
+### PROJ-002: Activation Before Managing A Discovery-Added Stack
 
 A newly discovered project is listed but inactive. Until explicitly activated,
 the manager may expose inspection, but must not perform project-changing actions
@@ -67,12 +70,15 @@ activation, as are automatic updates. Discovery must not implicitly activate an
 already-running workload or stop it because it is inactive in this manager.
 
 Activation is a prerequisite, not a definition of which actions or automations
-the product supports. PROJ-003 defines activation's effects; subsequent
-automation opt-ins and deactivation remain unresolved below.
+the product supports. PROJ-003 defines activation's effects. PROJ-008 makes
+explicitly added/newly cloned stacks active from creation, without this extra
+gate; PROJ-009 excludes a deactivate action. Automation opt-ins remain separate.
 
 **Approval:** Owner explicitly selected option A on 2026-11-19: activation gates
 all changes, not just automation. This is a standalone decision, not a claim
-that the plugin already implements this distinction.
+that the plugin already implements this distinction. The owner subsequently
+clarified on the same date that this gate applies only to discovery-added stacks,
+not explicit manual additions or creation of new Git stacks.
 
 **Source provenance:** Standalone owner review recorded in the
 [source register](../planning/sources.md#standalone-owner-refinement).
@@ -165,14 +171,16 @@ plugin refresh/scanner behavior.
 ### PROJ-007: Individual Folder Selection Without A Discovery Scan
 
 Users can browse for a stack folder and select projects one at a time without
-first running a discovery scan. This entry path adds a project for listing; it
-does not implicitly activate it, deploy it or change its Compose inputs.
-PROJ-002/003 remain authoritative for activation and permitted management effects.
+first running a discovery scan. A successful explicit addition starts active
+under PROJ-008, without a separate activation step. Active status alone does not
+request deployment or changes to its Compose inputs; other action prerequisites
+and explicit automation choices still apply.
 
 **Approval:** Owner requested the one-at-a-time folder-browsing flow on
 2026-11-19. Allowed locations, outside-root support, validation and duplicate
 handling remain unresolved, as does activation-state treatment for reselection
-of an already-known project.
+of an already-known project. The earlier wording that manual additions did not
+activate a stack is superseded by the owner's explicit clarification in PROJ-008.
 
 **Source provenance:** Direct standalone owner refinement. The root scan and
 folder picker are distinct entry paths, not competing activation policies.
@@ -180,21 +188,62 @@ folder picker are distinct entry paths, not competing activation policies.
 **Enforcement:** Not implemented. No picker, registration storage or path policy
 has been added; browser-local paths are not assumed to be daemon-host paths.
 
+### PROJ-008: Explicitly Added Stacks Start Active
+
+Successful manual addition of a new stack and successful creation of a new Git
+stack by cloning a repository establish active membership from the start.
+Neither flow requires a second activation action. The inactive-until-activated
+gate in PROJ-002 is for stacks added through discovery only.
+
+Explicit Git creation necessarily acquires repository files as part of the user's
+requested creation operation; it is not an implicit effect of activating a
+discovery result. Active status by itself requests no deployment or automation
+enablement. Any combined creation/deployment flow needs separate refinement,
+as do failed/partial creation and duplicate-add behavior.
+
+**Approval:** Owner explicitly clarified on 2026-11-19 that cloned new Git stacks
+and manually added stacks start active, unlike discovery-added stacks.
+
+**Source provenance:** Direct standalone owner clarification; supersedes the
+earlier generalization of the discovery activation gate to every entry path.
+
+**Enforcement:** Not implemented. Creation, membership persistence and partial
+failure semantics remain unresolved.
+
+### PROJ-009: No Deactivate Action
+
+Once a stack is active, there is no deactivate option that returns it to an
+inactive/discovery-only state. This applies both to activated discovery results
+and stacks created active through PROJ-008.
+
+This requirement does not define unregister/delete behavior, per-feature
+automation controls, or which invalid-input conditions block otherwise active
+stacks. Those are not automatically equivalent to deactivation.
+
+**Approval:** Owner explicitly stated on 2026-11-19 that there is no deactivate
+option after activation.
+
+**Source provenance:** Direct standalone owner clarification, replacing the
+previous open question about a possible deactivation workflow.
+
+**Enforcement:** Not implemented. No activation/deactivation controls exist.
+
 ## Dependencies
 
 - Depends on unextracted standalone identity/input contracts before any action:
   listing and activation cannot establish which runtime project is safe to target.
   Source STK-ID/STK-FILES are candidates, not automatically adopted requirements.
 - Depends on future authoritative mutation coordination and activation-state
-  lifecycle rules. Deactivation versus queued/running actions is not settled.
+  lifecycle rules, including removal/recreation and queued/running actions.
+  PROJ-009 excludes a deactivate action; it does not settle those other transitions.
 - Consumed by proposed setup/discovery and manual/automatic project workflows in
   the [product plan](../planning/README.md). Those consumers reference PROJ rather
   than defining another meaning of activation.
 - Standalone network/volume actions, shared-resource ownership and external
   clients are not granted project-management permission by this contract.
-- Consumed by [GIT-001](git-stacks.md) for PROJ-002/003's activation prerequisite
-  and permission-only activation effects. Git acquisition/setup before activation
-  needs an explicit decision; Git scope does not grant an implicit exception.
+- Consumed by [GIT-001](git-stacks.md) for PROJ-008's active-on-creation behavior,
+  PROJ-002/003's discovery-only activation gate and effects, and PROJ-009's absence
+  of a deactivate action. Git callers must still honor separate action policies.
 
 ## Acceptance Cases
 
@@ -226,8 +275,14 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 - PROJ-006: Complete setup without running discovery, then request it later.
   Adding a folder on disk alone does not trigger a background discovery scan.
 - PROJ-007: Without scanning a root, browse for one eligible stack folder and
-  add it for listing without deployment or activation. Exact path eligibility
+  explicitly add it as active without a second activation step. Active status
+  alone does not deploy it. Exact path eligibility
   is a dependency, not an already-approved arbitrary-path guarantee.
+- PROJ-008: Successfully create a new Git stack by cloning a repository; the
+  resulting stack is active without a separate activation click. Source
+  acquisition does not by itself approve a deployment or CI automation policy.
+- PROJ-009: An active stack offers no deactivate action in UI or other supported
+  manager entry points. Removal/deletion behavior is not inferred from this case.
 
 ## Decisions
 
@@ -251,13 +306,19 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   individual folder browsing (PROJ-007). PROJ-001 retains automatic inclusion
   when a requested scan runs; no continuous discovery is implied. PROJ-004's
   depth limit applies to scans, not an unreviewed restriction on picker paths.
+- 2026-11-19: Owner clarified that only discovery-added stacks need activation;
+  manual additions and cloned new Git stacks start active (PROJ-008). The earlier
+  PROJ-007 statement that manual selection did not activate a stack is superseded,
+  and PROJ-002's scope is narrowed explicitly rather than silently generalized.
+- 2026-11-19: Owner ruled out a deactivate option (PROJ-009). This settles the
+  earlier deactivation question, not removal/deletion or CI deployment approval.
 - Open: Root count, candidate-path suggestions, running-container evidence,
   exact discovery eligibility/filenames, symlinks, filesystem/path permissions
   and scan error/results presentation. Runtime refresh is a separate boundary.
   Handling a Compose file directly in the root remains open.
 - Open: UI-created projects, outside-root projects, empty/invalid directories,
   duplicate runtime identities, activation validation/confirmation, persistence,
-  deactivation, queued/running work and deletion/recreation semantics.
+  queued/running work, failed/partial creation and deletion/recreation semantics.
 - Architecture planning prioritizes maintainability and clear ownership, not a
   plugin rebuild or shared-backend product goal; see the
   [planning direction](../planning/README.md#maintainability-and-ownership-direction).
@@ -268,4 +329,4 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 No management behavior or SDK integration exists; no behavioral acceptance tests,
 native-host measurements or plugin tests were run for this decision record.
 Document checks can validate structure, IDs and links, not enforcement or approval.
-The whole draft remains unapproved despite its seven individually approved entries.
+The whole draft remains unapproved despite its nine individually approved entries.

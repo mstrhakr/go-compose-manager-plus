@@ -40,6 +40,11 @@ scan runs, not continuously. The plugin's directory membership is not adopted
 as a rule to list arbitrary data folders. Exact recognition and picker path
 policies remain open.
 
+Later owner clarification in PROJ-008/009 limits the extra activation gate to
+discovery-added stacks. Explicit manual additions and cloning a repository as a
+new Git stack start active, and there is no deactivate option. This supersedes
+earlier generalized pre-activation language, not separate automation opt-ins.
+
 ## Git And Deployment Candidates
 
 Owner-requested [GIT-001](../contracts/git-stacks.md) adds product capability scope,
@@ -49,15 +54,15 @@ pass; Git implementation/callers/tests and historical evidence were not traced.
 
 | Source boundary | Candidate responsibility | Standalone decisions still required |
 | --- | --- | --- |
-| GIT-LIFE / GIT-STORAGE | Clone/source ownership, adoption, removal and filesystem safety | Managed clone versus existing checkout; root/picker paths, local files, subdirectories, deletion and pre-activation setup. Unraid mount/array rules do not transfer automatically. |
+| GIT-LIFE / GIT-STORAGE | Clone/source ownership, adoption, removal and filesystem safety | PROJ-008 makes successful new Git-stack creation active immediately. Managed clone versus existing checkout, root/picker paths, local files, subdirectories, deletion and failed/partial creation remain open. Unraid mount/array rules do not transfer automatically. |
 | GIT-CHECK / GIT-DEPLOY | Revision preview/validation versus source preparation and deployment | Branch/tag/commit selection, Compose inputs, image policy, dirty files, partial effects and recovery; no assumed atomic runtime rollback. |
 | GIT-AUTO | Separate checking/notification from authorized deployment | CI/webhook triggers are standalone requested scope, not proof of existing plugin support. Decide opt-in, auth, revision binding, delivery ordering/replay and shared job ownership; no polling default adopted. |
 | CRED-VAULT / CRED-GIT | Private repository authentication and scoped credential lifecycle | HTTPS/SSH/provider mechanisms, storage/redaction, host trust, rotation/revocation and reference failures; Git credentials are not deployment-trigger authorization. |
 
-GIT consumes PROJ activation semantics and future shared identity/input/action,
-coordination, credentials and publication owners. Broad Git scope must not grant
-an implicit pre-activation mutation exception or duplicate runtime policy in a
-webhook handler. Full source extraction and standalone policy refinement remain
+GIT consumes PROJ-008/009's explicit-creation and no-deactivation semantics, plus
+future shared identity/input/action, coordination, credentials and publication
+owners. Active membership does not authorize unconfigured CI automation or
+duplicate runtime policy in a webhook handler. Full source extraction and standalone policy refinement remain
 pending; no source-plugin Git approval or enforcement is claimed.
 
 ## Network And Volume Candidates

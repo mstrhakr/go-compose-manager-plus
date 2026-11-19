@@ -18,15 +18,18 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
 - Include first-class Git stacks: repository acquisition/pulls, private-repository
   credentials and CI-triggered deployment through webhooks or deployment APIs.
   [GIT-001](../contracts/git-stacks.md) approves capability scope only; security,
-  sequencing, activation interaction and delivery order still need refinement.
+  sequencing and delivery order still need refinement. New Git-stack creation
+  starts active under PROJ-008; that does not itself request deployment.
 - Offer on-demand discovery, optionally during setup, of recognized Compose
   projects in direct child directories of the selected root. Requested scans
   automatically list matches, initially inactive; there is no continuous
   background discovery. Also allow selecting stack folders one at a time through
-  a folder browser without scanning first. Explicit activation is required before manual or automatic
-  project changes. Activation grants permission only: no Compose execution,
+  a folder browser without scanning first. Discovery-added stacks require
+  explicit activation before manual or automatic project changes; manual additions
+  and cloned new Git stacks start active. There is no deactivate option.
+  Activation grants permission only: no Compose execution,
   project-file rewriting or schedule enablement. See
-  [PROJ-001 through PROJ-007](../contracts/project-membership.md). Exact input
+  [PROJ-001 through PROJ-009](../contracts/project-membership.md). Exact input
   recognition, picker path policy, other remaining discovery details and
   activation validation/persistence remain unresolved; no implementation is
   authorized by these decisions.
@@ -146,8 +149,10 @@ and network/command/path safety require explicit treatment; a Docker-capable
 deployment trigger is an administrative interface, not a generic shell hook.
 These are decision gates, not silently approved mechanisms or defaults.
 
-Activation remains permission-only and project changes still require it.
-Git acquisition/setup versus activation must be resolved explicitly. Repository
+Activation remains permission-only for discovery-added stacks; new Git stacks
+start active through explicit cloning, as do manual additions. There is no
+deactivate action. Partial creation/adoption policies still need refinement.
+Active status alone is not automation opt-in. Repository
 credentials are not webhook or image-registry authorization. No scheduled polling,
 auto-deploy-on-push default, provider-specific OAuth flow or general-purpose
 credential vault is approved by the broad capability request alone.
