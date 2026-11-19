@@ -141,6 +141,12 @@ private authentication, source update/validation and deliberate deployment.
 Manual and CI/webhook callers must consume shared project/action policy,
 coordination and jobs rather than become competing deployment owners.
 
+**Owner-approved CI behavior:** once CI deployment is explicitly enabled for an
+active stack, an authenticated, authorized trigger submits deployment without
+another per-run UI approval ([GIT-002](../contracts/git-stacks.md)). Active status
+alone does not enable CI. Other action/security checks remain required;
+acceptance is not completion, and contention behavior is still unresolved.
+
 Before implementation, refine repository/ref/subdirectory and input selection,
 clone ownership and local changes, private credential types/storage/redaction,
 host trust, trigger authentication/authorization, exact deployed revision,
@@ -154,8 +160,9 @@ start active through explicit cloning, as do manual additions. There is no
 deactivate action. Partial creation/adoption policies still need refinement.
 Active status alone is not automation opt-in. Repository
 credentials are not webhook or image-registry authorization. No scheduled polling,
-auto-deploy-on-push default, provider-specific OAuth flow or general-purpose
-credential vault is approved by the broad capability request alone.
+blanket deploy-on-push default for all stacks, provider-specific OAuth flow or
+general-purpose credential vault is approved by the broad capability request.
+GIT-002 separately settles unattended behavior for explicitly enabled CI delivery.
 
 ## Network And Volume Workstreams
 

@@ -65,6 +65,12 @@ owners. Active membership does not authorize unconfigured CI automation or
 duplicate runtime policy in a webhook handler. Full source extraction and standalone policy refinement remain
 pending; no source-plugin Git approval or enforcement is claimed.
 
+Standalone [GIT-002](../contracts/git-stacks.md) now approves deployment without
+per-run UI confirmation for an explicitly enabled CI integration receiving an
+authenticated, authorized trigger for an active stack. Source plugin notification
+or deployment modes are not adopted wholesale. Enablement mechanism, revision
+binding, authentication details, replay/order and contention remain open.
+
 ## Network And Volume Candidates
 
 No existing volume-management contract was supplied. Network-plugin behavior is

@@ -54,6 +54,12 @@ bootstrap publishes their branches or modifies their worktrees.
   supersession notes and PROJ-008/009 record the explicit entry-path and
   no-deactivation rules. This did not answer the pending per-deployment CI approval
   question or enable CI automation merely through active membership.
+- Owner subsequently explicitly selected unattended CI deployment over per-run
+  UI approval. [GIT-002](../contracts/git-stacks.md#git-002-enabled-ci-deployment-requires-no-per-run-ui-approval)
+  records the scenario: CI deployment already enabled for an active stack, and
+  an authenticated, authorized trigger. The stated rationale was that requiring
+  per-deployment manual approval defeats CI deployment's purpose. No revision,
+  credential protocol or job-concurrency decision was inferred.
 - Owner raised possible backend reuse with the plugin and requested an opinion
   before deciding. The supplied other-agent excerpt is architectural context,
   not fresh implementation evidence, an approved shared-service design or plugin

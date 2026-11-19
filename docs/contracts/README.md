@@ -4,8 +4,8 @@ weight = 1
 +++
 # Behavioral Contracts
 
-PROJ has nine individually approved requirements; GIT has capability-scope
-approval with detailed policies awaiting review. Neither draft is wholly approved
+PROJ has nine individually approved requirements; GIT has capability-scope and
+enabled-CI unattended-deployment approval with other policies awaiting review. Neither draft is wholly approved
 or implemented. The inherited REPO document records
 the template's delivery baseline and historical decisions;
 EXAMPLE is only an example. See the [product plan](../planning/README.md) and
@@ -21,7 +21,7 @@ description of every implementation detail or a substitute for tests.
 | [REPO](repo.md) | Inherited repository/delivery baseline | Draft; template decisions, product setup not wholly verified |
 | [EXAMPLE](example-feature.md) | Small example showing the format | Example, not an approved product promise |
 | [PROJ](project-membership.md) | On-demand discovery, active manual/Git additions, discovery-only activation and no deactivate action | Draft; PROJ-001 through PROJ-009 owner-approved within stated scopes, not implemented or behaviorally verified |
-| [GIT](git-stacks.md) | Git-backed stacks, private-repository credentials and CI/webhook deployment | Draft; GIT-001 capability scope approved, detailed behavior/security unresolved; not implemented or verified |
+| [GIT](git-stacks.md) | Git-backed stacks, private-repository credentials and CI/webhook deployment | Draft; GIT-001 scope and GIT-002 unattended enabled-CI deployment approved; remaining behavior/security unresolved, not implemented or verified |
 
 ## Shared Format
 

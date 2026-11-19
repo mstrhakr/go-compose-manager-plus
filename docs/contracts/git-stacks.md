@@ -4,7 +4,8 @@ weight = 5
 +++
 # GIT: Git Stacks And Deployment
 
-**Status:** Draft / capability scope approved; behavioral policies awaiting review
+**Status:** Draft / capability scope and unattended enabled-CI deployment approved;
+remaining behavioral/security policies awaiting review
 
 **Baseline:** Owner scope addition on 2026-11-19, from product revision `557b9ec`
 with pending PROJ discovery refinements. No Git implementation or dependencies
@@ -58,6 +59,29 @@ from the standalone owner request; no existing plugin webhook support is claimed
 **Enforcement:** Not implemented. No clone store, credential store, Git transport,
 webhook endpoint or deployment executor exists.
 
+### GIT-002: Enabled CI Deployment Requires No Per-Run UI Approval
+
+For an active stack with CI deployment explicitly enabled, an authenticated,
+authorized deployment trigger submits work through the shared deployment job
+flow without waiting for another UI approval for that deployment. A required
+per-delivery human approval is not the selected CI behavior.
+
+Active membership alone does not enable CI integration. This approval does not
+remove identity/input validation, action eligibility, coordination or security
+checks, guarantee immediate execution when busy, or make receipt/acceptance equal
+successful completion. Those policies and outcomes require separate refinement.
+
+**Approval:** Owner explicitly selected option A on 2026-11-19: deployment without
+further UI approval once CI deployment is enabled. Rationale: requiring manual
+approval for each deployment defeats the intended unattended CI workflow.
+
+**Source provenance:** Direct standalone owner decision, not an inferred plugin
+automation default. See the [source register](../planning/sources.md#standalone-owner-refinement).
+
+**Enforcement:** Not implemented. Trigger authentication/authorization, enablement
+mechanism, revision binding, idempotency, job contention and completion reporting
+remain unresolved.
+
 ## Dependencies
 
 - Depends on [PROJ-002/003/008/009](project-membership.md): the activation gate is
@@ -76,7 +100,16 @@ webhook endpoint or deployment executor exists.
 
 ## Acceptance Cases
 
-Candidate scenarios for refinement, not approved detailed outcomes or run tests:
+Owner-approved outcome scenarios for GIT-002, not implemented or executed tests:
+
+- An active stack has CI deployment explicitly enabled; a valid authenticated,
+  authorized trigger submits deployment without a per-run UI confirmation.
+- Active membership alone does not enable the integration. GIT-002's unattended
+  path requires CI deployment to have been explicitly enabled.
+- Lack of a UI approval step does not waive independent action prerequisites or
+  convert an accepted job into a claim of completed deployment.
+
+Remaining candidate scenarios for refinement, not approved detailed outcomes:
 
 - Acquire a public repository and a private repository using an explicitly
   assigned credential; choose repository revision and Compose subdirectory/inputs.
@@ -101,17 +134,22 @@ Candidate scenarios for refinement, not approved detailed outcomes or run tests:
   active, with no second activation step or later deactivate option. PROJ-008/009
   own this policy; the former clone-before-activation question is resolved for
   new Git-stack creation. Partial failures and existing-checkout adoption remain
-  separate. The CI approval-mode question is still unanswered.
+  separate. The subsequent CI approval-mode decision is recorded in GIT-002.
+- 2026-11-19: Owner selected unattended enabled-CI deployment, rejecting per-run
+  UI approval as defeating its purpose. GIT-002 records that conditional behavior;
+  it does not enable CI for stacks automatically or settle credential/security,
+  revision or concurrency policy.
 - Open: Clone versus adopting an existing checkout, permitted paths, refs/subdirs,
   local-file preservation, Git library versus executable, submodules and LFS.
 - Open: Credential types/providers, storage, host verification and rotation;
   webhook/API authentication, network exposure and authorization boundaries.
-- Open: Explicit deployment opt-in, exact revision versus moving branch,
-  replay/idempotency and ordering, approvals, job contention, cancellation,
+- Open: Deployment opt-in mechanism, exact revision versus moving branch,
+  replay/idempotency and ordering, job contention, cancellation,
   retained revision history and truthful partial-failure/recovery semantics.
 - Open: Failed/partial creation, adopting an existing checkout, and when later
-  repository changes may be applied. No background Git polling or automatic deployment defaults are
-  approved merely by requesting Git-stack support.
+  repository changes may be applied. Background Git polling and general
+  deploy-on-source-change defaults remain unapproved. GIT-002 separately approves
+  unattended execution for an explicitly enabled, authorized CI integration.
 
 ## Verification
 
