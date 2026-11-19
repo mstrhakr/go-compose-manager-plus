@@ -32,8 +32,9 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
 - Include app login/auth among the first prototype foundations, even behind the
   owner's local reverse proxy/WAF. Separate method-specific authentication from
   shared access checks so future methods such as OIDC reuse that boundary.
-  [AUTH-001/002](../contracts/authentication.md) record direction; HTTP Basic
-  versus form/session login, OIDC timing and proxy/security policy remain open.
+  [AUTH-001 through AUTH-003](../contracts/authentication.md) select local
+  username/password form login with server-managed sessions first, not HTTP Basic.
+  OIDC is deferred; account/bootstrap, session and proxy/security details remain open.
 - Include network and volume management in product planning. Their exact feature
   set, safety policy and delivery order are not yet approved.
 - Include first-class Git stacks: repository acquisition/pulls, private-repository
@@ -172,7 +173,7 @@ slices, not removed product goals.
 
 | Order | Small batch | Ready-to-implement outcome |
 | --- | --- | --- |
-| 0 | App login/access, [AUTH](../contracts/authentication.md) | Choose initial mechanism and bootstrap/session policy; define proxy/origin trust and shared protection of administrative views, actions and streams. Keep OIDC extensibility without assuming immediate OIDC delivery. |
+| 0 | App login/access, [AUTH](../contracts/authentication.md) | Local form/session login selected; settle account/bootstrap/session policy and proxy/origin trust for administrative views, actions and streams. OIDC is deferred behind the shared auth boundary. |
 | 1 | Identity/inputs, [RES](../contracts/project-resolution.md) | Native naming/selection and safe source/env outcomes settled; close required adoption/env/profile gaps and verify SDK loading. |
 | 2 | Lifecycle/manual Update | Reuse approved action meanings, preparation barriers and stopped/never-deployed safety; decide exact prototype combinations and remaining proposals. |
 | 3 | Jobs/[OPS](../contracts/operation-coordination.md) | Adopt browser-independent outcomes; settle minimum queue order/capacity/full and interruption behavior before mutations, not every future CI variant. |

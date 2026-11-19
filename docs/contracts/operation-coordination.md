@@ -64,7 +64,8 @@ ordering, exactly-once execution or complete participant coverage is claimed.
 
 ## Dependencies
 
-- Depends on [AUTH-001/002](authentication.md) for shared app access checks around
+- Depends on [AUTH-001 through AUTH-003](authentication.md) for local-session
+  authentication and shared app access checks around
   submission and job/output reads. Exact authorization, queued-work revocation
   and execution-time revalidation policy remain unresolved.
 - Depends on [PROJ-002/008/009](project-membership.md) for entry-path-specific

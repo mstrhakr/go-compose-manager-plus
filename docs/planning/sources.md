@@ -27,6 +27,11 @@ bootstrap publishes their branches or modifies their worktrees.
   such as OIDC. [AUTH-001/002](../contracts/authentication.md) record that scope
   and ownership direction. "Basic auth" remains ambiguous between HTTP Basic and
   simple form/session login; immediate OIDC was tentative, not approved delivery.
+- Owner then selected option A: local username/password form login with
+  server-managed sessions first, OIDC later.
+  [AUTH-003](../contracts/authentication.md#auth-003-local-form-login-with-server-managed-sessions-first)
+  resolves the initial ambiguity without selecting account count, bootstrap,
+  recovery, storage/library or session security parameters.
 - Owner clarified the overall product as a standalone counterpart/clone of the
   Unraid Compose Manager Plus plugin, with a modern interface instead of its
   Unraid-native presentation. This strengthens the plugin's role from case study
@@ -204,10 +209,11 @@ the new [AUTH](../contracts/authentication.md) foundation requirement.
   This supports evaluating sessions, not claiming that merely using cookies is
   secure or selecting a session library/storage mechanism.
 
-The initial mechanism remains unresolved: HTTP Basic is not the same as a simple
-username/password login page. Local form/session login is the assistant's
-recommendation, not an owner-approved choice. OIDC timing and protocol details
-remain open. No auth, proxy, browser or credential-security tests were executed.
+HTTP Basic is not the same as a simple username/password login page. After the
+comparison, the owner approved local form login with server-managed sessions
+(AUTH-003) and deferred OIDC. Account/bootstrap, session/security and later OIDC
+protocol details remain open. No auth, proxy, browser or credential-security tests
+were executed.
 
 ## Operation Queue Evidence
 

@@ -5,7 +5,8 @@ weight = 9
 # AUTH: Application Authentication
 
 **Status:** Draft / early app-auth scope and extensible ownership direction
-approved; initial mechanism and security policies awaiting review
+approved; local form/session login selected, OIDC deferred; detailed account,
+bootstrap/session and security policies awaiting review
 
 **Baseline:** 2026-11-19, product `d47835b`, documentation-only refinement.
 The scaffold has public demo/health routes, no app login or sessions. No auth
@@ -40,8 +41,8 @@ not approval to omit app authentication or blindly trust forwarded user identity
 Loopback-only access was proposed, not selected as a substitute for app login.
 
 **Approval:** Owner explicitly requested basic login/auth in the first steps on
-2026-11-19. "Basic auth" does not yet select HTTP Basic versus local form/session
-login. Bind addresses, TLS/proxy trust, bootstrap, accounts and exact route
+2026-11-19. AUTH-003 subsequently selects local form/session login rather than
+HTTP Basic. Bind addresses, TLS/proxy trust, bootstrap, accounts and exact route
 protections remain unresolved.
 
 **Source provenance:** Direct standalone owner decision. Plugin host authorization
@@ -57,14 +58,40 @@ enforcement throughout business handlers. Start with the concrete mechanisms
 selected for the prototype, not a speculative plugin framework or identity platform.
 
 **Approval:** Owner requested foundations for additional auth types, including
-OIDC, on 2026-11-19. Immediate OIDC delivery was tentative and remains unapproved;
-no provider, library, session format or fallback mode chosen.
+OIDC, on 2026-11-19. AUTH-003 defers OIDC from the initial login scope;
+no provider, library, session representation or future fallback mode chosen.
 
 **Source provenance:** Direct owner direction, consistent with the approved
 maintainability/clear-ownership planning direction.
 
 **Enforcement:** Not implemented. OIDC account mapping, issuer/audience checks,
 redirect trust, recovery and local/OIDC coexistence need review before support.
+
+### AUTH-003: Local Form Login With Server-Managed Sessions First
+
+The initial app login is a username/password form with server-managed sessions,
+not an HTTP Basic browser challenge. After local credential verification, the
+session supplies authenticated identity through AUTH-002's shared application
+access boundary. Dashboard, htmx, action, output and SSE access consume that
+boundary rather than implementing independent credential checks.
+
+OIDC is deferred from the initial prototype; an external identity provider is
+not a prerequisite for local use. Keep the future integration boundary without
+implementing a provider framework now. Authentication/session state does not
+replace authorization, request/origin protection or transport security.
+
+**Approval:** Owner selected option A on 2026-11-19: local username/password
+login with sessions now, OIDC later, rather than immediate local-plus-OIDC support
+or literal HTTP Basic. This does not select single-admin versus multi-user scope,
+session storage technology, expiry values or a credential provisioning mechanism.
+
+**Source provenance:** Direct standalone owner decision after the HTTP Basic
+versus session tradeoff discussion. See the
+[authentication evidence](../planning/sources.md#authentication-evidence).
+
+**Enforcement:** Not implemented. Credential storage, bootstrap/recovery,
+session issuance/rotation/expiry/logout, cookie/proxy settings and access checks
+still need bounded decisions and execution-based security verification.
 
 ## Dependencies
 
@@ -79,6 +106,14 @@ redirect trust, recovery and local/OIDC coexistence need review before support.
   No external auth service or database is mandated here.
 
 ## Acceptance Cases
+
+Owner-approved scope scenarios, not implemented/executed tests:
+
+- AUTH-003: The initial user-facing login is a local username/password form with
+  server-managed sessions, not HTTP Basic or a required OIDC redirect.
+- AUTH-003: The local-login application can be configured without an external
+  identity provider. Sensitive requests consume the shared authenticated-session
+  boundary; exact route exceptions and denied-access behavior remain to refine.
 
 Candidate scenarios, not approved detailed outcomes or run tests:
 
@@ -96,9 +131,11 @@ Candidate scenarios, not approved detailed outcomes or run tests:
 
 - Owner expects reverse-proxy/WAF/local-network deployment and requested app
   login early, with a maintainable path to OIDC or other methods.
-- Open: HTTP Basic versus form/session login; account model, bootstrap/recovery,
+- 2026-11-19: Owner chose local form login with server-managed sessions first and
+  deferred OIDC (AUTH-003). No auth implementation is authorized by this decision.
+- Open: Account model, bootstrap/recovery,
   credential hashing/storage, throttling and session lifecycle.
-- Open: OIDC timing, proxy/canonical URL/TLS rules, endpoint/public-health
+- Open: Later OIDC scope, proxy/canonical URL/TLS rules, endpoint/public-health
   exceptions, authorization, CSRF/origin protection and stream expiry/revocation.
 - No auth runtime work is authorized merely by this draft.
 
