@@ -147,9 +147,15 @@ another per-run UI approval ([GIT-002](../contracts/git-stacks.md)). Active stat
 alone does not enable CI. Other action/security checks remain required;
 acceptance is not completion, and contention behavior is still unresolved.
 
+CI deployment targets the immutable source commit selected by CI, not a newer
+branch head when execution starts ([GIT-003](../contracts/git-stacks.md)). Use
+existing provider/event metadata where applicable; supported integrations,
+repository/ref authorization and event-success rules still need definition.
+This pins Git source only, not mutable image tags or all build dependencies.
+
 Before implementation, refine repository/ref/subdirectory and input selection,
 clone ownership and local changes, private credential types/storage/redaction,
-host trust, trigger authentication/authorization, exact deployed revision,
+host trust, trigger authentication/authorization, provider revision mapping,
 replay/idempotency, job contention and partial failure/recovery. Credential storage
 and network/command/path safety require explicit treatment; a Docker-capable
 deployment trigger is an administrative interface, not a generic shell hook.

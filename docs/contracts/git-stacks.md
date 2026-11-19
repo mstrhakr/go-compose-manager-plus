@@ -4,7 +4,8 @@ weight = 5
 +++
 # GIT: Git Stacks And Deployment
 
-**Status:** Draft / capability scope and unattended enabled-CI deployment approved;
+**Status:** Draft / capability scope, unattended enabled-CI deployment and
+CI-selected immutable Git revision approved;
 remaining behavioral/security policies awaiting review
 
 **Baseline:** Owner scope addition on 2026-11-19, from product revision `557b9ec`
@@ -79,8 +80,39 @@ approval for each deployment defeats the intended unattended CI workflow.
 automation default. See the [source register](../planning/sources.md#standalone-owner-refinement).
 
 **Enforcement:** Not implemented. Trigger authentication/authorization, enablement
-mechanism, revision binding, idempotency, job contention and completion reporting
-remain unresolved.
+mechanism, permitted repository/ref validation, idempotency, job contention and
+completion reporting remain unresolved. GIT-003 defines revision-selection intent.
+
+### GIT-003: Deploy The Immutable Revision Selected By CI
+
+CI deployment targets the immutable source commit selected by the authorized
+CI/deployment request, not the latest branch head at execution time. If the
+request selects commit X and the branch advances to Y, the job still targets X;
+the manager must not silently replace it with Y.
+
+Use the supported provider/event's existing revision metadata where applicable,
+rather than assuming every webhook has an identical payload or interpreting a
+branch/tag name as an immutable commit. The provider mapping and authorization
+must identify the intended source repository and commit; an arbitrary event's
+SHA is not automatically proof of what a workflow checked out or tested.
+
+**Approval:** Owner selected exact-commit option A on 2026-11-19, emphasizing
+that the CI integration should supply the revision using existing conventions.
+Approval is for that outcome, not a bespoke webhook schema or every provider.
+
+**Source provenance:** Direct owner decision plus bounded research of GitHub's
+official REST schema and GitLab's pipeline-hook documentation, recorded under
+[CI revision conventions](../planning/sources.md#ci-revision-conventions).
+
+**Compose specification boundary:** The inspected build Git-context syntax and
+service `deploy` settings do not define a manager webhook or CI-selected checkout
+protocol. See the [bounded spec reading](../planning/sources.md#compose-specification-evidence).
+GIT-003 is manager integration policy, not a claimed Compose requirement.
+
+**Enforcement:** Not implemented. Supported providers/events, missing or unusable
+revision handling, allowed refs/repositories and validation rules remain open;
+none permits a silent latest-head fallback. This requirement pins Git source,
+not mutable image tags, external dependencies or overall build reproducibility.
 
 ## Dependencies
 
@@ -100,7 +132,7 @@ remain unresolved.
 
 ## Acceptance Cases
 
-Owner-approved outcome scenarios for GIT-002, not implemented or executed tests:
+Owner-approved outcome scenarios for GIT-002/003, not implemented or executed tests:
 
 - An active stack has CI deployment explicitly enabled; a valid authenticated,
   authorized trigger submits deployment without a per-run UI confirmation.
@@ -108,6 +140,9 @@ Owner-approved outcome scenarios for GIT-002, not implemented or executed tests:
   path requires CI deployment to have been explicitly enabled.
 - Lack of a UI approval step does not waive independent action prerequisites or
   convert an accepted job into a claim of completed deployment.
+- GIT-003: CI selects X; the configured branch advances to Y before execution.
+  The deployment still targets X, not Y. Missing/unusable revision behavior needs
+  refinement, but must not silently substitute the latest branch head.
 
 Remaining candidate scenarios for refinement, not approved detailed outcomes:
 
@@ -139,11 +174,15 @@ Remaining candidate scenarios for refinement, not approved detailed outcomes:
   UI approval as defeating its purpose. GIT-002 records that conditional behavior;
   it does not enable CI for stacks automatically or settle credential/security,
   revision or concurrency policy.
+- 2026-11-19: Owner selected the exact CI-selected commit (GIT-003), asking to use
+  existing provider conventions rather than invent choices already supplied by
+  CI. Provider research confirms available SHA/ref fields, not one universal
+  deployment webhook format or proof that any event represents passing CI.
 - Open: Clone versus adopting an existing checkout, permitted paths, refs/subdirs,
   local-file preservation, Git library versus executable, submodules and LFS.
 - Open: Credential types/providers, storage, host verification and rotation;
   webhook/API authentication, network exposure and authorization boundaries.
-- Open: Deployment opt-in mechanism, exact revision versus moving branch,
+- Open: Deployment opt-in mechanism, provider/event revision mapping and permitted refs,
   replay/idempotency and ordering, job contention, cancellation,
   retained revision history and truthful partial-failure/recovery semantics.
 - Open: Failed/partial creation, adopting an existing checkout, and when later

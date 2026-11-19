@@ -68,8 +68,11 @@ pending; no source-plugin Git approval or enforcement is claimed.
 Standalone [GIT-002](../contracts/git-stacks.md) now approves deployment without
 per-run UI confirmation for an explicitly enabled CI integration receiving an
 authenticated, authorized trigger for an active stack. Source plugin notification
-or deployment modes are not adopted wholesale. Enablement mechanism, revision
-binding, authentication details, replay/order and contention remain open.
+or deployment modes are not adopted wholesale. Standalone GIT-003 selects the
+immutable commit supplied by CI rather than latest branch head at execution;
+existing provider metadata should be used where applicable. Enablement mechanism,
+provider/event mapping, repository/ref authorization, authentication details,
+replay/order and contention remain open.
 
 ## Network And Volume Candidates
 

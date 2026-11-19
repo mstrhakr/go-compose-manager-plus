@@ -10,7 +10,7 @@ an exhaustive inventory, fresh forum audit or source implementation review.
 | Product scaffold | `mstrhakr/go-template`, published `main`, `f281859b8c912ab7e251c7b2a6ddcaf6e663393b` | Fetched main; exported tracked files without Git history or ignored outputs. Kept MIT and htmx notices. Current local template branch was not used. |
 | Compose Manager | Local `/code/compose_plugin`, `feat/basic-advanced-foundation`, `5ba0c341c7e985004c8ef3802f80793ecbfae509` | Worktree clean at inspection. More recent than handoff HEAD `57b6993`; reviewed documents are local authority/evidence, not claims about origin/main or published availability. No plugin runtime changes or tests performed. |
 | Docker Networks | Local `/code/docker.networks`, `main`, `d8d392f758250bdbfb181a196b283b14429f8a69` | Worktree clean; local main reported one commit behind origin/main. Used local checkout as supplied, not a claim to latest remote behavior. |
-| Compose Specification | Workspace checkout available at `/code/compose-spec` | Not audited or changed in this staging pass. Read applicable chapters and pin its revision when selecting network/volume semantics. |
+| Compose Specification | Local `/code/compose-spec`, `3a4a6995e4a971f6173dff9130cb3e38e6738651` | Clean worktree at the bounded 2026-11-19 reading of Compose files, include, build Git contexts and deploy purpose. Not a complete spec audit; network/volume chapters remain to inspect for those workstreams. No sibling files changed. |
 | VM script | Pending upload to `scratch/` | Not supplied or inspected. No inferred storage format, credential handling, operations or deployment model. |
 
 Template source at a published fixed revision:
@@ -60,6 +60,15 @@ bootstrap publishes their branches or modifies their worktrees.
   an authenticated, authorized trigger. The stated rationale was that requiring
   per-deployment manual approval defeats CI deployment's purpose. No revision,
   credential protocol or job-concurrency decision was inferred.
+- Owner then selected exact-commit CI deployment, asking to use existing provider
+  conventions where available rather than invent a universal webhook schema.
+  [GIT-003](../contracts/git-stacks.md#git-003-deploy-the-immutable-revision-selected-by-ci)
+  records that outcome. Provider/event mapping and authorization remain open;
+  research is qualified under [CI revision conventions](#ci-revision-conventions).
+- Owner requested considering the local Compose Specification during contract
+  work. The three contract skills now include that evidence step, preserving
+  the distinction between normative Compose semantics, implementation support
+  and standalone manager/CI policy.
 - Owner raised possible backend reuse with the plugin and requested an opinion
   before deciding. The supplied other-agent excerpt is architectural context,
   not fresh implementation evidence, an approved shared-service design or plugin
@@ -104,6 +113,48 @@ GitHub blob links. The reuse map provides a self-contained bounded summary, not
 a complete source snapshot. Before implementation on another machine, obtain
 this pinned checkout or an owner-approved documentation snapshot; recheck
 approval and supersession sections there. Do not silently use older origin/dev.
+
+## Compose Specification Evidence
+
+Bounded reading on 2026-11-19 at the clean local spec revision above:
+
+- `03-compose-file.md`: preferred/default Compose filenames, ordered merging and
+  relative paths based on the first Compose file's parent directory.
+- `14-include.md`: included models have their own project-directory/path and
+  interpolation environment semantics; include recursion is not filesystem
+  discovery recursion or a manager membership policy.
+- `build.md`, opening sections through Git context syntax: Git URLs can identify
+  a ref and subdirectory for build context. This is not a manager stack-cloning
+  API, webhook revision protocol or guarantee of fully reproducible deployment.
+- `deploy.md`, opening purpose/attributes: optional service resource/platform
+  deployment settings, not an external CI trigger format or approval workflow.
+
+No CI webhook contract was found in the inspected sections; this is not a claim
+of exhaustive absence across every spec file. The selected SDK/CLI's actual
+support still needs independent validation. No new filename, merge, include or
+build policy is approved merely by reading these sections.
+
+## CI Revision Conventions
+
+Official sources retrieved on 2026-11-19; moving upstream branches, not pinned
+provider/schema versions or runtime integration verification:
+
+- [GitHub REST API schema](https://github.com/github/rest-api-description/blob/main/descriptions/api.github.com/api.github.com.json):
+  `workflow-run.head_sha` identifies the head commit for the workflow run;
+  `deployment.sha` is the commit and `deployment.ref` may be a branch, tag or SHA.
+  These object schemas identify fields, not every webhook's envelope or proof
+  that a workflow checked out and tested the same source revision.
+- [GitLab webhook events](https://github.com/gitlabhq/gitlabhq/blob/master/doc/user/project/integrations/webhook_events.md#pipeline-events):
+  pipeline events describe status changes; the example `object_attributes`
+  includes `sha`, `ref` and `status`. A generic pipeline event is not by itself
+  authorization or a command to deploy.
+
+Use the supported integration's event-specific metadata rather than inventing
+one universal provider payload. Bind the intended repository and immutable
+revision, and separately define trusted sender, event/success selection and
+authorization. Ordinary push events and arbitrary SHA fields do not establish
+passing CI. This research supports GIT-003's existing owner-approved intent; no
+provider adapter, webhook endpoint, protocol or automatic fallback was implemented.
 
 ## Network Evidence
 
