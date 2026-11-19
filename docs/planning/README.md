@@ -156,6 +156,11 @@ GitHub-only repository-hosting rule. Exact GitHub event/API mapping,
 repository/ref authorization and event-success rules still need definition.
 This pins Git source only, not mutable image tags or all build dependencies.
 
+CI explicitly requests deployment when it decides to promote its selected commit
+([GIT-005](../contracts/git-stacks.md)). Workflow success alone does not trigger
+deployment. This selects intent, not the exact GitHub event/API or a custom
+payload format; authentication and deployment eligibility remain separate gates.
+
 Before implementation, refine repository/ref/subdirectory and input selection,
 clone ownership and local changes, private credential types/storage/redaction,
 host trust, trigger authentication/authorization, provider revision mapping,

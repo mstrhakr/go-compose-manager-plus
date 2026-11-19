@@ -6,7 +6,8 @@ weight = 1
 
 PROJ has nine individually approved requirements; GIT has capability-scope,
 enabled-CI unattended-deployment and exact CI-selected Git revision approval,
-plus GitHub-first CI scope, with other policies awaiting review. Neither draft is wholly approved
+plus GitHub-first CI scope and explicit CI requests, with other policies awaiting
+review. Neither draft is wholly approved
 or implemented. The inherited REPO document records
 the template's delivery baseline and historical decisions;
 EXAMPLE is only an example. See the [product plan](../planning/README.md) and
@@ -22,7 +23,7 @@ description of every implementation detail or a substitute for tests.
 | [REPO](repo.md) | Inherited repository/delivery baseline | Draft; template decisions, product setup not wholly verified |
 | [EXAMPLE](example-feature.md) | Small example showing the format | Example, not an approved product promise |
 | [PROJ](project-membership.md) | On-demand discovery, active manual/Git additions, discovery-only activation and no deactivate action | Draft; PROJ-001 through PROJ-009 owner-approved within stated scopes, not implemented or behaviorally verified |
-| [GIT](git-stacks.md) | Git-backed stacks, private-repository credentials and CI/webhook deployment | Draft; GIT-001 scope, GIT-002 unattended enabled-CI deployment, GIT-003 CI-selected commit and GIT-004 GitHub-first CI scope approved; remaining behavior/security unresolved, not implemented or verified |
+| [GIT](git-stacks.md) | Git-backed stacks, private-repository credentials and CI/webhook deployment | Draft; GIT-001 through GIT-005 approved within stated scope; remaining behavior/security unresolved, not implemented or verified |
 
 ## Shared Format
 

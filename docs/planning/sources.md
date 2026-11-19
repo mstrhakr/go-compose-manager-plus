@@ -69,6 +69,11 @@ bootstrap publishes their branches or modifies their worktrees.
   support. [GIT-004](../contracts/git-stacks.md#git-004-github-first-for-ci-deployment-integration)
   records this scope choice, without inferring GitHub-only repository hosting,
   Enterprise support, credential types or a specific GitHub trigger event.
+- Owner selected explicit deployment requests from CI over manager deployment
+  triggered by configured workflow success alone.
+  [GIT-005](../contracts/git-stacks.md#git-005-ci-explicitly-requests-deployment)
+  records CI-controlled promotion intent; exact GitHub event/API, authentication
+  and delivery semantics were not inferred.
 - Owner requested considering the local Compose Specification during contract
   work. The three contract skills now include that evidence step, preserving
   the distinction between normative Compose semantics, implementation support

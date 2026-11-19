@@ -5,7 +5,7 @@ weight = 5
 # GIT: Git Stacks And Deployment
 
 **Status:** Draft / capability scope, unattended enabled-CI deployment and
-CI-selected immutable Git revision plus GitHub-first CI scope approved;
+CI-selected immutable Git revision, GitHub-first CI scope and explicit CI request approved;
 remaining behavioral/security policies awaiting review
 
 **Baseline:** Owner scope addition on 2026-11-19, from product revision `557b9ec`
@@ -134,6 +134,28 @@ research identifies available fields, not a reason to require multiple providers
 **Enforcement:** Not implemented. Exact GitHub event/API contract and security
 boundaries still require refinement. No adapter framework is authorized here.
 
+### GIT-005: CI Explicitly Requests Deployment
+
+CI decides when to promote its selected immutable commit and sends an explicit
+deployment request. A workflow finishing successfully is not by itself a request
+to deploy, even when that workflow belongs to the configured repository.
+
+The requested deployment consumes GIT-002's unattended enabled-CI flow and
+GIT-003's commit binding. This selects deployment intent, not a bespoke webhook
+format or specific GitHub event/API. Authentication, repository/ref authorization
+and action prerequisites remain required and separately specified.
+
+**Approval:** Owner selected explicit-request option A on 2026-11-19 over having
+the manager react to a configured workflow's success. CI retains control over
+when its tested commit is promoted.
+
+**Source provenance:** Direct standalone owner decision. Existing provider
+conventions should still be used where applicable; no exact wire protocol was
+approved by this choice.
+
+**Enforcement:** Not implemented. Request mapping, trusted callers, delivery
+validation, replay handling and job outcomes still need refinement.
+
 ## Dependencies
 
 - Depends on [PROJ-002/003/008/009](project-membership.md): the activation gate is
@@ -152,7 +174,7 @@ boundaries still require refinement. No adapter framework is authorized here.
 
 ## Acceptance Cases
 
-Owner-approved outcome scenarios for GIT-002/003/004, not implemented or executed tests:
+Owner-approved outcome scenarios for GIT-002 through GIT-005, not implemented or executed tests:
 
 - An active stack has CI deployment explicitly enabled; a valid authenticated,
   authorized trigger submits deployment without a per-run UI confirmation.
@@ -166,6 +188,10 @@ Owner-approved outcome scenarios for GIT-002/003/004, not implemented or execute
 - GIT-004: The first CI integration is defined and validated for its selected
   GitHub flow. That evidence does not claim GitLab, other provider or Enterprise
   support. Repository-host support remains separately specified.
+- GIT-005: A workflow completes successfully but sends no deployment request;
+  the manager does not deploy merely because the workflow succeeded.
+- GIT-005: CI explicitly requests deployment of commit X; the enabled,
+  authenticated and authorized flow uses GIT-002/003 without another UI approval.
 
 Remaining candidate scenarios for refinement, not approved detailed outcomes:
 
@@ -204,6 +230,9 @@ Remaining candidate scenarios for refinement, not approved detailed outcomes:
 - 2026-11-19: Owner selected GitHub first for CI integration (GIT-004), with
   other providers possible later. This does not resolve repository-host scope,
   credential choices, event selection or GitHub Enterprise compatibility.
+- 2026-11-19: Owner selected explicit deployment requests from CI (GIT-005),
+  rather than manager-triggered deployment merely on configured workflow success.
+  Exact GitHub event/API and security choices remain unresolved.
 - Open: Clone versus adopting an existing checkout, permitted paths, refs/subdirs,
   local-file preservation, Git library versus executable, submodules and LFS.
 - Open: Credential types/providers, storage, host verification and rotation;

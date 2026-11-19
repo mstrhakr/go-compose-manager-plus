@@ -79,6 +79,10 @@ above remains comparative evidence, not an initial-delivery requirement. This
 provider priority does not define repository-host restrictions or add a generic
 multi-provider framework; exact GitHub event mapping still needs refinement.
 
+GIT-005 further requires explicit deployment intent from CI rather than treating
+workflow success as a deployment request. This is a standalone owner decision,
+not an adopted plugin scheduling rule or a chosen GitHub wire protocol.
+
 ## Network And Volume Candidates
 
 No existing volume-management contract was supplied. Network-plugin behavior is
