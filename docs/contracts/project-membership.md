@@ -4,7 +4,7 @@ weight = 4
 +++
 # PROJ: Project Membership And Activation
 
-**Status:** Draft / three individually approved requirements; not wholly approved
+**Status:** Draft / four individually approved requirements; not wholly approved
 or implemented.
 
 **Baseline:** Owner refinement on 2026-11-19, from product revision `f4d6148`.
@@ -22,7 +22,7 @@ specific action effects, automation schedules or plugin migration.
 ## Ownership
 
 PROJ owns project membership and the activation prerequisite. Future setup and
-discovery surfaces consume PROJ-001; every manager-initiated project mutation,
+discovery surfaces consume PROJ-001 and PROJ-004; every manager-initiated project mutation,
 whether manual or automatic, consumes PROJ-002. Activation must not become a
 browser-only affordance while another manager entry point bypasses the policy.
 Activation surfaces consume PROJ-003's permission-only effects.
@@ -43,8 +43,8 @@ without a separate per-project import or adoption confirmation merely to list
 them. This also applies when projects are added there outside the UI. Automatic
 listing does not activate the project or authorize management changes.
 
-**Approval:** Approved by the owner on 2026-11-19. Exact discovery eligibility,
-scan depth, refresh cadence and treatment of missing/invalid files remain open.
+**Approval:** Approved by the owner on 2026-11-19. PROJ-004 settles scan depth;
+exact eligibility, refresh cadence and missing/invalid-file handling remain open.
 
 **Source provenance:** Source STK-LIFE-01/18 distinguish directory discovery and
 membership. The standalone owner selected automatic inclusion after discussing
@@ -97,6 +97,27 @@ This settles activation effects, not every future automation policy.
 **Enforcement:** Not implemented. Activation validation, persistence and failure
 reporting remain to be defined and verified.
 
+### PROJ-004: Direct-Child Project Discovery
+
+Automatic project-folder discovery considers immediate child directories of the
+selected project root, not recursively nested project folders. Given root
+`/srv/compose`, an eligible project in `/srv/compose/jellyfin` is in scope;
+`/srv/compose/media/sonarr` is not automatically discovered as a nested project.
+
+This settles depth only. It does not make every child directory a project or
+select filenames, symlink policy, refresh cadence or grouping presentation.
+
+**Approval:** Owner explicitly selected direct-child option A on 2026-11-19
+for the current scope. Recursive discovery and UI grouping were discussed as
+possible future ideas, not approved requirements or permanently prohibited ones.
+
+**Source provenance:** Source STK-LIFE-01 observes immediate-directory discovery;
+the standalone owner independently approved the bounded depth choice. See the
+[source register](../planning/sources.md#standalone-owner-refinement).
+
+**Enforcement:** Not implemented. Eligibility and traversal/path safety remain
+unresolved; this approval does not establish a safe filesystem scanning algorithm.
+
 ## Dependencies
 
 - Depends on unextracted standalone identity/input contracts before any action:
@@ -130,6 +151,10 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 - PROJ-003: Activate a stopped project; it remains stopped until a separate
   deliberate action starts it.
 - PROJ-003: Activation does not enable schedules or trigger automatic updates.
+- PROJ-004: With root `/srv/compose`, discover eligible project folder
+  `/srv/compose/jellyfin`, but do not recursively discover the separate nested
+  project `/srv/compose/media/sonarr`. Do not infer that the grouping directory
+  `/srv/compose/media` itself meets project eligibility rules.
 
 ## Decisions
 
@@ -142,8 +167,13 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   over activation-plus-reconciliation: permission only, without Compose execution,
   project-file rewrites or schedule enablement. Rationale: no unexpected automatic
   actions. PROJ-003 records this bounded approval.
+- 2026-11-19: Owner selected direct-child discovery for now (PROJ-004), while
+  expressing interest in possible recursive discovery/UI grouping. No grouping
+  behavior or recursive scope was approved. Organizational grouping does not
+  itself require independent projects to share a Compose file or lifecycle.
 - Open: Root count, candidate-path suggestions, running-container evidence,
-  discovery eligibility/depth, filesystem/path permissions and refresh behavior.
+  discovery eligibility, filenames, symlinks, filesystem/path permissions and
+  refresh behavior. Handling a Compose file directly in the root remains open.
 - Open: UI-created projects, outside-root projects, empty/invalid directories,
   duplicate runtime identities, activation validation/confirmation, persistence,
   deactivation, queued/running work and deletion/recreation semantics.
@@ -157,4 +187,4 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 No management behavior or SDK integration exists; no behavioral acceptance tests,
 native-host measurements or plugin tests were run for this decision record.
 Document checks can validate structure, IDs and links, not enforcement or approval.
-The whole draft remains unapproved despite its three individually approved entries.
+The whole draft remains unapproved despite its four individually approved entries.

@@ -15,11 +15,11 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
   hosts, using Compose Manager as the primary case study.
 - Include network and volume management in product planning. Their exact feature
   set, safety policy and delivery order are not yet approved.
-- Automatically list projects discovered beneath the selected project root,
+- Automatically list projects discovered in direct child directories of the selected project root,
   initially inactive. Explicit activation is required before manual or automatic
   project changes. Activation grants permission only: no Compose execution,
   project-file rewriting or schedule enablement. See
-  [PROJ-001/002/003](../contracts/project-membership.md). Discovery details and
+  [PROJ-001 through PROJ-004](../contracts/project-membership.md). Remaining discovery details and
   activation validation/persistence remain unresolved; no implementation is
   authorized by these decisions.
 - This phase is planning and staging only, not a plugin rewrite, shared-backend

@@ -34,6 +34,10 @@ bootstrap publishes their branches or modifies their worktrees.
   enablement. The stated rationale was avoiding unexpected automatic actions.
   [PROJ-003](../contracts/project-membership.md#proj-003-activation-grants-permission-without-applying-changes)
   records this approval without generalizing it into unreviewed automation policy.
+- Owner explicitly selected direct-child rather than recursive project-folder
+  discovery for now. Interest in nested discovery and UI grouping was not approval
+  of either feature. This depth-only decision is recorded as
+  [PROJ-004](../contracts/project-membership.md#proj-004-direct-child-project-discovery).
 - Owner raised possible backend reuse with the plugin and requested an opinion
   before deciding. The supplied other-agent excerpt is architectural context,
   not fresh implementation evidence, an approved shared-service design or plugin
