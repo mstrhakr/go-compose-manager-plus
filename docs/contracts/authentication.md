@@ -6,8 +6,9 @@ weight = 9
 
 **Status:** Draft / early app-auth scope and extensible ownership direction
 approved; local form/session login selected, OIDC deferred; detailed account,
-bootstrap/session and security policies awaiting review. AUTH-004 limits initial
-accounts to one admin while requiring a multi-user-capable identity boundary.
+session and security policies awaiting review. AUTH-004 limits initial accounts
+to one admin with multi-user-capable identity; AUTH-005 selects env-provisioned
+credentials and a forced first-login password change in the setup wizard.
 
 **Baseline:** 2026-11-19, product `d47835b`, documentation-only refinement.
 The scaffold has public demo/health routes, no app login or sessions. No auth
@@ -43,9 +44,8 @@ Loopback-only access was proposed, not selected as a substitute for app login.
 
 **Approval:** Owner explicitly requested basic login/auth in the first steps on
 2026-11-19. AUTH-003 subsequently selects local form/session login rather than
-HTTP Basic; AUTH-004 selects initial account scope. Bind addresses, TLS/proxy trust,
-bootstrap and exact route
-protections remain unresolved.
+HTTP Basic; AUTH-004/005 select initial account and bootstrap scope. Bind addresses,
+TLS/proxy trust and exact route protections remain unresolved.
 
 **Source provenance:** Direct standalone owner decision. Plugin host authorization
 is context, not a standalone login design.
@@ -127,6 +127,32 @@ not an Unraid account model imported from the source plugin.
 **Enforcement:** Not implemented. Bootstrap, recovery, storage, session lifecycle,
 and later account-management/revocation workflows remain to define and test.
 
+### AUTH-005: Environment Bootstrap With Forced First-Login Password Change
+
+Provision the initial administrator through deployment environment variables,
+including Docker environment configuration, rather than an unauthenticated
+browser claim of the first account or a locally generated setup-token flow.
+The initial user signs in with the supplied bootstrap credentials and must
+change the password through the first-run setup wizard before normal app use.
+
+Authentication with bootstrap credentials is not permission to bypass the forced
+password-change step through direct routes, action submissions, output viewers
+or SSE. Initial account identity remains AUTH-004-owned, and browser login and
+sessions remain AUTH-003-owned. No default shared credentials are selected.
+
+**Approval:** Owner selected the browser setup direction with an explicit
+amendment on 2026-11-19: initial user supplied through Docker env vars and forced
+password update at first login, as part of setup. The prior proposed locally
+obtained one-time setup credential is replaced, not independently approved.
+
+**Source provenance:** Direct standalone owner decision. This does not select
+variable names, plaintext versus other supported provisioning formats, secret-file
+alternatives, persistence technology or native-service packaging details.
+
+**Enforcement:** Not implemented. First-run detection, validation of missing or
+partial bootstrap input, atomic setup/password-change completion, restart/env
+reapplication, session transitions and recovery/reset policy still need definition.
+
 ## Dependencies
 
 - Consumed by the [prototype plan](../planning/README.md#local-prototype-contract-triage)
@@ -156,6 +182,12 @@ Owner-approved scope scenarios, not implemented/executed tests:
 - AUTH-004: Future multiple-account support can retain existing user/session
   references. This is a design/acceptance obligation, not a claim that multiple
   accounts or upgrade migrations are already implemented.
+- AUTH-005: An initial administrator provisioned from deployment env signs in,
+  enters the setup/password-change flow and cannot use normal administrative
+  views or operations while the required change is incomplete.
+- AUTH-005: Direct action, output and SSE requests cannot bypass that restriction
+  merely because bootstrap credentials were accepted. No unauthenticated first-
+  visitor claim or separate one-time setup token is the selected bootstrap flow.
 
 Candidate scenarios, not approved detailed outcomes or run tests:
 
@@ -178,7 +210,9 @@ Candidate scenarios, not approved detailed outcomes or run tests:
 - 2026-11-19: Owner chose one initial admin with genuine multi-user-ready identity
   and session boundaries (AUTH-004). Prototype scope must not be used to justify
   singleton assumptions that require replacing those foundations later.
-- Open: Bootstrap/recovery,
+- 2026-11-19: Owner amended browser setup to use environment-provisioned initial
+  credentials and a forced password change at first login (AUTH-005).
+- Open: Detailed bootstrap validation, restart/reapplication and recovery,
   credential hashing/storage, throttling and session lifecycle.
 - Open: Later OIDC scope, proxy/canonical URL/TLS rules, endpoint/public-health
   exceptions, authorization, CSRF/origin protection and stream expiry/revocation.

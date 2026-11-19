@@ -64,10 +64,11 @@ ordering, exactly-once execution or complete participant coverage is claimed.
 
 ## Dependencies
 
-- Depends on [AUTH-001 through AUTH-004](authentication.md) for user-bound local-session
+- Depends on [AUTH-001 through AUTH-005](authentication.md) for user-bound local-session
   authentication and shared app access checks around
   submission and job/output reads. Exact authorization, queued-work revocation
   and execution-time revalidation policy remain unresolved.
+  AUTH-005's forced password-change step cannot be bypassed by action/job routes.
 - Depends on [PROJ-002/008/009](project-membership.md) for entry-path-specific
   active membership and the absence of a deactivate action. Identity/removal
   lifetime and queued-work handling still require connected review.

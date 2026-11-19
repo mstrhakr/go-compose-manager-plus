@@ -38,6 +38,12 @@ bootstrap publishes their branches or modifies their worktrees.
   records stable internal identity, distinct sessions and one shared access
   boundary, without approving multiple-account UI, RBAC, an identity framework
   or immediate OIDC delivery.
+- Owner chose browser setup with an explicit change from the proposed one-time
+  setup credential: provision the initial user via Docker/deployment environment
+  variables, then require a password update at first login through the setup
+  wizard. [AUTH-005](../contracts/authentication.md#auth-005-environment-bootstrap-with-forced-first-login-password-change)
+  records the amended flow. Env reapplication/restart and reset/recovery details
+  remain unresolved; no real bootstrap secrets or variable names were requested.
 - Owner clarified the overall product as a standalone counterpart/clone of the
   Unraid Compose Manager Plus plugin, with a modern interface instead of its
   Unraid-native presentation. This strengthens the plugin's role from case study
