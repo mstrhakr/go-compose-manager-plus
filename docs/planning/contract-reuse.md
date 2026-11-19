@@ -32,6 +32,34 @@ document, implementation, callers, tests or approval history was traced. In
 particular profiles and state metadata remain dependency-review gates. Source
 tests were not executed as part of this staging task.
 
+Standalone follow-up in [PROJ-005/006/007](../contracts/project-membership.md)
+narrows root-scan eligibility to recognized Compose projects, makes discovery
+on-demand or optional during setup, and adds individual folder selection without
+a prerequisite scan. PROJ-001's automatic inclusion applies when a requested
+scan runs, not continuously. The plugin's directory membership is not adopted
+as a rule to list arbitrary data folders. Exact recognition and picker path
+policies remain open.
+
+## Git And Deployment Candidates
+
+Owner-requested [GIT-001](../contracts/git-stacks.md) adds product capability scope,
+not approval of the source plugin's detailed behavior or an implementation date.
+Source feature-outline sketches and inventory entries were inspected in this
+pass; Git implementation/callers/tests and historical evidence were not traced.
+
+| Source boundary | Candidate responsibility | Standalone decisions still required |
+| --- | --- | --- |
+| GIT-LIFE / GIT-STORAGE | Clone/source ownership, adoption, removal and filesystem safety | Managed clone versus existing checkout; root/picker paths, local files, subdirectories, deletion and pre-activation setup. Unraid mount/array rules do not transfer automatically. |
+| GIT-CHECK / GIT-DEPLOY | Revision preview/validation versus source preparation and deployment | Branch/tag/commit selection, Compose inputs, image policy, dirty files, partial effects and recovery; no assumed atomic runtime rollback. |
+| GIT-AUTO | Separate checking/notification from authorized deployment | CI/webhook triggers are standalone requested scope, not proof of existing plugin support. Decide opt-in, auth, revision binding, delivery ordering/replay and shared job ownership; no polling default adopted. |
+| CRED-VAULT / CRED-GIT | Private repository authentication and scoped credential lifecycle | HTTPS/SSH/provider mechanisms, storage/redaction, host trust, rotation/revocation and reference failures; Git credentials are not deployment-trigger authorization. |
+
+GIT consumes PROJ activation semantics and future shared identity/input/action,
+coordination, credentials and publication owners. Broad Git scope must not grant
+an implicit pre-activation mutation exception or duplicate runtime policy in a
+webhook handler. Full source extraction and standalone policy refinement remain
+pending; no source-plugin Git approval or enforcement is claimed.
+
 ## Network And Volume Candidates
 
 No existing volume-management contract was supplied. Network-plugin behavior is

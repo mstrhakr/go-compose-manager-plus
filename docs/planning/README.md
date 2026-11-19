@@ -15,11 +15,19 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
   hosts, using Compose Manager as the primary case study.
 - Include network and volume management in product planning. Their exact feature
   set, safety policy and delivery order are not yet approved.
-- Automatically list projects discovered in direct child directories of the selected project root,
-  initially inactive. Explicit activation is required before manual or automatic
+- Include first-class Git stacks: repository acquisition/pulls, private-repository
+  credentials and CI-triggered deployment through webhooks or deployment APIs.
+  [GIT-001](../contracts/git-stacks.md) approves capability scope only; security,
+  sequencing, activation interaction and delivery order still need refinement.
+- Offer on-demand discovery, optionally during setup, of recognized Compose
+  projects in direct child directories of the selected root. Requested scans
+  automatically list matches, initially inactive; there is no continuous
+  background discovery. Also allow selecting stack folders one at a time through
+  a folder browser without scanning first. Explicit activation is required before manual or automatic
   project changes. Activation grants permission only: no Compose execution,
   project-file rewriting or schedule enablement. See
-  [PROJ-001 through PROJ-004](../contracts/project-membership.md). Remaining discovery details and
+  [PROJ-001 through PROJ-007](../contracts/project-membership.md). Exact input
+  recognition, picker path policy, other remaining discovery details and
   activation validation/persistence remain unresolved; no implementation is
   authorized by these decisions.
 - This phase is planning and staging only, not a plugin rewrite, shared-backend
@@ -31,8 +39,9 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
 - The VM manager script is unavailable on this machine. The owner can upload a
   redacted copy to `scratch/`; inspecting it remains pending, not completed.
 
-The handoff's explicit-registration suggestion is superseded for ordinary
-listing by PROJ-001. Suggested single-host scope, embedded UI, low background
+The handoff's explicit-registration-only suggestion is replaced by requested
+discovery plus individual folder selection under PROJ-001/006/007. Suggested
+single-host scope, embedded UI, low background
 activity and bounded concurrency remain proposals below. Neither
 the scaffold nor source-plugin approval silently approves standalone behavior.
 
@@ -118,6 +127,31 @@ Network and volume management are real product workstreams, not excluded because
 the Compose proof of concept comes first; inspection may be combined with the
 first slice only by explicit scope agreement.
 
+## Git Stacks And CI Deployment
+
+Git-backed stacks are owner-requested product scope, not a blanket-deferred
+capability. Their delivery order relative to the first Compose slice and resource
+management is open. Do not equate adding this workstream with implementing it now.
+
+The [GIT draft](../contracts/git-stacks.md) separates repository acquisition,
+private authentication, source update/validation and deliberate deployment.
+Manual and CI/webhook callers must consume shared project/action policy,
+coordination and jobs rather than become competing deployment owners.
+
+Before implementation, refine repository/ref/subdirectory and input selection,
+clone ownership and local changes, private credential types/storage/redaction,
+host trust, trigger authentication/authorization, exact deployed revision,
+replay/idempotency, job contention and partial failure/recovery. Credential storage
+and network/command/path safety require explicit treatment; a Docker-capable
+deployment trigger is an administrative interface, not a generic shell hook.
+These are decision gates, not silently approved mechanisms or defaults.
+
+Activation remains permission-only and project changes still require it.
+Git acquisition/setup versus activation must be resolved explicitly. Repository
+credentials are not webhook or image-registry authorization. No scheduled polling,
+auto-deploy-on-push default, provider-specific OAuth flow or general-purpose
+credential vault is approved by the broad capability request alone.
+
 ## Network And Volume Workstreams
 
 | Area | Candidate initial scope | Decisions before mutation |
@@ -187,10 +221,12 @@ resource verification.
 ## Deferred Unless Separately Approved
 
 Centralized multi-host control, Kubernetes, clustering, marketplace, automatic
-updates/pulls/builds, Git deployment/credential vault, editor/history/restore,
+image updates/pulls/builds, a general-purpose credential vault, editor/history/restore,
 bulk operations, terminal emulation, plugin replacement, migration compatibility
 and shared-plugin Go backend are not part of the proposed first slice. Keep them
-as source context rather than importing a platform-sized roadmap.
+as source context rather than importing a platform-sized roadmap. Git acquisition,
+private credentials and CI deployment are separately requested workstreams above;
+their defaults and exact policies still require approval.
 
 ## Next Owner Review
 

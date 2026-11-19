@@ -38,6 +38,16 @@ bootstrap publishes their branches or modifies their worktrees.
   discovery for now. Interest in nested discovery and UI grouping was not approval
   of either feature. This depth-only decision is recorded as
   [PROJ-004](../contracts/project-membership.md#proj-004-direct-child-project-discovery).
+- Owner then selected recognized Compose projects only, not every child directory
+  (PROJ-005). The following message added on-demand discovery, optionally during
+  setup (PROJ-006), and selecting stack folders one at a time through browsing
+  (PROJ-007). These decisions do not determine exact filenames, picker path limits
+  or missing/invalid-input behavior. The earlier automatic-inclusion decision
+  still applies when a requested scan runs, not to background scanning.
+- Owner explicitly added Git-stack capability scope: pulling repository sources,
+  private-repository credentials and CI-triggered deployment through webhooks or
+  similar integration. [GIT-001](../contracts/git-stacks.md) records scope, not
+  detailed authentication, activation, deployment or automation policy approval.
 - Owner raised possible backend reuse with the plugin and requested an opinion
   before deciding. The supplied other-agent excerpt is architectural context,
   not fresh implementation evidence, an approved shared-service design or plugin
@@ -68,6 +78,12 @@ Start under `/code/compose_plugin/docs/contracts/`:
   follow-up/dependency context; not fully reviewed in this phase.
 - Update, automatic-update, retry, build-on-update, editor/history and bulk
   contracts remain outside the first proposed slice.
+- Git follow-up: bounded GIT-LIFE/CHECK/DEPLOY/AUTO and CRED-VAULT/GIT sketches
+  in `feature-outline.md`, plus Git/storage/credential inventory entries read.
+  No Git implementation/caller trace, test execution, historical refresh or
+  plugin webhook support verification was performed. These sources identify
+  candidate ownership boundaries only; see the
+  [Git reuse mapping](contract-reuse.md#git-and-deployment-candidates).
 
 The local collection is not assumed published. The handoff warned that its
 previous branch/HEAD was unavailable remotely; availability of the new source
