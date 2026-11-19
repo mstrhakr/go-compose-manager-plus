@@ -12,6 +12,11 @@
 - Read affected [contracts](../docs/contracts/README.md) before behavioral changes.
   Separate proposals, owner decisions and executed verification. Do not silently
   rewrite a contract to approve whatever code happens to do.
+- Use the repository-local contract skills for this work:
+  [extract-contract](skills/extract-contract/SKILL.md) for inventory and evidence
+  recovery, [refine-contract](skills/refine-contract/SKILL.md) for owner decisions,
+  and [align-contract](skills/align-contract/SKILL.md) for explicitly authorized
+  assessment or implementation. Refinement alone never authorizes runtime changes.
 - Keep Go responsible for business rules and escaped HTML templates/partials.
   Use self-hosted htmx for server-driven updates and small JS modules for local
   browser behavior. Do not add a competing client framework without a decision.
