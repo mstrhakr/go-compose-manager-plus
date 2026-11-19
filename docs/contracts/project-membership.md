@@ -4,7 +4,7 @@ weight = 4
 +++
 # PROJ: Project Membership And Activation
 
-**Status:** Draft / two individually approved requirements; not wholly approved
+**Status:** Draft / three individually approved requirements; not wholly approved
 or implemented.
 
 **Baseline:** Owner refinement on 2026-11-19, from product revision `f4d6148`.
@@ -25,6 +25,7 @@ PROJ owns project membership and the activation prerequisite. Future setup and
 discovery surfaces consume PROJ-001; every manager-initiated project mutation,
 whether manual or automatic, consumes PROJ-002. Activation must not become a
 browser-only affordance while another manager entry point bypasses the policy.
+Activation surfaces consume PROJ-003's permission-only effects.
 No package, API, persistence format or lock mechanism is selected here.
 
 Discovery readers, action submitters, background executors and activation-state
@@ -61,8 +62,8 @@ activation, as are automatic updates. Discovery must not implicitly activate an
 already-running workload or stop it because it is inactive in this manager.
 
 Activation is a prerequisite, not a definition of which actions or automations
-the product supports. Effects of the activation action itself, subsequent
-automation opt-ins and deactivation are unresolved below.
+the product supports. PROJ-003 defines activation's effects; subsequent
+automation opt-ins and deactivation remain unresolved below.
 
 **Approval:** Owner explicitly selected option A on 2026-11-19: activation gates
 all changes, not just automation. This is a standalone decision, not a claim
@@ -73,6 +74,28 @@ that the plugin already implements this distinction.
 
 **Enforcement:** Not implemented. Runtime identity, action authorization and
 coordination dependencies remain unresolved and separately required.
+
+### PROJ-003: Activation Grants Permission Without Applying Changes
+
+Activation changes management eligibility only. It must not run Compose,
+reconcile or recreate containers, start or stop the workload, rewrite project
+files, or enable schedules. Management actions and any future automation opt-ins
+remain separate deliberate choices. A running workload remains untouched; an
+inactive stopped workload is not started merely by activation.
+
+Recording the user's activation choice in manager state is intrinsic to the
+permission change; this requirement does not select a persistence mechanism.
+Activation still cannot bypass PROJ-002's independent action prerequisites.
+
+**Approval:** Owner explicitly selected permission-only option A on 2026-11-19,
+emphasizing that users should not encounter unexpected automatic actions.
+This settles activation effects, not every future automation policy.
+
+**Source provenance:** Standalone owner review recorded in the
+[source register](../planning/sources.md#standalone-owner-refinement).
+
+**Enforcement:** Not implemented. Activation validation, persistence and failure
+reporting remain to be defined and verified.
 
 ## Dependencies
 
@@ -102,6 +125,11 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   This acceptance case does not approve implementing automatic updates.
 - PROJ-002: Satisfying activation alone does not bypass independently required
   identity, input, authorization or coordination checks for an action.
+- PROJ-003: Activate an already-running project; management eligibility changes
+  without Compose execution, container changes or project-file rewrites.
+- PROJ-003: Activate a stopped project; it remains stopped until a separate
+  deliberate action starts it.
+- PROJ-003: Activation does not enable schedules or trigger automatic updates.
 
 ## Decisions
 
@@ -110,10 +138,14 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   superseded for ordinary listing beneath the selected root.
 - 2026-11-19: Owner selected activation option A over allowing manual changes to
   inactive projects, explaining that it keeps the distinction cleaner.
+- 2026-11-19: In the separate activation-effects scenario, owner selected option A
+  over activation-plus-reconciliation: permission only, without Compose execution,
+  project-file rewrites or schedule enablement. Rationale: no unexpected automatic
+  actions. PROJ-003 records this bounded approval.
 - Open: Root count, candidate-path suggestions, running-container evidence,
   discovery eligibility/depth, filesystem/path permissions and refresh behavior.
 - Open: UI-created projects, outside-root projects, empty/invalid directories,
-  duplicate runtime identities, activation confirmation/effects, persistence,
+  duplicate runtime identities, activation validation/confirmation, persistence,
   deactivation, queued/running work and deletion/recreation semantics.
 - Architecture planning prioritizes maintainability and clear ownership, not a
   plugin rebuild or shared-backend product goal; see the
@@ -125,4 +157,4 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 No management behavior or SDK integration exists; no behavioral acceptance tests,
 native-host measurements or plugin tests were run for this decision record.
 Document checks can validate structure, IDs and links, not enforcement or approval.
-The whole draft remains unapproved despite its two individually approved entries.
+The whole draft remains unapproved despite its three individually approved entries.

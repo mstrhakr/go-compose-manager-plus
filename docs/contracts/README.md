@@ -4,7 +4,7 @@ weight = 1
 +++
 # Behavioral Contracts
 
-The first management draft, PROJ, has two individually approved requirements;
+The first management draft, PROJ, has three individually approved requirements;
 it is not wholly approved or implemented. The inherited REPO document records
 the template's delivery baseline and historical decisions;
 EXAMPLE is only an example. See the [product plan](../planning/README.md) and
@@ -19,7 +19,7 @@ description of every implementation detail or a substitute for tests.
 | --- | --- | --- |
 | [REPO](repo.md) | Inherited repository/delivery baseline | Draft; template decisions, product setup not wholly verified |
 | [EXAMPLE](example-feature.md) | Small example showing the format | Example, not an approved product promise |
-| [PROJ](project-membership.md) | Automatic project listing and activation before management changes | Draft; PROJ-001/002 owner-approved, not implemented or behaviorally verified |
+| [PROJ](project-membership.md) | Automatic project listing and permission-only activation before management changes | Draft; PROJ-001/002/003 owner-approved, not implemented or behaviorally verified |
 
 ## Shared Format
 

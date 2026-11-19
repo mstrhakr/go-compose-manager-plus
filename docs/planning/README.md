@@ -17,9 +17,11 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
   set, safety policy and delivery order are not yet approved.
 - Automatically list projects discovered beneath the selected project root,
   initially inactive. Explicit activation is required before manual or automatic
-  project changes; see [PROJ-001/002](../contracts/project-membership.md).
-  Discovery details and activation effects remain unresolved, not implementation
-  authorization.
+  project changes. Activation grants permission only: no Compose execution,
+  project-file rewriting or schedule enablement. See
+  [PROJ-001/002/003](../contracts/project-membership.md). Discovery details and
+  activation validation/persistence remain unresolved; no implementation is
+  authorized by these decisions.
 - This phase is planning and staging only, not a plugin rewrite, shared-backend
   migration or authorization to implement the entire source roadmap.
 - Prioritize maintainability and clear ownership boundaries within the standalone
@@ -104,7 +106,7 @@ No schedule or effort estimate is committed. Only stage 0 is authorized now.
 | 0: Foundation | Independent product repo, runnable template, source provenance, decisions and proposed backlog | Scaffold checks and public GitHub protection readback; no management behavior |
 | 1: Definition | Inspect the uploaded script; choose representative Ubuntu VM, workflows, resource budgets and security/exposure boundary | Owner approves the next slice and individual standalone requirements |
 | 2: Read-only spike | Resolve an existing project's exact identity, ordered inputs, interpolation env and profiles; optionally inspect its runtime state | SDK dependency/build/tooling evidence; no file changes, pulls, builds or Docker mutations; compare results with native Compose fixtures |
-| 3: First vertical slice | Discover and list an existing project, inspect it, explicitly activate it before deliberate Up or Stop | Consume PROJ-001/002; separately approve discovery details, activation effects/persistence, action options, auth, job ownership, contention and restart semantics; deterministic tests plus disposable-host evidence |
+| 3: First vertical slice | Discover and list an existing project, inspect it, explicitly activate it before deliberate Up or Stop | Consume PROJ-001/002/003; separately approve discovery details, activation validation/persistence, action options, auth, job ownership, contention and restart semantics; deterministic tests plus disposable-host evidence |
 | 4: Resource inspection | Network/volume list and details, attachments and Compose ownership/external-use evidence | Clear unavailable/unknown states; no sensitive options leaked; bounded daemon requests and refresh activity |
 | 5: Deliberate resource actions | Selected network/volume create/remove and any approved attachment workflow | Separate destructive-action contracts, coordination, fresh identity/use checks, confirmations, partial-failure tests and recovery evidence |
 | 6: Deployment | Native Ubuntu service and container evaluation | Path parity, permissions, credentials, data lifecycle, self-management/recovery and measured manager overhead on the target VM |

@@ -29,6 +29,11 @@ bootstrap publishes their branches or modifies their worktrees.
 - Owner explicitly selected option A in the follow-up manual-Stop scenario:
   activation gates both manual and automatic project changes. These bounded
   approvals are recorded as [PROJ-001/002](../contracts/project-membership.md).
+- In the subsequent activation-effects scenario, the owner explicitly selected
+  permission-only option A: no Compose run, project-file rewrites or schedule
+  enablement. The stated rationale was avoiding unexpected automatic actions.
+  [PROJ-003](../contracts/project-membership.md#proj-003-activation-grants-permission-without-applying-changes)
+  records this approval without generalizing it into unreviewed automation policy.
 - Owner raised possible backend reuse with the plugin and requested an opinion
   before deciding. The supplied other-agent excerpt is architectural context,
   not fresh implementation evidence, an approved shared-service design or plugin
