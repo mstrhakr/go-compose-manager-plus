@@ -32,7 +32,14 @@ bootstrap publishes their branches or modifies their worktrees.
 - Owner raised possible backend reuse with the plugin and requested an opinion
   before deciding. The supplied other-agent excerpt is architectural context,
   not fresh implementation evidence, an approved shared-service design or plugin
-  migration authorization. Shared backend architecture remains undecided.
+  migration authorization.
+- In follow-up, the owner approved emphasizing maintainability and clear ownership
+  rather than building for hypothetical reuse, and said they do not currently
+  intend to rebuild the plugin. The bounded
+  [planning direction](README.md#maintainability-and-ownership-direction) is clean
+  boundaries now, extraction when justified; shared-backend delivery is not a
+  product goal. The owner's comment about future native Unraid Compose support
+  is context for that preference, not independently verified release evidence.
 
 ## Local Compose Contract Reading
 

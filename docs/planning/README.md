@@ -22,6 +22,10 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
   authorization.
 - This phase is planning and staging only, not a plugin rewrite, shared-backend
   migration or authorization to implement the entire source roadmap.
+- Prioritize maintainability and clear ownership boundaries within the standalone
+  app. Possible future reuse is a by-product, not a cross-product requirement;
+  no plugin rebuild or shared-backend delivery is planned. See the
+  [architecture direction](#maintainability-and-ownership-direction).
 - The VM manager script is unavailable on this machine. The owner can upload a
   redacted copy to `scratch/`; inspecting it remains pending, not completed.
 
@@ -72,6 +76,24 @@ engine. Engine API does not provide a Compose-project REST service. The Compose
 SDK embeds orchestration in this process; any application HTTP API is ours.
 Prefer native Compose semantics over reimplementing orchestration or silently
 changing input selection, profiles, pull/build policy or resource ownership.
+
+### Maintainability And Ownership Direction
+
+**Owner-approved planning direction, 2026-11-19:** clean boundaries now,
+extraction only when justified by real needs. Keep project policy and operations
+independent of HTTP/HTML and platform-specific integration, with one authoritative
+owner for each shared responsibility. Consumers use that owner rather than
+duplicating policy or adding a facade over competing implementations.
+
+Prefer one application and concrete implementations. Add interfaces, packages or
+services only when actual complexity or callers justify them, not to prepare a
+hypothetical second product. No separate shared-library repository, versioned
+plugin protocol, extension framework or compatibility promise is approved.
+
+The owner does not currently intend to rebuild the Unraid plugin. Shared-service
+packaging and plugin migration are not product goals or prerequisites for the
+standalone application; any future proposal requires separate evidence and
+approval. This direction authorizes planning, not implementation.
 
 ## Delivery Gates
 

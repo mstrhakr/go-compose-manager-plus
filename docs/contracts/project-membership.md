@@ -115,8 +115,10 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 - Open: UI-created projects, outside-root projects, empty/invalid directories,
   duplicate runtime identities, activation confirmation/effects, persistence,
   deactivation, queued/running work and deletion/recreation semantics.
-- Open: Shared Go backend reuse is under discussion, not approved architecture
-  or authorization to change the plugin. No runtime work is authorized here.
+- Architecture planning prioritizes maintainability and clear ownership, not a
+  plugin rebuild or shared-backend product goal; see the
+  [planning direction](../planning/README.md#maintainability-and-ownership-direction).
+  This does not change PROJ's approved scope or authorize runtime work.
 
 ## Verification
 
