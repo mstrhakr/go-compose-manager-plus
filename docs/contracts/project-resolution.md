@@ -5,8 +5,8 @@ weight = 7
 # RES: Project Identity And Inputs
 
 **Status:** Draft / RES-002 through RES-005 adopted as portable approved-source
-outcomes; RES-001 native naming policy approved; identity/adoption edge cases and
-initial input-selection scope awaiting review
+outcomes; RES-001 native naming and RES-006 native prototype selection approved;
+identity/adoption edge cases and env/profile details awaiting review
 
 **Baseline:** 2026-11-19, product `68ab9d2`; source plugin
 `10e9179cbb0331fb956a0b60ba671e477a74638e`. Source worktree has unrelated
@@ -106,15 +106,25 @@ precedence is inherited.
 
 ### RES-006: Native Compose Inputs By Default
 
-**Proposed:** resolve local projects using native discovery/filename precedence,
-merge/include and interpolation semantics by default, with deliberate overrides
-where approved prototype scope supports them. Do not freeze native discovery into
-a generated explicit list or silently append extra inputs.
+Resolve local projects using native discovery/filename precedence, merge/include
+and interpolation semantics. Do not freeze native discovery into a generated
+explicit list or silently append extra inputs. The prototype does not provide a
+manager UI for selecting an ordered list of Compose files; those controls are
+deferred rather than an implementation prerequisite.
 
-**Source/approval:** STK-FILES-15 approves native defaults with qualified plugin
-tier/settings behavior. Standalone selection/control scope awaits review; that
-entire feature set is not copied. Spec text, CLI precedence and SDK support are
-distinct evidence; neither UI capability nor implementation equivalence is proven.
+Deferring those controls does not mean ignoring native input mechanisms such as
+applicable `COMPOSE_FILE` selection under RES-005. Where an input arrangement is
+not safely supported, report that limitation rather than guess another config.
+Exact interpolation-env/profile controls and SDK option mapping remain separate.
+
+**Approval:** Owner selected native-selection option A on 2026-11-19 over adding
+explicit ordered-file controls immediately. This settles the prototype's default
+and manager-control scope, not every env/profile behavior or compatibility case.
+
+**Source provenance:** Source STK-FILES-15 approves native defaults with qualified
+plugin tier/settings behavior; that entire feature set is not copied. Spec text,
+CLI precedence and actual SDK support are distinct evidence; implementation
+equivalence still requires executed checks.
 
 ## Dependencies
 
@@ -144,6 +154,12 @@ Adopted outcomes, not implemented/executed tests:
 - RES-004: Missing selected interpolation env causes refusal, not `.env` fallback.
 - RES-005: Custom env does not disable native selection; explicit Compose files
   do not acquire extra files from `COMPOSE_FILE`.
+- RES-006: A standard Compose project resolves using native file-selection and
+  merge behavior without a manager-authored file list. Its dashboard and actions
+  use the same resolved inputs; exact SDK parity needs execution-based fixtures.
+- RES-006: The prototype offers no ordered-file selector. Unsupported arrangements
+  produce an explicit limitation, not fallback to a different project config or
+  suppression of applicable native `COMPOSE_FILE` behavior.
 
 Pending: identity ambiguity/collision, native-name changes, overrides/path anchors,
 include/environment resolution, profiles, changed queued inputs and host paths.
@@ -156,8 +172,11 @@ include/environment resolution, profiles, changed queued inputs and host paths.
 - 2026-11-19: Owner approved native/file-based runtime naming and display-only UI
   labels, explicitly excluding a separate manager name override for the prototype
   (RES-001). Existing external-name adoption and native-name changes remain open.
-- RES-006 remains proposed. No source runtime code, dependency or tests were
-  imported, and no management implementation is authorized by this record.
+- 2026-11-19: Owner selected native input selection first, deferring manager
+  ordered-file controls (RES-006). Env sourcing, profiles, SDK support and identity
+  adoption/retargeting edge cases remain open.
+- No source runtime code, dependency or tests were imported, and no management
+  implementation is authorized by this record.
 
 ## Verification
 

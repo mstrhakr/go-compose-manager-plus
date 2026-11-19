@@ -24,6 +24,11 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
   is required or offered in the prototype. See [RES-001](../contracts/project-resolution.md).
   Existing custom external-name adoption and later native-name changes still need
   safe handling, without importing plugin naming/migration machinery.
+- Use native Compose input selection for the prototype, without a manager UI for
+  explicit ordered-file selection. Native input mechanisms are not disabled by
+  deferring those controls; unsupported arrangements must be reported, not guessed.
+  See [RES-006](../contracts/project-resolution.md). Env/profile details and SDK
+  equivalence remain separate review/verification work.
 - Include network and volume management in product planning. Their exact feature
   set, safety policy and delivery order are not yet approved.
 - Include first-class Git stacks: repository acquisition/pulls, private-repository
@@ -162,7 +167,7 @@ slices, not removed product goals.
 
 | Order | Small batch | Ready-to-implement outcome |
 | --- | --- | --- |
-| 1 | Identity/inputs, [RES](../contracts/project-resolution.md) | Adopt safe source/env rules; settle identity acceptance and initial selection/profile scope; map to native SDK loading. |
+| 1 | Identity/inputs, [RES](../contracts/project-resolution.md) | Native naming/selection and safe source/env outcomes settled; close required adoption/env/profile gaps and verify SDK loading. |
 | 2 | Lifecycle/manual Update | Reuse approved action meanings, preparation barriers and stopped/never-deployed safety; decide exact prototype combinations and remaining proposals. |
 | 3 | Jobs/[OPS](../contracts/operation-coordination.md) | Adopt browser-independent outcomes; settle minimum queue order/capacity/full and interruption behavior before mutations, not every future CI variant. |
 | 4 | Dashboard/[LIVE](../contracts/live-state.md) | Agree visible runtime/operation states and bounded live/fallback behavior; measure collection cost. |

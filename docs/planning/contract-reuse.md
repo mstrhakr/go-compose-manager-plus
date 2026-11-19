@@ -21,8 +21,10 @@ portable outcomes from approved STK-FILES-13/14/18/19 are adopted under the owne
 reuse direction. Source qualifications are retained; Basic/Advanced, Unraid path
 rules and reopened exact-list proposals are not imported. RES-001 now records
 approved native/file-based runtime naming with display-only UI labels and no
-manager name override for the prototype. Identity/adoption edge cases and
-RES-006's input-selection scope remain open. [LIVE](../contracts/live-state.md) records
+manager name override for the prototype. RES-006 now approves native selection
+first, deferring manager ordered-file controls without disabling native input
+mechanisms. Identity/adoption edge cases and env/profile details remain open.
+[LIVE](../contracts/live-state.md) records
 dashboard scope and SSE preference separately from unapproved recovery mechanics.
 
 | Source boundary / IDs | Inspected source status | Portable candidate / proposed acceptance evidence | Standalone adaptation or unresolved choice |

@@ -231,8 +231,9 @@ previous open question about a possible deactivation workflow.
 ## Dependencies
 
 - Depends on [RES](project-resolution.md) before actions: listing and active state
-  cannot establish a safe target. RES has adopted portable input rules; identity
-  acceptance and selection scope remain proposed, not fully resolved.
+  cannot establish a safe target. RES has approved native naming/selection and
+  adopted portable input rules; identity adoption and env/profile details remain
+  unresolved, not proof of safe execution.
 - Consumed by [LIVE](live-state.md) for membership/active-state presentation;
   runtime refresh is not automatic discovery or activation.
 - Depends on [OPS-001](operation-coordination.md) for bounded queueing and

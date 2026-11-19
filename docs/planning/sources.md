@@ -35,6 +35,10 @@ bootstrap publishes their branches or modifies their worktrees.
   an external override is not needed. [RES-001](../contracts/project-resolution.md)
   records this approval, excluding legacy normalization/pinning machinery while
   leaving existing custom-name adoption and native-name changes unresolved.
+- Owner then selected native Compose input selection for the prototype over
+  implementing ordered-file controls immediately. [RES-006](../contracts/project-resolution.md)
+  records that bounded approval; native env/input mechanisms and SDK support
+  are not assumed away, and env/profile scope remains separately reviewable.
 - Owner preferred selecting a project folder during setup, with possible detected
   location suggestions. Suggestion mechanisms and exact root scope remain open.
 - Owner selected automatic listing rather than per-project adoption for listing,

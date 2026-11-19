@@ -164,7 +164,8 @@ validation, replay handling and job outcomes still need refinement.
   and there is no deactivate action. Active status is not CI deployment opt-in
   or a substitute for shared identity, input and action checks.
 - Depends on [RES](project-resolution.md) for shared identity/input outcomes;
-  native naming is approved, while adoption/selection scope and Git-specific input policy remain
+  native naming/selection are approved for the local prototype, while adoption,
+  env/profile details and Git-specific input policy remain
   unresolved. Lifecycle-action contracts still need adoption: the Git adapter
   cannot invent project names, files/env/profiles or pull/build/recreate effects.
 - Depends on shared credentials, path/storage safety, authentication/authorization,
