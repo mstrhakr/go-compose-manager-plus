@@ -4,8 +4,9 @@ weight = 1
 +++
 # Behavioral Contracts
 
-This product currently has no approved management contract. The inherited REPO
-document records the template's delivery baseline and historical decisions;
+The first management draft, PROJ, has two individually approved requirements;
+it is not wholly approved or implemented. The inherited REPO document records
+the template's delivery baseline and historical decisions;
 EXAMPLE is only an example. See the [product plan](../planning/README.md) and
 [reuse map](../planning/contract-reuse.md) before selecting standalone requirements.
 Plugin requirements and their individual approvals do not transfer automatically.
@@ -18,6 +19,7 @@ description of every implementation detail or a substitute for tests.
 | --- | --- | --- |
 | [REPO](repo.md) | Inherited repository/delivery baseline | Draft; template decisions, product setup not wholly verified |
 | [EXAMPLE](example-feature.md) | Small example showing the format | Example, not an approved product promise |
+| [PROJ](project-membership.md) | Automatic project listing and activation before management changes | Draft; PROJ-001/002 owner-approved, not implemented or behaviorally verified |
 
 ## Shared Format
 

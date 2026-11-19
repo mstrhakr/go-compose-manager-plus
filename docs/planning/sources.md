@@ -18,6 +18,22 @@ Template source at a published fixed revision:
 The source repositories retain their own ownership; nothing in this product
 bootstrap publishes their branches or modifies their worktrees.
 
+## Standalone Owner Refinement
+
+2026-11-19, direct owner conversation, recorded from product baseline `f4d6148`:
+
+- Owner preferred selecting a project folder during setup, with possible detected
+  location suggestions. Suggestion mechanisms and exact root scope remain open.
+- Owner selected automatic listing rather than per-project adoption for listing,
+  while requiring activation before management.
+- Owner explicitly selected option A in the follow-up manual-Stop scenario:
+  activation gates both manual and automatic project changes. These bounded
+  approvals are recorded as [PROJ-001/002](../contracts/project-membership.md).
+- Owner raised possible backend reuse with the plugin and requested an opinion
+  before deciding. The supplied other-agent excerpt is architectural context,
+  not fresh implementation evidence, an approved shared-service design or plugin
+  migration authorization. Shared backend architecture remains undecided.
+
 ## Local Compose Contract Reading
 
 Start under `/code/compose_plugin/docs/contracts/`:
