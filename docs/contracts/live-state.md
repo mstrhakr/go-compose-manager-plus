@@ -48,7 +48,7 @@ exists in the scaffold.
 
 ## Dependencies
 
-- Depends on [AUTH-001 through AUTH-003](authentication.md) for local-session
+- Depends on [AUTH-001 through AUTH-004](authentication.md) for user-bound local-session
   authentication through the shared app access boundary.
   SSE/session expiry and denied access remain unresolved, not separate auth
   policy owned by a metrics or transport handler.

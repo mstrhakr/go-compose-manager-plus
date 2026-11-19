@@ -32,6 +32,12 @@ bootstrap publishes their branches or modifies their worktrees.
   [AUTH-003](../contracts/authentication.md#auth-003-local-form-login-with-server-managed-sessions-first)
   resolves the initial ambiguity without selecting account count, bootstrap,
   recovery, storage/library or session security parameters.
+- Owner then chose one administrator for the prototype, explicitly requiring
+  correct future multi-account plumbing instead of a singleton implementation
+  needing replacement. [AUTH-004](../contracts/authentication.md#auth-004-one-initial-admin-with-multi-user-capable-identity-plumbing)
+  records stable internal identity, distinct sessions and one shared access
+  boundary, without approving multiple-account UI, RBAC, an identity framework
+  or immediate OIDC delivery.
 - Owner clarified the overall product as a standalone counterpart/clone of the
   Unraid Compose Manager Plus plugin, with a modern interface instead of its
   Unraid-native presentation. This strengthens the plugin's role from case study

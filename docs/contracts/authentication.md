@@ -6,7 +6,8 @@ weight = 9
 
 **Status:** Draft / early app-auth scope and extensible ownership direction
 approved; local form/session login selected, OIDC deferred; detailed account,
-bootstrap/session and security policies awaiting review
+bootstrap/session and security policies awaiting review. AUTH-004 limits initial
+accounts to one admin while requiring a multi-user-capable identity boundary.
 
 **Baseline:** 2026-11-19, product `d47835b`, documentation-only refinement.
 The scaffold has public demo/health routes, no app login or sessions. No auth
@@ -42,7 +43,8 @@ Loopback-only access was proposed, not selected as a substitute for app login.
 
 **Approval:** Owner explicitly requested basic login/auth in the first steps on
 2026-11-19. AUTH-003 subsequently selects local form/session login rather than
-HTTP Basic. Bind addresses, TLS/proxy trust, bootstrap, accounts and exact route
+HTTP Basic; AUTH-004 selects initial account scope. Bind addresses, TLS/proxy trust,
+bootstrap and exact route
 protections remain unresolved.
 
 **Source provenance:** Direct standalone owner decision. Plugin host authorization
@@ -84,6 +86,7 @@ replace authorization, request/origin protection or transport security.
 login with sessions now, OIDC later, rather than immediate local-plus-OIDC support
 or literal HTTP Basic. This does not select single-admin versus multi-user scope,
 session storage technology, expiry values or a credential provisioning mechanism.
+AUTH-004 subsequently settles the account scope, not those storage/security details.
 
 **Source provenance:** Direct standalone owner decision after the HTTP Basic
 versus session tradeoff discussion. See the
@@ -92,6 +95,37 @@ versus session tradeoff discussion. See the
 **Enforcement:** Not implemented. Credential storage, bootstrap/recovery,
 session issuance/rotation/expiry/logout, cookie/proxy settings and access checks
 still need bounded decisions and execution-based security verification.
+
+### AUTH-004: One Initial Admin With Multi-User-Capable Identity Plumbing
+
+The prototype provisions/supports one administrator account. Multiple local admin
+accounts and their management UI are deferred, not permanently excluded. One
+account may have independent sessions on multiple devices; limiting account count
+must not collapse all sessions into a global authenticated flag.
+
+Sessions reference a stable internal user identity, separate from mutable login
+names, local credential verification and provider-specific details. Shared access
+checks receive that authenticated identity rather than assuming an anonymous
+singleton administrator. Future attribution can reference the same identity
+without treating a display/login name as a permanent key.
+
+Keep the initial one-account limit in provisioning/account policy, not scattered
+through business handlers, job ownership or streaming access. Adding multiple
+accounts later should extend the account/provisioning capability rather than
+replace the session/identity contract. This does not promise zero future schema
+migrations or preselect a user-ID format, database, permissions matrix, identity
+provider framework or account-management screens now.
+
+**Approval:** Owner selected one admin for the prototype on 2026-11-19, explicitly
+requiring plumbing ready for the future multi-admin mode rather than a disposable
+single-user implementation needing a redesign. Roles/read-only users remain out
+of this decision; OIDC remains deferred under AUTH-003.
+
+**Source provenance:** Direct standalone owner scope/maintainability decision,
+not an Unraid account model imported from the source plugin.
+
+**Enforcement:** Not implemented. Bootstrap, recovery, storage, session lifecycle,
+and later account-management/revocation workflows remain to define and test.
 
 ## Dependencies
 
@@ -114,6 +148,14 @@ Owner-approved scope scenarios, not implemented/executed tests:
 - AUTH-003: The local-login application can be configured without an external
   identity provider. Sensitive requests consume the shared authenticated-session
   boundary; exact route exceptions and denied-access behavior remain to refine.
+- AUTH-004: One administrator signs in from two devices; sessions are distinct
+  while referencing the same internal user identity, not a global login boolean.
+- AUTH-004: Initial provisioning enforces the one-account scope at its owning
+  boundary. User/session associations and shared access checks are not keyed to
+  a hard-coded username or rewritten for every business handler.
+- AUTH-004: Future multiple-account support can retain existing user/session
+  references. This is a design/acceptance obligation, not a claim that multiple
+  accounts or upgrade migrations are already implemented.
 
 Candidate scenarios, not approved detailed outcomes or run tests:
 
@@ -133,7 +175,10 @@ Candidate scenarios, not approved detailed outcomes or run tests:
   login early, with a maintainable path to OIDC or other methods.
 - 2026-11-19: Owner chose local form login with server-managed sessions first and
   deferred OIDC (AUTH-003). No auth implementation is authorized by this decision.
-- Open: Account model, bootstrap/recovery,
+- 2026-11-19: Owner chose one initial admin with genuine multi-user-ready identity
+  and session boundaries (AUTH-004). Prototype scope must not be used to justify
+  singleton assumptions that require replacing those foundations later.
+- Open: Bootstrap/recovery,
   credential hashing/storage, throttling and session lifecycle.
 - Open: Later OIDC scope, proxy/canonical URL/TLS rules, endpoint/public-health
   exceptions, authorization, CSRF/origin protection and stream expiry/revocation.

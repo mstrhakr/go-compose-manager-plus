@@ -32,9 +32,12 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
 - Include app login/auth among the first prototype foundations, even behind the
   owner's local reverse proxy/WAF. Separate method-specific authentication from
   shared access checks so future methods such as OIDC reuse that boundary.
-  [AUTH-001 through AUTH-003](../contracts/authentication.md) select local
+  [AUTH-001 through AUTH-004](../contracts/authentication.md) select local
   username/password form login with server-managed sessions first, not HTTP Basic.
-  OIDC is deferred; account/bootstrap, session and proxy/security details remain open.
+  Start with one admin, but stable user identities, per-device sessions and shared
+  access checks must support later multiple accounts without a singleton redesign.
+  OIDC/multi-account UI are deferred; bootstrap, session and proxy/security details
+  remain open. No user-ID format, database or auth-provider framework is selected.
 - Include network and volume management in product planning. Their exact feature
   set, safety policy and delivery order are not yet approved.
 - Include first-class Git stacks: repository acquisition/pulls, private-repository
@@ -173,7 +176,7 @@ slices, not removed product goals.
 
 | Order | Small batch | Ready-to-implement outcome |
 | --- | --- | --- |
-| 0 | App login/access, [AUTH](../contracts/authentication.md) | Local form/session login selected; settle account/bootstrap/session policy and proxy/origin trust for administrative views, actions and streams. OIDC is deferred behind the shared auth boundary. |
+| 0 | App login/access, [AUTH](../contracts/authentication.md) | Local form/session login and one-admin scope selected, with stable user identities and multi-user-ready session/access boundaries; settle bootstrap/session and proxy/origin policy. OIDC and multiple-account delivery are deferred, not architectural dead ends. |
 | 1 | Identity/inputs, [RES](../contracts/project-resolution.md) | Native naming/selection and safe source/env outcomes settled; close required adoption/env/profile gaps and verify SDK loading. |
 | 2 | Lifecycle/manual Update | Reuse approved action meanings, preparation barriers and stopped/never-deployed safety; decide exact prototype combinations and remaining proposals. |
 | 3 | Jobs/[OPS](../contracts/operation-coordination.md) | Adopt browser-independent outcomes; settle minimum queue order/capacity/full and interruption behavior before mutations, not every future CI variant. |
