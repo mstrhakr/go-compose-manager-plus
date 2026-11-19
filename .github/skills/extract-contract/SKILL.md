@@ -1,6 +1,6 @@
 ---
 name: extract-contract
-description: 'Inventory feature contracts and recover intended behavior for Compose Manager Plus. Use when enumerating contract candidates, extracting a contract, recovering specifications, defining invariants, reviewing completeness, or updating coverage. Compare source-plugin contracts, code, callers, tests, docs and historical evidence without treating implementation or plugin approval as standalone specification.'
+description: 'Inventory feature contracts and recover intended behavior for Compose Manager Plus. Use when enumerating contract candidates, extracting a contract, recovering specifications, defining invariants, reviewing completeness, or updating coverage. Consult the Compose Specification and compare source-plugin contracts, code, callers, tests, docs and historical evidence without treating implementation or plugin approval as standalone specification.'
 argument-hint: 'inventory | extract <candidate ID or capability> | refresh <contract>'
 ---
 
@@ -29,6 +29,26 @@ Preserve source requirement IDs and approval qualifications in provenance;
 standalone requirements need their own IDs and explicit adoption decisions.
 Use [refine-contract](../refine-contract/SKILL.md) for owner decisions and
 [align-contract](../align-contract/SKILL.md) for authorized compliance work.
+
+## Compose Specification Evidence
+
+For Compose-related behavior, consider the local specification checkout at
+`/code/compose-spec` before proposing manager-specific rules. Read only the
+relevant normative chapters: project names, files/merge/include/interpolation,
+profiles, services, networks, volumes, build or deploy as the boundary requires.
+Prefer source chapters over generated `spec.md`; do not modify this sibling repo.
+
+Record the spec revision, worktree qualifications, chapter/section and scope read
+in the product source register. If the checkout is unavailable, use fixed-revision
+official sources where possible and report access gaps. Separate normative text
+from examples, proposals and implementation-specific behavior. Check version
+badges and actual selected Compose SDK/CLI support before claiming availability.
+
+The spec defines Compose semantics, not all manager policies or CI-provider
+webhook formats. Consult official SDK/CLI or provider documentation for those
+boundaries; absent spec wording is not owner approval or proof of universal
+implementation support. Preserve explicit product decisions and surface genuine
+conflicts for refinement rather than silently overriding either side.
 
 ## Inventory Mode
 
