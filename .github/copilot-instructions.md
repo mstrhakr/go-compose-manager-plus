@@ -12,6 +12,11 @@
 - Read affected [contracts](../docs/contracts/README.md) before behavioral changes.
   Separate proposals, owner decisions and executed verification. Do not silently
   rewrite a contract to approve whatever code happens to do.
+- Use the repository-local contract skills for this work:
+  [extract-contract](skills/extract-contract/SKILL.md) for inventory and evidence
+  recovery, [refine-contract](skills/refine-contract/SKILL.md) for owner decisions,
+  and [align-contract](skills/align-contract/SKILL.md) for explicitly authorized
+  assessment or implementation. Refinement alone never authorizes runtime changes.
 - Keep Go responsible for business rules and escaped HTML templates/partials.
   Use self-hosted htmx for server-driven updates and small JS modules for local
   browser behavior. Do not add a competing client framework without a decision.
@@ -21,6 +26,16 @@
 - Use Conventional Commit messages for every authored commit and PR title.
   Preserve breaking intent in squash messages. Work through short-lived branches
   and PRs; do not push main, publish, or bypass protection without authorization.
+- Finish the current branch's work before starting unrelated work. Keep each
+  branch focused on one coherent task; do not accumulate mixed changes or stop
+  at a local commit when delivery is requested. Complete validation and follow-up
+  fixes, obtain any required authorization, push the branch, open its PR, wait
+  for required checks and address review feedback, then merge through normal
+  protections. Confirm the merge, sync local main, and clean up the completed
+  branch before moving on. If blocked by permissions, checks or an owner decision,
+  report the blocker and pause delivery rather than bypassing safeguards or
+  silently switching tasks. This does not authorize unrelated work, dependency
+  update merges, publishing or protection bypasses.
 - Keep PR validation read-only and secret-free. Never execute PR source in a
   privileged workflow. Scope writes/OIDC per job; review pins, executable downloads,
   dependencies and build/release tooling. Do not automatically merge updates.
