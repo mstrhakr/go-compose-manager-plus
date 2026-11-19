@@ -80,7 +80,7 @@ approval for each deployment defeats the intended unattended CI workflow.
 automation default. See the [source register](../planning/sources.md#standalone-owner-refinement).
 
 **Enforcement:** Not implemented. Trigger authentication/authorization, enablement
-mechanism, permitted repository/ref validation, idempotency, job contention and
+mechanism, permitted repository/ref validation, idempotency, detailed queue policy and
 completion reporting remain unresolved. GIT-003 defines revision-selection intent.
 
 ### GIT-003: Deploy The Immutable Revision Selected By CI
@@ -167,7 +167,10 @@ validation, replay handling and job outcomes still need refinement.
   exact project name, selected files/env/profiles, working directory and permitted
   pull/build/recreate effects cannot be invented by the Git adapter.
 - Depends on shared credentials, path/storage safety, authentication/authorization,
-  coordination and jobs/state-publication policies not yet approved here.
+  and jobs/state-publication policies not yet approved here.
+- Depends on [OPS-001](operation-coordination.md) for bounded queueing and
+  serialization of same-stack mutations across manual and CI callers. Detailed
+  admission, ordering, recovery and execution-time revalidation remain unresolved.
 - Consumed by the [planned Git workstream](../planning/README.md#git-stacks-and-ci-deployment).
   Future UI and CI entry points must reference this owner rather than duplicate
   Git deployment sequencing.
@@ -233,12 +236,15 @@ Remaining candidate scenarios for refinement, not approved detailed outcomes:
 - 2026-11-19: Owner selected explicit deployment requests from CI (GIT-005),
   rather than manager-triggered deployment merely on configured workflow success.
   Exact GitHub event/API and security choices remain unresolved.
+- 2026-11-19: Owner approved bounded queueing for competing same-stack manual
+  and CI mutations. OPS-001 owns that shared policy; GIT does not define a second
+  queue or inherit GitHub's pending-run replacement semantics.
 - Open: Clone versus adopting an existing checkout, permitted paths, refs/subdirs,
   local-file preservation, Git library versus executable, submodules and LFS.
 - Open: Credential types/providers, storage, host verification and rotation;
   webhook/API authentication, network exposure and authorization boundaries.
 - Open: Deployment opt-in mechanism, provider/event revision mapping and permitted refs,
-  replay/idempotency and ordering, job contention, cancellation,
+  replay/idempotency and ordering, detailed OPS queue policy, cancellation,
   retained revision history and truthful partial-failure/recovery semantics.
 - Open: Failed/partial creation, adopting an existing checkout, and when later
   repository changes may be applied. Background Git polling and general

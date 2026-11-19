@@ -123,6 +123,35 @@ a complete source snapshot. Before implementation on another machine, obtain
 this pinned checkout or an owner-approved documentation snapshot; recheck
 approval and supersession sections there. Do not silently use older origin/dev.
 
+## Operation Queue Evidence
+
+2026-11-19, bounded review preceding owner approval of
+[OPS-001](../contracts/operation-coordination.md):
+
+- Local Compose `02-model.md` and `deploy.md` at the pinned spec baseline:
+  project identity and service rolling-update/rollback parallelism, not a manager
+  request queue contract. No inspected passage chooses refusal versus queueing;
+  this is not an exhaustive absence claim across all Compose documentation.
+- Source `mutation-coordination.md`: distinguishes queue/admission from execution
+  ownership and documents immediate busy errors, bounded shell waits and a
+  separate background adapter queue. Source guarantees and participant gaps do
+  not approve a universal standalone policy. No plugin runtime tests were run.
+- [Microsoft queue-based load leveling](https://learn.microsoft.com/en-us/azure/architecture/patterns/queue-based-load-leveling):
+  reviewed the published guidance on buffering demand, controlled processing,
+  backlog/latency, durability, duplicates and ordering. The retrieved page reports
+  source commit `d73cd1632ffa489eff78a16bba4d101c510a1810`. This is architecture
+  guidance, not a requirement to use an Azure service or external broker.
+- [GitHub Actions concurrency](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency):
+  read official source/reusable sections describing serialized execution and
+  pending work, including default pending replacement and version-qualified queue
+  options. Those semantics are comparative evidence, not our ordering or
+  cancellation defaults; no universal FIFO guarantee was inferred.
+
+The initial recommendation favored busy refusal for implementation simplicity.
+After the owner requested scenarios and evidence, the recommendation changed to
+bounded queueing for unattended CI. The owner explicitly approved B, with detailed
+queue policies left open. These sources were read, not deployment behavior tested.
+
 ## Compose Specification Evidence
 
 Bounded reading on 2026-11-19 at the clean local spec revision above:

@@ -7,7 +7,7 @@ weight = 1
 PROJ has nine individually approved requirements; GIT has capability-scope,
 enabled-CI unattended-deployment and exact CI-selected Git revision approval,
 plus GitHub-first CI scope and explicit CI requests, with other policies awaiting
-review. Neither draft is wholly approved
+review. OPS records approved bounded same-stack queueing. No management draft is wholly approved
 or implemented. The inherited REPO document records
 the template's delivery baseline and historical decisions;
 EXAMPLE is only an example. See the [product plan](../planning/README.md) and
@@ -24,6 +24,7 @@ description of every implementation detail or a substitute for tests.
 | [EXAMPLE](example-feature.md) | Small example showing the format | Example, not an approved product promise |
 | [PROJ](project-membership.md) | On-demand discovery, active manual/Git additions, discovery-only activation and no deactivate action | Draft; PROJ-001 through PROJ-009 owner-approved within stated scopes, not implemented or behaviorally verified |
 | [GIT](git-stacks.md) | Git-backed stacks, private-repository credentials and CI/webhook deployment | Draft; GIT-001 through GIT-005 approved within stated scope; remaining behavior/security unresolved, not implemented or verified |
+| [OPS](operation-coordination.md) | Shared same-stack manual/CI mutation coordination | Draft; OPS-001 bounded queueing approved, detailed queue/lifecycle policies unresolved; not implemented or verified |
 
 ## Shared Format
 

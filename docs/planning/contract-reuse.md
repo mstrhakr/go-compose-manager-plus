@@ -40,6 +40,12 @@ scan runs, not continuously. The plugin's directory membership is not adopted
 as a rule to list arbitrary data folders. Exact recognition and picker path
 policies remain open.
 
+Standalone [OPS-001](../contracts/operation-coordination.md) now owns approved
+bounded same-stack queueing and serialized execution for manual/CI mutations.
+Source STATE-LOCK's mixed busy errors and waits are evidence, not adopted
+timeouts or queue mechanisms. Detailed ordering, cancellation, full-capacity,
+restart and participant/revalidation rules remain open.
+
 Later owner clarification in PROJ-008/009 limits the extra activation gate to
 discovery-added stacks. Explicit manual additions and cloning a repository as a
 new Git stack start active, and there is no deactivate option. This supersedes

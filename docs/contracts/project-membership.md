@@ -233,8 +233,9 @@ previous open question about a possible deactivation workflow.
 - Depends on unextracted standalone identity/input contracts before any action:
   listing and activation cannot establish which runtime project is safe to target.
   Source STK-ID/STK-FILES are candidates, not automatically adopted requirements.
-- Depends on future authoritative mutation coordination and activation-state
-  lifecycle rules, including removal/recreation and queued/running actions.
+- Depends on [OPS-001](operation-coordination.md) for bounded queueing and
+  serialization of same-stack mutations. Activation-state lifecycle rules,
+  including removal/recreation and queued/running actions, need further review.
   PROJ-009 excludes a deactivate action; it does not settle those other transitions.
 - Consumed by proposed setup/discovery and manual/automatic project workflows in
   the [product plan](../planning/README.md). Those consumers reference PROJ rather

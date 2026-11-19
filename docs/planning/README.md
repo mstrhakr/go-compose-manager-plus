@@ -145,7 +145,8 @@ coordination and jobs rather than become competing deployment owners.
 active stack, an authenticated, authorized trigger submits deployment without
 another per-run UI approval ([GIT-002](../contracts/git-stacks.md)). Active status
 alone does not enable CI. Other action/security checks remain required;
-acceptance is not completion, and contention behavior is still unresolved.
+acceptance is not completion. OPS-001 selects bounded same-stack queueing;
+detailed queue behavior is still unresolved.
 
 CI deployment targets the immutable source commit selected by CI, not a newer
 branch head when execution starts ([GIT-003](../contracts/git-stacks.md)). Use
@@ -201,6 +202,13 @@ does not provide an equivalent volume manager.
 
 ## Safety And Ownership Before Execution
 
+**Owner-approved contention policy:** competing same-stack manual and CI
+mutations use bounded, visible queueing rather than immediate busy refusal when
+waiting capacity is available. Only one mutation executes for that stack at a
+time. [OPS-001](../contracts/operation-coordination.md) owns this shared policy;
+queue size, ordering, cancellation, failure, full-capacity and restart behavior
+remain open. No external broker or persistence technology is selected.
+
 Proposed invariant: accepted work is bound to the selected registration lifetime,
 exact runtime project and input description; only its current owner may publish
 its outcome. Viewer closure is not cancellation or successful completion. A failed
@@ -241,7 +249,8 @@ the manager. Separate manager overhead from daemon/build/pull/extraction costs.
 
 Propose on-demand or viewer-aware refresh, batched Docker reads, bounded output
 retention, request deadlines and bounded operation concurrency. Values, cadence,
-storage and queue policy are undecided. SDK import/build success alone is not
+storage and detailed queue policy are undecided; bounded same-stack queueing is
+approved under OPS-001. SDK import/build success alone is not
 resource verification.
 
 ## Deferred Unless Separately Approved
