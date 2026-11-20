@@ -16,10 +16,21 @@ Approved and Verified as distinct labels. Do not make unpublished GitHub links.
 
 ## First Connected Slice
 
+Current adoption starts in [RES](../contracts/project-resolution.md): selected
+portable outcomes from approved STK-FILES-13/14/18/19 are adopted under the owner's
+reuse direction. Source qualifications are retained; Basic/Advanced, Unraid path
+rules and reopened exact-list proposals are not imported. RES-001 now records
+approved native/file-based runtime naming with display-only UI labels and no
+manager name override for the prototype. RES-006 now approves native selection
+first, deferring manager ordered-file controls without disabling native input
+mechanisms. Identity/adoption edge cases and env/profile details remain open.
+[LIVE](../contracts/live-state.md) records
+dashboard scope and SSE preference separately from unapproved recovery mechanics.
+
 | Source boundary / IDs | Inspected source status | Portable candidate / proposed acceptance evidence | Standalone adaptation or unresolved choice |
 | --- | --- | --- | --- |
 | STK-ID-01/02/07/11 | Draft; 02's saved-pin trust policy individually approved in plugin | Distinguish registration/display/path/runtime identity; preserve explicit identity across display rename; unresolved identity cannot silently retarget an action. Test two projects, rename, daemon failure and missing inputs. | No legacy-plugin naming/migration rules imported. Decide name precedence, explicit adoption, duplicates and retargeting/active-work policy. Saved metadata is not proof of Docker ownership. |
-| STK-LIFE-02/03/05/08/11/14 | 02/03/05/08 proposed; 11/14 approved in plugin | Registration does not deploy or transfer ownership of existing files. Source-approved 11 says no silent placeholder in an external folder; 14 keeps an unconfigured registration visible. Compare original file bytes, Docker state and visible failure states. | Propose explicit records instead of plugin directory discovery. Decide empty-directory support, collision handling and unregister separately from plugin Delete's Down-plus-folder-delete policy. |
+| STK-LIFE-01/02/03/05/08/11/14/18 | 01/02/03/05/08 proposed; 11/14/18 approved in plugin | Discovery/listing is distinct from deployment and ownership of existing files. Source-approved 11 says no silent placeholder in an external folder; 14 keeps an unconfigured registration visible; 18 uses directory discovery for plugin membership. | Standalone [PROJ-001/002/003](../contracts/project-membership.md) approve automatic listing beneath the selected root, initially inactive, with permission-only activation before manual or automatic changes. Activation does not run Compose, rewrite project files or enable schedules. Exact discovery/storage rules remain open. Decide empty-directory support, collisions and removal separately from plugin Delete's Down-plus-folder-delete policy. |
 | STK-FILES-01/02/03/07/11/13/14/18/19 | 01/02/03/07/11 proposed; 13/14/18/19 approved with source qualifications | Keep source location separate from input selection; preserve native path anchors, file order, explicit env selection and precedence. Missing explicitly selected env blocks action rather than falling back; changing a reference alone does not edit sources. Test spaces, external paths, overrides, COMPOSE_FILE, missing files and independent interpolation env. | Do not import Git env precedence, `/mnt`/`/boot` allowlists, Basic/Advanced mode or managed label layers. Decide exact configuration fields and native default behavior before coding. Do not freeze discovery into an allegedly equivalent manual list. |
 | STK-PROFILES | Draft; not fully reviewed in this staging pass | Distinguish available, configured, invocation-selected and historical profiles. Acceptance needs profile-disabled services and no silent expansion of action scope. | Full source requirement selection is pending; no invented profile IDs/defaults or automatic selection. Review this boundary before approving the first action contract. |
 | OPS-LIFE-01/02/03/04/05/06/07/10/14 | Draft candidate wording, with subsequent source decisions | Give Up and Stop deliberate, native meanings; distinguish Stop, Down, Restart, recreate and Update. Assert selected-project effects and absence of unexpected teardown/volume deletion. | Up may pull/build under native Compose policy: decide this explicitly, do not claim a universal no-network guarantee. Initial proposed actions are Up/Stop only, not Update or Down. Inspect full affected requirements before action implementation. |
@@ -31,6 +42,63 @@ Only bounded portions were inspected. This is not a claim that every row's full
 document, implementation, callers, tests or approval history was traced. In
 particular profiles and state metadata remain dependency-review gates. Source
 tests were not executed as part of this staging task.
+
+Standalone follow-up in [PROJ-005/006/007](../contracts/project-membership.md)
+narrows root-scan eligibility to recognized Compose projects, makes discovery
+on-demand or optional during setup, and adds individual folder selection without
+a prerequisite scan. PROJ-001's automatic inclusion applies when a requested
+scan runs, not continuously. The plugin's directory membership is not adopted
+as a rule to list arbitrary data folders. Exact recognition and picker path
+policies remain open.
+
+Standalone [OPS-001](../contracts/operation-coordination.md) now owns approved
+bounded same-stack queueing and serialized execution for manual/CI mutations.
+Source STATE-LOCK's mixed busy errors and waits are evidence, not adopted
+timeouts or queue mechanisms. Detailed ordering, cancellation, full-capacity,
+restart and participant/revalidation rules remain open.
+
+Later owner clarification in PROJ-008/009 limits the extra activation gate to
+discovery-added stacks. Explicit manual additions and cloning a repository as a
+new Git stack start active, and there is no deactivate option. This supersedes
+earlier generalized pre-activation language, not separate automation opt-ins.
+
+## Git And Deployment Candidates
+
+Owner-requested [GIT-001](../contracts/git-stacks.md) adds product capability scope,
+not approval of the source plugin's detailed behavior or an implementation date.
+Source feature-outline sketches and inventory entries were inspected in this
+pass; Git implementation/callers/tests and historical evidence were not traced.
+
+| Source boundary | Candidate responsibility | Standalone decisions still required |
+| --- | --- | --- |
+| GIT-LIFE / GIT-STORAGE | Clone/source ownership, adoption, removal and filesystem safety | PROJ-008 makes successful new Git-stack creation active immediately. Managed clone versus existing checkout, root/picker paths, local files, subdirectories, deletion and failed/partial creation remain open. Unraid mount/array rules do not transfer automatically. |
+| GIT-CHECK / GIT-DEPLOY | Revision preview/validation versus source preparation and deployment | Branch/tag/commit selection, Compose inputs, image policy, dirty files, partial effects and recovery; no assumed atomic runtime rollback. |
+| GIT-AUTO | Separate checking/notification from authorized deployment | CI/webhook triggers are standalone requested scope, not proof of existing plugin support. Decide opt-in, auth, revision binding, delivery ordering/replay and shared job ownership; no polling default adopted. |
+| CRED-VAULT / CRED-GIT | Private repository authentication and scoped credential lifecycle | HTTPS/SSH/provider mechanisms, storage/redaction, host trust, rotation/revocation and reference failures; Git credentials are not deployment-trigger authorization. |
+
+GIT consumes PROJ-008/009's explicit-creation and no-deactivation semantics, plus
+future shared identity/input/action, coordination, credentials and publication
+owners. Active membership does not authorize unconfigured CI automation or
+duplicate runtime policy in a webhook handler. Full source extraction and standalone policy refinement remain
+pending; no source-plugin Git approval or enforcement is claimed.
+
+Standalone [GIT-002](../contracts/git-stacks.md) now approves deployment without
+per-run UI confirmation for an explicitly enabled CI integration receiving an
+authenticated, authorized trigger for an active stack. Source plugin notification
+or deployment modes are not adopted wholesale. Standalone GIT-003 selects the
+immutable commit supplied by CI rather than latest branch head at execution;
+existing provider metadata should be used where applicable. Enablement mechanism,
+provider/event mapping, repository/ref authorization, authentication details,
+replay/order and contention remain open.
+
+Standalone GIT-004 selects GitHub as the first CI integration. The GitLab research
+above remains comparative evidence, not an initial-delivery requirement. This
+provider priority does not define repository-host restrictions or add a generic
+multi-provider framework; exact GitHub event mapping still needs refinement.
+
+GIT-005 further requires explicit deployment intent from CI rather than treating
+workflow success as a deployment request. This is a standalone owner decision,
+not an adopted plugin scheduling rule or a chosen GitHub wire protocol.
 
 ## Network And Volume Candidates
 

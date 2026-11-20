@@ -4,6 +4,11 @@ A standalone, Compose-native manager being planned for resource-constrained
 Ubuntu Docker hosts, including network and volume management. This is the
 end-product repository, not a separate planning repository.
 
+The functional baseline is the Unraid Compose Manager Plus plugin, reusing its
+useful workflows and portable business rules with a modern standalone interface.
+UniFi is the design inspiration; Unraid-specific UI and legacy compatibility
+machinery are not the target. Features will arrive in bounded, tested slices.
+
 **Current stage: scaffold and planning only.** The app currently runs the
 go-template greeting/health demonstration. It cannot manage Docker yet. No Docker
 socket, SDK dependency, credential store or management routes have been added.

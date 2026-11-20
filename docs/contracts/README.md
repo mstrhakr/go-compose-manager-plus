@@ -4,8 +4,12 @@ weight = 1
 +++
 # Behavioral Contracts
 
-This product currently has no approved management contract. The inherited REPO
-document records the template's delivery baseline and historical decisions;
+PROJ has nine individually approved requirements; GIT has capability-scope,
+enabled-CI unattended-deployment and exact CI-selected Git revision approval,
+plus GitHub-first CI scope and explicit CI requests, with other policies awaiting
+review. OPS records approved bounded same-stack queueing. No management draft is wholly approved
+or implemented. The inherited REPO document records
+the template's delivery baseline and historical decisions;
 EXAMPLE is only an example. See the [product plan](../planning/README.md) and
 [reuse map](../planning/contract-reuse.md) before selecting standalone requirements.
 Plugin requirements and their individual approvals do not transfer automatically.
@@ -18,6 +22,12 @@ description of every implementation detail or a substitute for tests.
 | --- | --- | --- |
 | [REPO](repo.md) | Inherited repository/delivery baseline | Draft; template decisions, product setup not wholly verified |
 | [EXAMPLE](example-feature.md) | Small example showing the format | Example, not an approved product promise |
+| [PROJ](project-membership.md) | On-demand discovery, active manual/Git additions, discovery-only activation and no deactivate action | Draft; PROJ-001 through PROJ-009 owner-approved within stated scopes, not implemented or behaviorally verified |
+| [GIT](git-stacks.md) | Git-backed stacks, private-repository credentials and CI/webhook deployment | Draft; GIT-001 through GIT-005 approved within stated scope; remaining behavior/security unresolved, not implemented or verified |
+| [OPS](operation-coordination.md) | Shared same-stack manual/CI mutation coordination | Draft; OPS-001 bounded queueing approved, detailed queue/lifecycle policies unresolved; not implemented or verified |
+| [RES](project-resolution.md) | Runtime identity and Compose inputs | Draft; RES-001/006 native naming/selection approved, RES-002 through RES-005 adopted portable source outcomes; env/profile and identity/adoption details unresolved; not implemented or verified |
+| [LIVE](live-state.md) | Dashboard home and live delivery | Draft; scope and SSE preference recorded, detailed recovery/collection/history policies proposed; not implemented or verified |
+| [AUTH](authentication.md) | App login and shared authentication boundary | Draft; AUTH-001 through AUTH-006 local/session auth, one-admin multi-user-ready identity and one-time env bootstrap with forced first-login password change approved; OIDC/multi-account delivery deferred, detailed recovery/security unresolved; not implemented or verified |
 
 ## Shared Format
 
