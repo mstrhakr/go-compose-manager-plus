@@ -64,7 +64,7 @@ ordering, exactly-once execution or complete participant coverage is claimed.
 
 ## Dependencies
 
-- Depends on [AUTH-001 through AUTH-005](authentication.md) for user-bound local-session
+- Depends on [AUTH-001 through AUTH-006](authentication.md) for user-bound local-session
   authentication and shared app access checks around
   submission and job/output reads. Exact authorization, queued-work revocation
   and execution-time revalidation policy remain unresolved.

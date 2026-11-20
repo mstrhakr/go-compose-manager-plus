@@ -9,6 +9,7 @@ approved; local form/session login selected, OIDC deferred; detailed account,
 session and security policies awaiting review. AUTH-004 limits initial accounts
 to one admin with multi-user-capable identity; AUTH-005 selects env-provisioned
 credentials and a forced first-login password change in the setup wizard.
+AUTH-006 makes bootstrap provisioning one-time and preserves saved credentials.
 
 **Baseline:** 2026-11-19, product `d47835b`, documentation-only refinement.
 The scaffold has public demo/health routes, no app login or sessions. No auth
@@ -151,7 +152,31 @@ alternatives, persistence technology or native-service packaging details.
 
 **Enforcement:** Not implemented. First-run detection, validation of missing or
 partial bootstrap input, atomic setup/password-change completion, restart/env
-reapplication, session transitions and recovery/reset policy still need definition.
+handling under AUTH-006, session transitions and recovery/reset implementation
+still need definition and verification.
+
+### AUTH-006: Bootstrap Env Does Not Reset Persisted Credentials
+
+Bootstrap environment input seeds initial authentication state only. Once that
+state has been provisioned, persisted account credentials and setup/password-change
+status remain authoritative across ordinary restarts. Leaving the original env
+values present or changing them must not silently overwrite the saved account,
+restore the bootstrap password, or repeat completed first-login setup.
+
+Recovery/reset is a separate explicit administrative operation, not a side effect
+of restarting with bootstrap variables. This does not select the recovery
+mechanism, storage engine, database-loss behavior or corruption-recovery policy.
+
+**Approval:** Owner approved the one-time bootstrap rule on 2026-11-20 after the
+restart scenario: changing the password in setup and restarting with old env
+values must retain the saved password, not reset it.
+
+**Source provenance:** Direct standalone owner decision. No credential values,
+configuration names or implementation mechanisms were requested or selected.
+
+**Enforcement:** Not implemented. Initial-state detection, concurrent startup,
+interrupted first-run/password-change persistence, unreadable/corrupt state and
+explicit recovery need execution-based validation before security claims.
 
 ## Dependencies
 
@@ -188,6 +213,15 @@ Owner-approved scope scenarios, not implemented/executed tests:
 - AUTH-005: Direct action, output and SSE requests cannot bypass that restriction
   merely because bootstrap credentials were accepted. No unauthenticated first-
   visitor claim or separate one-time setup token is the selected bootstrap flow.
+- AUTH-006: Change the password through first-run setup, restart with the original
+  bootstrap env still present, and retain the saved password and completed setup
+  state rather than restoring bootstrap access.
+- AUTH-006: Changing bootstrap env for an already provisioned installation does
+  not reset the existing account; reset/recovery requires a separate explicit
+  operation whose mechanism remains to define.
+- AUTH-006: Restart before the required password change is completed; ordinary
+  restart must not clear that persisted requirement. Partial-write handling still
+  needs specification and fault-injection verification.
 
 Candidate scenarios, not approved detailed outcomes or run tests:
 
@@ -212,7 +246,9 @@ Candidate scenarios, not approved detailed outcomes or run tests:
   singleton assumptions that require replacing those foundations later.
 - 2026-11-19: Owner amended browser setup to use environment-provisioned initial
   credentials and a forced password change at first login (AUTH-005).
-- Open: Detailed bootstrap validation, restart/reapplication and recovery,
+- 2026-11-20: Owner approved one-time env bootstrap with persisted credentials
+  authoritative on restart and explicit separate recovery (AUTH-006).
+- Open: Detailed bootstrap validation, interrupted/corrupt state and recovery,
   credential hashing/storage, throttling and session lifecycle.
 - Open: Later OIDC scope, proxy/canonical URL/TLS rules, endpoint/public-health
   exceptions, authorization, CSRF/origin protection and stream expiry/revocation.

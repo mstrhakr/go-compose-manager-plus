@@ -1,7 +1,7 @@
 # Product Plan
 
 **Status:** Proposed architecture and delivery sequence, not implementation
-authorization. Updated 2026-11-19. This repository will contain the end product.
+authorization. Updated 2026-11-20. This repository will contain the end product.
 
 ## Owner Decisions
 
@@ -32,13 +32,15 @@ authorization. Updated 2026-11-19. This repository will contain the end product.
 - Include app login/auth among the first prototype foundations, even behind the
   owner's local reverse proxy/WAF. Separate method-specific authentication from
   shared access checks so future methods such as OIDC reuse that boundary.
-  [AUTH-001 through AUTH-005](../contracts/authentication.md) select local
+  [AUTH-001 through AUTH-006](../contracts/authentication.md) select local
   username/password form login with server-managed sessions first, not HTTP Basic.
   Start with one admin, but stable user identities, per-device sessions and shared
   access checks must support later multiple accounts without a singleton redesign.
   Initial credentials come from deployment env; the first-login setup wizard
-  requires a password change before normal use. OIDC/multi-account UI are deferred;
-  bootstrap reapplication/recovery, session and proxy/security details remain open.
+  requires a password change before normal use. Bootstrap is one-time: saved
+  credentials/setup state stay authoritative on restart, without env-driven
+  reset. Recovery is separate. OIDC/multi-account UI are deferred; interrupted
+  persistence/recovery, session and proxy/security details remain open.
   No user-ID format, database or auth-provider framework is selected.
 - Include network and volume management in product planning. Their exact feature
   set, safety policy and delivery order are not yet approved.
@@ -191,6 +193,37 @@ unauthenticated starter binds all interfaces by default; local installation alon
 is not a secure exposure boundary. Implementation needs approval of its bounded
 slice. Inspect the VM script if supplied, without blocking unrelated fixture work
 or inventing script behavior.
+
+### Implementation Readiness Checkpoint
+
+**2026-11-20:** six product drafts (PROJ, RES, AUTH, OPS, LIVE, GIT) plus the
+inherited REPO/example documents. Requirements include behavioral decisions,
+portable source adoptions and capability/transport directions; document or entry
+counts are not a measured completion percentage. No management feature has been
+implemented or behaviorally verified.
+
+| Area | Settled enough to guide a slice | Remaining gate for that slice |
+| --- | --- | --- |
+| AUTH | Local form/server sessions; one-admin scope with stable user identity; one-time env bootstrap and forced first-login password change | Concrete storage/session/hash libraries and security defaults, origin/proxy/TLS trust, fault/recovery scope and runtime tests. |
+| PROJ / RES | Entry-path active membership, native naming/selection, portable source/env safety | Path/env/profile scope, existing-project ambiguity/collisions, saved-state and SDK verification before real targeting. |
+| Lifecycle/manual Update | Source contracts and approved portable action outcomes are available for adoption | A bounded standalone action matrix has not yet been recorded/approved; preserve Update scope, stopped/never-deployed safety and partial effects. |
+| OPS | Shared bounded same-stack queueing and serialized execution | Minimal order/capacity/full-queue/interruption and execution revalidation before mutating jobs ship. |
+| LIVE | Dashboard scope, SSE preference, separate runtime/operation/metrics responsibilities | Concrete reconciliation/fallback/freshness rules and measured collection cost before real live-state claims. |
+| GIT / history / resource management | Product direction and selected Git decisions recorded | Later slices; not blockers for initial local auth/dashboard work. |
+
+**Recommended next implementation slice, not yet authorized:** persistence plus
+the local-user/session/bootstrap/password-change access loop and a protected
+dashboard shell, initially without real Docker mutation. Select concrete security
+defaults in a short implementation brief instead of interviewing every possible
+future auth behavior. SQLite remains a candidate, not an already selected store.
+Read-only Compose SDK fixtures/resolution are a separate focused follow-up; they
+do not require completing Git, metrics history or every queue variant first.
+
+Before exposing admin operations, close the relevant action, identity/input,
+request-security and execution/job gates above. Complete the current refinement
+branch through its normal PR/check/merge process before starting the approved
+implementation branch. No source draft or status assessment grants runtime scope
+or bypasses delivery protections.
 
 ### Live State And Future History
 

@@ -20,6 +20,11 @@ bootstrap publishes their branches or modifies their worktrees.
 
 ## Standalone Owner Refinement
 
+2026-11-20: owner approved [AUTH-006](../contracts/authentication.md#auth-006-bootstrap-env-does-not-reset-persisted-credentials):
+bootstrap env seeds initial auth state only; persisted credentials/setup state
+remain authoritative across restarts, and recovery/reset is explicit and separate.
+No database, recovery tool or interrupted/corrupt-state behavior was selected.
+
 2026-11-19, direct owner conversation, recorded from product baseline `f4d6148`:
 
 - Owner requested app login/auth among the first prototype steps, despite intended
