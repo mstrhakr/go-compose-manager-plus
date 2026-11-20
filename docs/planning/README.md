@@ -219,6 +219,12 @@ future auth behavior. SQLite remains a candidate, not an already selected store.
 Read-only Compose SDK fixtures/resolution are a separate focused follow-up; they
 do not require completing Git, metrics history or every queue variant first.
 
+The [first auth/persistence implementation brief](auth-implementation.md) now
+proposes concrete components, security defaults and acceptance gates. Preparing
+and delivering it was authorized on 2026-11-20; those proposed defaults and runtime
+implementation still need bounded acceptance, not approval inferred from a docs
+merge. No auth dependency has been installed by preparing the brief.
+
 Before exposing admin operations, close the relevant action, identity/input,
 request-security and execution/job gates above. Complete the current refinement
 branch through its normal PR/check/merge process before starting the approved

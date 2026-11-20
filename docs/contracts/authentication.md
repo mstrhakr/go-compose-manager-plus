@@ -253,6 +253,11 @@ Candidate scenarios, not approved detailed outcomes or run tests:
 - Open: Later OIDC scope, proxy/canonical URL/TLS rules, endpoint/public-health
   exceptions, authorization, CSRF/origin protection and stream expiry/revocation.
 - No auth runtime work is authorized merely by this draft.
+- 2026-11-20: The owner authorized preparing/delivering the
+  [auth implementation brief](../planning/auth-implementation.md), which proposes
+  concrete storage/session/password and proxy/request-security choices. Those
+  proposals are not added to AUTH-001 through AUTH-006 approvals without acceptance
+  of the bounded implementation slice.
 
 ## Verification
 

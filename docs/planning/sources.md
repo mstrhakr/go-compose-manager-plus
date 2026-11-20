@@ -210,6 +210,28 @@ No source-plugin, Docker, stream/recovery or resource measurements were executed
 This is bounded adoption/research, not full source tracing, a new full-spec audit
 or implementation authorization. Unrelated sibling work remains untouched.
 
+## Auth Implementation Brief Research
+
+2026-11-20, documentation inspection only, for the
+[proposed first implementation slice](auth-implementation.md):
+
+- The scaffold's Docker and release builds disable CGO and its container runs as
+  non-root with read-only root filesystem. Persistent auth will need an explicitly
+  writable, correctly owned state location, not a broad permission relaxation.
+- `modernc.org/sqlite` package docs identify CGo-free operation; Go module proxy
+  metadata returned `v1.62.0` as a candidate. Nothing was installed or compiled.
+- SCS README/SQLite-store source documents server-side sessions and `*sql.DB`
+  integration; Argon2id helper README documents configurable hashing/verification.
+  These are candidate components, not an already-tested compatible dependency set.
+- OWASP password-storage guidance lists the proposed 19 MiB/two-pass/single-lane
+  Argon2id baseline. Parameters still require target-host benchmarking and bounded
+  verification concurrency; the helper's defaults are not assumed suitable.
+
+Links and concrete proposals are in the brief. Source branches/module metadata
+are moving research references, not verified/pinned dependencies. Preparing the
+brief and delivering the planning branch is authorized; implementation/default
+acceptance is a separate explicit gate. No runtime tests were run for this research.
+
 ## Authentication Evidence
 
 2026-11-19: scaffold route/configuration and security guidance were inspected;
