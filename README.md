@@ -12,8 +12,8 @@ machinery are not the target. Features will arrive in bounded, tested slices.
 **Current stage: local authentication and dashboard shell.** The initial auth
 slice is implemented and its focused Go and browser checks pass. Docker/Compose
 integration and management actions are not connected yet; dashboard resource
-values are explicit placeholders, not host status. A development image has
-been built and smoke-tested locally; it has not been published.
+values are explicit placeholders, not host status. A Linux amd64 development
+image is published at `ghcr.io/mstrhakr/go-compose-manager-plus:dev`.
 
 Start with the [product plan](docs/planning/README.md),
 [contract reuse map](docs/planning/contract-reuse.md), and
@@ -26,7 +26,8 @@ its other contents are ignored by Git and excluded from the Docker build.
 The scaffold uses one Go executable, escaped HTML templates, local htmx and small
 browser JS modules. Node is development/test tooling only. The MIT license and
 vendored htmx notice are retained. GitHub repository visibility is public;
-release, image and documentation publishing remain disabled.
+development-image publishing is enabled, while release and documentation
+publishing remain disabled. Package access is controlled separately.
 
 ## Start here
 
@@ -114,6 +115,29 @@ For a reverse proxy set `APP_PUBLIC_URL` to the external HTTPS origin and
 untrusted direct-backend access. The image remains non-root, read-only except for
 the data volume, and drops Linux capabilities.
 
+To test the published Linux amd64 development image instead of building locally,
+create a separate `compose.dev.yaml` alongside `compose.yaml`:
+
+```yaml
+services:
+  app:
+    image: ghcr.io/mstrhakr/go-compose-manager-plus:dev
+```
+
+Set the temporary bootstrap values in the ignored `.env` as above, restrict access
+to it (for example `chmod 600 .env` on Linux), then run:
+
+```sh
+docker compose -f compose.yaml -f compose.dev.yaml pull
+docker compose -f compose.yaml -f compose.dev.yaml up -d --no-build --pull never
+```
+
+The base Compose file normally builds locally; the override and explicit pull
+select the registry image. After setup, remove the bootstrap values and recreate
+the service with the same `up` command. The dev tag can move; use a SHA tag or
+digest when a fixed image is needed. Registry package visibility is separate
+from repository visibility and may require authentication.
+
 ## Documentation
 
 Install Hugo **0.169.0** from its [official releases](https://github.com/gohugoio/hugo/releases),
@@ -162,8 +186,8 @@ See [executed verification](docs/verification.md) for what was actually checked.
 
 The owner approved public visibility to enable the full GitHub protection
 baseline. The inherited setup helper configured protected main, immutable
-version tags, scoped Actions, security features and release approval without
-enabling publishing. The inherited
+version tags, scoped Actions, security features and release approval; development
+image publishing was enabled later. The inherited
 release provenance schema URI and generic CI image labels may still refer to
 go-template; they are template tooling identifiers, not upstream release claims.
 
