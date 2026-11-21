@@ -1,7 +1,7 @@
 # Product Plan
 
 **Status:** Proposed architecture and delivery sequence, not implementation
-authorization. Updated 2026-11-20. This repository will contain the end product.
+authorization. Updated 2026-11-21. This repository contains the end product.
 
 ## Owner Decisions
 
@@ -62,8 +62,8 @@ authorization. Updated 2026-11-20. This repository will contain the end product.
   recognition, picker path policy, other remaining discovery details and
   activation validation/persistence remain unresolved; no implementation is
   authorized by these decisions.
-- This phase is planning and staging only, not a plugin rewrite, shared-backend
-  migration or authorization to implement the entire source roadmap.
+- Approval is slice-specific, not authorization for a plugin rewrite,
+  shared-backend migration or the entire source roadmap.
 - Prioritize maintainability and clear ownership boundaries within the standalone
   app. Possible future reuse is a by-product, not a cross-product requirement;
   no plugin rebuild or shared-backend delivery is planned. See the
@@ -79,10 +79,13 @@ the scaffold nor source-plugin approval silently approves standalone behavior.
 
 ## Current Stage
 
-The runnable Go/htmx template is staged, with its module and delivery metadata
-renamed. The greeting page remains a template demonstration, not a manager UI.
-No Docker dependency, daemon socket, registration store, credential store,
-management route, job runner or migration has been added. Publishing stays off.
+The local-auth foundation and protected placeholder dashboard have been merged.
+The development image is published for auth testing; release and documentation
+publishing remain disabled. The owner has authorized a fixture-only Compose
+resolution proof of concept: no Docker socket, host scanning, project storage,
+UI integration, container operations or file mutation. The Compose model loader
+is a test dependency, not an orchestration integration. No project management
+route or job runner has been added.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,
@@ -155,7 +158,8 @@ current work; management implementation still requires bounded authorization.
 
 The original stage table is a dependency overview, not the current prototype
 scope or an instruction to complete every workstream before local use. The
-near-term triage below takes priority. No SDK dependency is installed now.
+near-term triage below takes priority. The current fixture-only proof of concept
+uses the Compose model loader; it does not implement the full read-only spike.
 
 ## Local Prototype Contract Triage
 
@@ -187,16 +191,15 @@ slices, not removed product goals.
 | 4 | Dashboard/[LIVE](../contracts/live-state.md) | Agree visible runtime/operation states and bounded live/fallback behavior; measure collection cost. |
 | 5 | Host scope/persistence | Establish Docker/path scope and saved membership/identity recovery; AUTH handles app authentication/exposure from the start. |
 
-Use the read-only SDK/resolution/dashboard slice as the first implementation
-checkpoint, then add deliberate actions on a disposable Docker target. The
-unauthenticated starter binds all interfaces by default; local installation alone
-is not a secure exposure boundary. Implementation needs approval of its bounded
-slice. Inspect the VM script if supplied, without blocking unrelated fixture work
-or inventing script behavior.
+Build from the fixture-only resolution checkpoint toward a separately approved
+read-only resolution/dashboard slice, then deliberate actions on a disposable
+Docker target. Local installation alone is not a secure exposure boundary.
+Implementation needs approval of its bounded slice. Inspect the VM script if
+supplied, without blocking unrelated fixture work or inventing script behavior.
 
 ### Implementation Readiness Checkpoint
 
-**2026-11-20:** six product drafts (PROJ, RES, AUTH, OPS, LIVE, GIT) plus the
+**2026-11-21:** six product drafts (PROJ, RES, AUTH, OPS, LIVE, GIT) plus the
 inherited REPO/example documents. Requirements include behavioral decisions,
 portable source adoptions and capability/transport directions; document or entry
 counts are not a measured completion percentage. No management feature has been
@@ -204,32 +207,25 @@ implemented or behaviorally verified.
 
 | Area | Settled enough to guide a slice | Remaining gate for that slice |
 | --- | --- | --- |
-| AUTH | Local form/server sessions; one-admin scope with stable user identity; one-time env bootstrap and forced first-login password change | Concrete storage/session/hash libraries and security defaults, origin/proxy/TLS trust, fault/recovery scope and runtime tests. |
+| AUTH | Local form/server sessions, one-time bootstrap and forced password change implemented | Further exposure/security, recovery and multi-account scope remain separate work. |
 | PROJ / RES | Entry-path active membership, native naming/selection, portable source/env safety | Path/env/profile scope, existing-project ambiguity/collisions, saved-state and SDK verification before real targeting. |
 | Lifecycle/manual Update | Source contracts and approved portable action outcomes are available for adoption | A bounded standalone action matrix has not yet been recorded/approved; preserve Update scope, stopped/never-deployed safety and partial effects. |
 | OPS | Shared bounded same-stack queueing and serialized execution | Minimal order/capacity/full-queue/interruption and execution revalidation before mutating jobs ship. |
 | LIVE | Dashboard scope, SSE preference, separate runtime/operation/metrics responsibilities | Concrete reconciliation/fallback/freshness rules and measured collection cost before real live-state claims. |
 | GIT / history / resource management | Product direction and selected Git decisions recorded | Later slices; not blockers for initial local auth/dashboard work. |
 
-**Recommended next implementation slice, not yet authorized:** persistence plus
-the local-user/session/bootstrap/password-change access loop and a protected
-dashboard shell, initially without real Docker mutation. Select concrete security
-defaults in a short implementation brief instead of interviewing every possible
-future auth behavior. SQLite remains a candidate, not an already selected store.
-Read-only Compose SDK fixtures/resolution are a separate focused follow-up; they
-do not require completing Git, metrics history or every queue variant first.
-
-The [first auth/persistence implementation brief](auth-implementation.md) now
-proposes concrete components, security defaults and acceptance gates. Preparing
-and delivering it was authorized on 2026-11-20; those proposed defaults and runtime
-implementation still need bounded acceptance, not approval inferred from a docs
-merge. No auth dependency has been installed by preparing the brief.
+The [first auth/persistence implementation brief](auth-implementation.md)
+records the foundation delivered in the local-auth slice. The currently approved
+follow-up is limited to disposable Compose resolution fixtures. Connecting
+resolution to actual projects, discovery, persistence, the UI or Docker requires
+a separate bounded decision. Fixtures do not require completing Git, metrics
+history or every queue variant first.
 
 Before exposing admin operations, close the relevant action, identity/input,
 request-security and execution/job gates above. Complete the current refinement
-branch through its normal PR/check/merge process before starting the approved
-implementation branch. No source draft or status assessment grants runtime scope
-or bypasses delivery protections.
+branch through its normal PR/check/merge process before starting unrelated work.
+No source draft or status assessment grants runtime scope or bypasses delivery
+protections.
 
 ### Live State And Future History
 
@@ -346,10 +342,11 @@ open; do not silently promise durable resumption.
 
 Docker socket access is effectively host-administrative. Decide authentication,
 authorization, CSRF/origin protection, exposure/TLS and secret handling before
-adding reachable mutating routes. The starter is unauthenticated and native
-execution binds all interfaces by default; use loopback during staging. Reverse
-proxy TLS alone is not authentication. Never commit scripts, env contents, Docker
-credentials or resolved secret-bearing configuration as test evidence.
+adding reachable mutating routes. Local authentication now protects the
+dashboard, but remote administration is not certified; use loopback during
+staging and configure proxy trust and TLS carefully. Reverse proxy TLS alone is
+not authentication. Never commit scripts, env contents, Docker credentials or
+resolved secret-bearing configuration as test evidence.
 
 Container deployment must distinguish daemon-host bind sources from paths inside
 the manager, including local build contexts, env files and credential helpers.
