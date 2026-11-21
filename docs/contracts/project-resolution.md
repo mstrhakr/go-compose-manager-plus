@@ -140,7 +140,7 @@ equivalence still requires executed checks.
 
 ## Acceptance Cases
 
-Adopted outcomes, not implemented/executed tests:
+Adopted outcomes, not yet implemented as product behavior:
 
 - RES-001: UI display name is `Home Entertainment`, while Compose `name` is
   `media`; changing the UI label alone preserves runtime targeting and source
@@ -175,11 +175,16 @@ include/environment resolution, profiles, changed queued inputs and host paths.
 - 2026-11-19: Owner selected native input selection first, deferring manager
   ordered-file controls (RES-006). Env sourcing, profiles, SDK support and identity
   adoption/retargeting edge cases remain open.
-- No source runtime code, dependency or tests were imported, and no management
+- No source runtime code or tests were imported, and no management
   implementation is authorized by this record.
 
 ## Verification
 
-Source approval text and local Compose chapters were read; no SDK build, Docker
-behavior, source tests or standalone acceptance cases were executed. Structure
-checks do not prove semantic equivalence. See the [source register](../planning/sources.md).
+Source approval text and local Compose chapters were read. A separately approved
+test-only proof of concept exercises selected resolution cases using the Compose
+model loader, not product callers or Docker operations. These fixtures provide
+partial evidence for RES-001 and RES-004 through RES-006, plus unchanged fixture
+files, but do not establish any requirement's end-to-end compliance. RES-002 and
+RES-003 source-reference workflows are not implemented or verified. See
+[verification](../verification.md) for exact executed cases and limitations and
+the [source register](../planning/sources.md) for provenance.

@@ -125,3 +125,45 @@ The dashboard is a visual/authenticated shell with explicit placeholders. Docker
 Engine/Compose discovery, real status, network/volume management and lifecycle
 actions are not implemented. Remote administration is not certified; configure
 TLS/proxy trust carefully and do not expose Docker socket access.
+
+## Fixture-Only Compose Resolution Proof of Concept
+
+Date: 2026-11-21. Linux development container, branch
+`feat/compose-resolution-fixtures`, based on `4db7c0d` with the fixture changes
+uncommitted during these checks. Compose specification checkout:
+`3a4a6995e4a971f6173dff9130cb3e38e6738651`; model loader:
+`github.com/compose-spec/compose-go/v2` v2.17.0; Go 1.27.4. The loader is not
+the Compose orchestration SDK.
+
+- `COMPOSE_FIXTURE_COMPARE_CLI=1 go test ./internal/composeresolution -count=1 -v`:
+  passed. The installed Docker Compose CLI v2.24.1 `config --format json` agreed
+  on name and service image for five valid fixtures: top-level name and `.env`
+  interpolation, directory-derived name and override, default filename
+  precedence, required interpolation from controlled environment, and absolute
+  `COMPOSE_FILE` inputs. These comparisons do not invoke the daemon.
+- Loader-only assertions check selected ordered filenames, an explicit env file
+  with native discovery, explicit Compose files taking precedence over
+  `COMPOSE_FILE`, errors for missing explicit Compose/env files, malformed YAML
+  and missing required interpolation, and unchanged fixture contents and
+  directory entries.
+- `PLAYWRIGHT_PORT=18148 make check`: passed Go race tests, vet, formatting and
+  build, 14 Node tests, 7 HTTP tests, 9 browser tests with 3 intentional skips,
+  and asset and contract structure checks.
+- `make check-security`: passed npm audit and govulncheck with no vulnerabilities.
+- `make check-container`: built and scanned the Linux amd64 image, with zero
+  reported findings.
+- `make docs`: could not run because Hugo was not installed.
+- `go run github.com/gohugoio/hugo@v0.169.0 --source docs --minify --panicOnWarning`:
+  passed using Hugo v0.169.0 as a temporary Go-run tool.
+- The same Hugo invocation with `--config hugo.toml,hugo.contracts.toml`
+  passed the contract-inclusive documentation build.
+
+These are disposable fixtures with a controlled environment, not integration
+with real projects or a claim of full RES compliance. Relative `COMPOSE_FILE`
+paths, includes, profiles, parent-directory discovery, broader CLI versions and
+the product's process-environment policy remain unverified. In this loader
+version, relative `COMPOSE_FILE` paths are resolved against the process working
+directory, not the supplied fixture working directory; no product policy is
+inferred from that behavior. File checks cover the fixture directory contents,
+not metadata or arbitrary external paths. No host scanning, project persistence,
+Docker socket access, UI integration or container operation was exercised.
