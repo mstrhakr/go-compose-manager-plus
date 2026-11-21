@@ -4,7 +4,7 @@ weight = 4
 +++
 # PROJ: Project Membership And Activation
 
-**Status:** Draft / ten individually approved requirements; not wholly approved
+**Status:** Draft / eleven individually approved requirements; not wholly approved
 or implemented.
 
 **Baseline:** Owner refinement on 2026-11-19, from product revision `f4d6148`.
@@ -250,6 +250,20 @@ removal or deletion semantics.
 
 **Enforcement:** Not implemented or verified.
 
+### PROJ-011: One Saved Discovery Root Initially
+
+The initial persistent discovery implementation supports one saved discovery
+root. Changing that setting does not itself remove existing project entries.
+Multiple roots, duplicate paths, root-change reconciliation and the mechanism
+for selecting and accessing the root remain separate decisions.
+
+**Approval:** Owner selected one saved root for the prototype on 2026-11-21.
+
+**Source provenance:** Direct standalone owner decision, not an adoption of
+plugin storage or path policy.
+
+**Enforcement:** Not implemented or verified.
+
 ## Dependencies
 
 - Depends on [RES](project-resolution.md) before actions: listing and active state
@@ -314,6 +328,8 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 - PROJ-010: A previously discovered and activated project whose folder or
   recognized file is absent on a successful scan remains listed as unavailable
   with activation state preserved. A failed scan is not evidence of removal.
+- PROJ-011: The initial discovery root is saved, and changing it does not itself
+  remove previously listed project entries.
 
 ## Decisions
 
@@ -351,7 +367,9 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   for the next slice, and chose to retain an absent previously discovered entry
   as unavailable with its activation state intact (PROJ-010). Other state and
   path rules remain to be decided before implementation.
-- Open: Root count, candidate-path suggestions, running-container evidence,
+- 2026-11-21: Owner selected one saved discovery root initially (PROJ-011);
+  changing the setting does not itself remove existing project entries.
+- Open: Root-change reconciliation, candidate-path suggestions, running-container evidence,
   remaining discovery eligibility, symlinks, filesystem/path permissions
   and scan error/results presentation. Runtime refresh is a separate boundary.
   Handling a Compose file directly in the root remains open.
@@ -368,4 +386,4 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 No management behavior or SDK integration exists; no behavioral acceptance tests,
 native-host measurements or plugin tests were run for this decision record.
 Document checks can validate structure, IDs and links, not enforcement or approval.
-The whole draft remains unapproved despite its ten individually approved entries.
+The whole draft remains unapproved despite its eleven individually approved entries.

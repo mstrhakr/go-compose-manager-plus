@@ -25,6 +25,9 @@ the next slice. For a previously discovered project absent on a successful scan,
 the owner selected retaining its listing and activation state as unavailable;
 scan failure is not proof of removal. See
 [PROJ-010](../contracts/project-membership.md#proj-010-retain-previously-discovered-projects-that-disappear).
+The owner also selected one saved discovery root initially, with existing entries
+not removed merely by changing that setting; see
+[PROJ-011](../contracts/project-membership.md#proj-011-one-saved-discovery-root-initially).
 Removal and other lifecycle details remain open.
 
 2026-11-21: owner selected the four standard Compose filenames for initial
