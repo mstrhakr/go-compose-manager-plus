@@ -48,7 +48,7 @@ test('login page escapes input-free copy and includes a CSRF form token', async 
   expect(response.status()).toBe(200);
   const html = await response.text();
   expect(html).toContain('Welcome back');
-  expect(html).toContain('name="gorilla.csrf.Token"');
+  expect(html).toContain('name="csrf_token"');
   expect(html).toContain('autocomplete="current-password"');
   expect(html).not.toContain('Hello,');
 });

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"testing"
 )
@@ -13,11 +14,13 @@ func TestManagerBootstrapLoginAndPasswordChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	t.Cleanup(func() { _ = database.SQL.Close() })
 	manager, err := NewManager(ctx, database, false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if err := manager.Bootstrap(ctx, "operator", "bootstrap-password-123"); err != nil {
 		t.Fatal(err)
 	}
@@ -68,5 +71,34 @@ func TestManagerBootstrapLoginAndPasswordChange(t *testing.T) {
 	}
 	if _, err := manager.Authenticate(ctx, "operator", "new-local-password-456", "127.0.0.1"); err != nil {
 		t.Fatalf("new password login error = %v", err)
+	}
+}
+
+func TestLoginLimiterBoundsEachClientsKeys(t *testing.T) {
+	manager := &Manager{loginAttempts: make(map[string]attempt)}
+	for i := 0; i < maxLoginKeysPerClient; i++ {
+		key := fmt.Sprintf("client-a\x00user-%d", i)
+		if !manager.allowAttempt("client-a", key) {
+			t.Fatalf("client A key %d was refused prematurely", i)
+		}
+	}
+	if manager.allowAttempt("client-a", "client-a\x00overflow") {
+		t.Fatal("client A exceeded its key capacity")
+	}
+	if !manager.allowAttempt("client-b", "client-b\x00admin") {
+		t.Fatal("client A exhausted capacity for another client")
+	}
+}
+
+func TestInvalidLoginDoesNotAllocateLimiterEntry(t *testing.T) {
+	manager := &Manager{loginAttempts: make(map[string]attempt)}
+	for i := 0; i < maxLoginKeys+1; i++ {
+		_, err := manager.Authenticate(context.Background(), fmt.Sprintf(" invalid-%d", i), "password", "client-a")
+		if !errors.Is(err, ErrInvalidCredentials) {
+			t.Fatalf("invalid username: %v", err)
+		}
+	}
+	if len(manager.loginAttempts) != 0 {
+		t.Fatalf("invalid usernames allocated %d limiter entries", len(manager.loginAttempts))
 	}
 }

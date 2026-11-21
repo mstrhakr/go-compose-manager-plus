@@ -15,7 +15,6 @@ import (
 
 	"github.com/alexedwards/argon2id"
 	"github.com/alexedwards/scs/v2"
-	"github.com/gorilla/csrf"
 )
 
 const (
@@ -23,6 +22,7 @@ const (
 	sessionAuthVersionKey = "auth_version"
 	sessionMustChangeKey  = "must_change_password"
 	maxLoginKeys          = 1024
+	maxLoginKeysPerClient = 8
 	maxLoginAttempts      = 5
 	loginWindow           = time.Minute
 	maxPasswordBytes      = 1024
@@ -48,7 +48,6 @@ type Manager struct {
 	sessions       *scs.SessionManager
 	hashSlots      chan struct{}
 	dummyHash      string
-	csrfKey        []byte
 	trustedProxies []netip.Prefix
 	limiterMu      sync.Mutex
 	loginAttempts  map[string]attempt
@@ -75,10 +74,6 @@ func NewManager(ctx context.Context, database *Database, secureCookies bool, tru
 	}
 	manager.dummyHash = dummyHash
 
-	csrfSecret, err := database.CSRFSecret(ctx)
-	if err != nil {
-		return nil, err
-	}
 	manager.sessions = scs.New()
 	manager.sessions.Store = database.Sessions
 	manager.sessions.IdleTimeout = 30 * time.Minute
@@ -91,26 +86,11 @@ func NewManager(ctx context.Context, database *Database, secureCookies bool, tru
 	manager.sessions.Cookie.SameSite = http.SameSiteLaxMode
 	manager.sessions.Cookie.Persist = false
 	manager.sessions.HashTokenInStore = true
-	manager.csrfKey = csrfSecret
 	return manager, nil
 }
 
 func (manager *Manager) SessionManager() *scs.SessionManager {
 	return manager.sessions
-}
-
-func (manager *Manager) CSRFProtection(next http.Handler, secureCookies bool) http.Handler {
-	options := []csrf.Option{
-		csrf.Secure(secureCookies),
-		csrf.Path("/"),
-		csrf.CookieName("compose_manager_csrf"),
-		csrf.HttpOnly(true),
-		csrf.SameSite(csrf.SameSiteLaxMode),
-		csrf.ErrorHandler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			http.Error(w, "Request could not be verified", http.StatusForbidden)
-		})),
-	}
-	return csrf.Protect(manager.csrfKey, options...)(next)
 }
 
 func (manager *Manager) Bootstrap(ctx context.Context, username, password string) error {
@@ -136,12 +116,12 @@ func (manager *Manager) Bootstrap(ctx context.Context, username, password string
 }
 
 func (manager *Manager) Authenticate(ctx context.Context, username, password, clientKey string) (User, error) {
-	attemptKey := clientKey + "\x00" + strings.ToLower(username)
-	if !manager.allowAttempt(attemptKey) {
-		return User{}, ErrRateLimited
-	}
 	if ValidateUsername(username) != nil || len(password) > maxPasswordBytes {
 		return User{}, ErrInvalidCredentials
+	}
+	attemptKey := clientKey + "\x00" + strings.ToLower(username)
+	if !manager.allowAttempt(clientKey, attemptKey) {
+		return User{}, ErrRateLimited
 	}
 	user, err := manager.database.UserByUsername(ctx, username)
 	if err != nil && !errors.Is(err, ErrNoUser) {
@@ -311,18 +291,21 @@ func (manager *Manager) releaseHashSlot() {
 	<-manager.hashSlots
 }
 
-func (manager *Manager) allowAttempt(key string) bool {
+func (manager *Manager) allowAttempt(clientKey, key string) bool {
 	now := time.Now()
 	manager.limiterMu.Lock()
 	defer manager.limiterMu.Unlock()
+	clientKeys := 0
 	for candidate, value := range manager.loginAttempts {
 		if now.Sub(value.started) >= loginWindow {
 			delete(manager.loginAttempts, candidate)
+		} else if strings.HasPrefix(candidate, clientKey+"\x00") {
+			clientKeys++
 		}
 	}
 	value, exists := manager.loginAttempts[key]
 	if !exists {
-		if len(manager.loginAttempts) >= maxLoginKeys {
+		if len(manager.loginAttempts) >= maxLoginKeys || clientKeys >= maxLoginKeysPerClient {
 			return false
 		}
 		manager.loginAttempts[key] = attempt{started: now, count: 1}

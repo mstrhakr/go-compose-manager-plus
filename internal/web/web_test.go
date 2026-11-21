@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"html"
 	"mime"
 	"net/http"
 	"net/http/httptest"
@@ -81,6 +82,37 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 	}
 }
 
+func TestOversizedAuthenticationFormsAreRejected(t *testing.T) {
+	handler := testHandler(t, nil)
+	cookies := make(map[string]*http.Cookie)
+	response := perform(handler, http.MethodGet, "/login", nil, cookies, "")
+	token := tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/login", url.Values{
+		"username": {"operator"}, "password": {"bootstrap-password-123"}, "padding": {strings.Repeat("x", maxFormBytes)},
+	}, cookies, token)
+	if response.Code != http.StatusForbidden && response.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized login = %d", response.Code)
+	}
+	response = perform(handler, http.MethodPost, "/login", url.Values{
+		"username": {"operator"}, "password": {"bootstrap-password-123"},
+	}, cookies, token)
+	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/setup/password" {
+		t.Fatalf("valid login = %d, location %q", response.Code, response.Header().Get("Location"))
+	}
+	response = perform(handler, http.MethodGet, "/setup/password", nil, cookies, "")
+	token = tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/setup/password", url.Values{
+		"password": {"new-local-password-456"}, "confirm_password": {"new-local-password-456"}, "padding": {strings.Repeat("x", maxFormBytes)},
+	}, cookies, token)
+	if response.Code != http.StatusForbidden && response.Code != http.StatusRequestEntityTooLarge {
+		t.Fatalf("oversized password change = %d", response.Code)
+	}
+	response = perform(handler, http.MethodGet, "/setup/password", nil, cookies, "")
+	if response.Code != http.StatusOK {
+		t.Fatalf("password setup after oversized request = %d", response.Code)
+	}
+}
+
 func TestScriptContentTypeIgnoresHostRegistry(t *testing.T) {
 	original := mime.TypeByExtension(".js")
 	t.Cleanup(func() { _ = mime.AddExtensionType(".js", original) })
@@ -115,7 +147,7 @@ func TestLoopbackOriginLoginFromContainerBridge(t *testing.T) {
 	pageResponse := httptest.NewRecorder()
 	handler.ServeHTTP(pageResponse, page)
 	token := tokenFromBody(t, pageResponse.Body.String())
-	values := url.Values{"username": {"operator"}, "password": {"bootstrap-password-123"}, "gorilla.csrf.Token": {token}}
+	values := url.Values{"username": {"operator"}, "password": {"bootstrap-password-123"}, "csrf_token": {token}}
 	request := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(values.Encode()))
 	request.Host = "127.0.0.1:8080"
 	request.RemoteAddr = "172.17.0.1:12345"
@@ -170,7 +202,7 @@ func TestTrustedProxyLoginRequiresHTTPSOrigin(t *testing.T) {
 		{"https://manager.example.test", http.StatusSeeOther},
 	} {
 		t.Run(test.origin, func(t *testing.T) {
-			values := url.Values{"username": {"operator"}, "password": {"bootstrap-password-123"}, "gorilla.csrf.Token": {token}}
+			values := url.Values{"username": {"operator"}, "password": {"bootstrap-password-123"}, "csrf_token": {token}}
 			request := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(values.Encode()))
 			request.Host = "backend:8080"
 			request.RemoteAddr = "192.0.2.10:12345"
@@ -214,7 +246,7 @@ func testHandler(t *testing.T, trustedProxies []netip.Prefix) http.Handler {
 func perform(handler http.Handler, method, path string, values url.Values, cookies map[string]*http.Cookie, csrfToken string) *httptest.ResponseRecorder {
 	body := strings.NewReader("")
 	if values != nil {
-		values.Set("gorilla.csrf.Token", csrfToken)
+		values.Set("csrf_token", csrfToken)
 		body = strings.NewReader(values.Encode())
 	}
 	request := httptest.NewRequest(method, testOrigin+path, body)
@@ -240,10 +272,10 @@ func collectCookies(cookies map[string]*http.Cookie, response *httptest.Response
 
 func tokenFromBody(t *testing.T, body string) string {
 	t.Helper()
-	pattern := regexp.MustCompile(`name="gorilla\.csrf\.Token" value="([^"]+)"`)
+	pattern := regexp.MustCompile(`name="csrf_token" value="([^"]+)"`)
 	match := pattern.FindStringSubmatch(body)
 	if len(match) != 2 {
 		t.Fatalf("CSRF token field missing from response: %q", body)
 	}
-	return match[1]
+	return html.UnescapeString(match[1])
 }

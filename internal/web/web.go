@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/gorilla/csrf"
+	"github.com/justinas/nosurf"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 )
 
@@ -22,7 +22,7 @@ type pageData struct {
 	Username  string
 	Initial   string
 	Error     string
-	CSRFField template.HTML
+	CSRFToken string
 }
 
 func Handler(manager *auth.Manager, publicURL *url.URL, trustedProxies []netip.Prefix) http.Handler {
@@ -50,7 +50,16 @@ func Handler(manager *auth.Manager, publicURL *url.URL, trustedProxies []netip.P
 	})
 	protected := http.NewCrossOriginProtection().Handler(mux)
 	withSessions := manager.SessionManager().LoadAndSave(protected)
-	csrfProtected := manager.CSRFProtection(withSessions, publicURL.Scheme == "https")
+	csrfProtected := nosurf.New(withSessions)
+	cookieName := "compose_manager_csrf"
+	if publicURL.Scheme == "https" {
+		cookieName = "__Host-compose_manager_csrf"
+	}
+	csrfProtected.SetBaseCookie(http.Cookie{Name: cookieName, Path: "/", HttpOnly: true, Secure: publicURL.Scheme == "https", SameSite: http.SameSiteLaxMode})
+	csrfProtected.SetIsTLSFunc(func(*http.Request) bool { return publicURL.Scheme == "https" })
+	csrfProtected.SetFailureHandler(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "Request could not be verified", http.StatusForbidden)
+	}))
 	withHealthException := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/healthz" {
 			withSessions.ServeHTTP(w, r)
@@ -64,8 +73,8 @@ func Handler(manager *auth.Manager, publicURL *url.URL, trustedProxies []netip.P
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("Cache-Control", "no-store")
-		if publicURL.Scheme == "http" {
-			r = csrf.PlaintextHTTPRequest(r)
+		if r.Method == http.MethodPost && (r.URL.Path == "/login" || r.URL.Path == "/setup/password" || r.URL.Path == "/logout") {
+			r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
 		}
 		withCanonicalHost.ServeHTTP(w, r)
 	})

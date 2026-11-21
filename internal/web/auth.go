@@ -10,11 +10,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/gorilla/csrf"
+	"github.com/justinas/nosurf"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 )
 
-const maxFormBytes = 4096
+const maxFormBytes = 8192
 
 type authServer struct {
 	manager        *auth.Manager
@@ -46,13 +46,13 @@ func (server *authServer) loginPage(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	server.render(w, pageData{Title: "Log in", View: "login", CSRFField: csrf.TemplateField(r)})
+	server.render(w, pageData{Title: "Log in", View: "login", CSRFToken: nosurf.Token(r)})
 }
 
 func (server *authServer) login(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
 	if err := r.ParseForm(); err != nil {
-		server.render(w, pageData{Title: "Log in", View: "login", Error: "Enter a valid username and password.", CSRFField: csrf.TemplateField(r)})
+		server.render(w, pageData{Title: "Log in", View: "login", Error: "Enter a valid username and password.", CSRFToken: nosurf.Token(r)})
 		return
 	}
 	clientKey := auth.ClientKey(r.RemoteAddr, r.Header.Get("X-Forwarded-For"), server.trustedProxies)
@@ -62,7 +62,7 @@ func (server *authServer) login(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, auth.ErrRateLimited) {
 			message = "Too many attempts. Wait briefly, then try again."
 		}
-		server.render(w, pageData{Title: "Log in", View: "login", Error: message, CSRFField: csrf.TemplateField(r)})
+		server.render(w, pageData{Title: "Log in", View: "login", Error: message, CSRFToken: nosurf.Token(r)})
 		return
 	}
 	if err := server.manager.StartSession(r.Context(), user); err != nil {
@@ -86,7 +86,7 @@ func (server *authServer) setupPage(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	server.render(w, pageData{Title: "Secure your account", View: "setup", Username: user.Username, CSRFField: csrf.TemplateField(r)})
+	server.render(w, pageData{Title: "Secure your account", View: "setup", Username: user.Username, CSRFToken: nosurf.Token(r)})
 }
 
 func (server *authServer) changePassword(w http.ResponseWriter, r *http.Request) {
@@ -101,12 +101,12 @@ func (server *authServer) changePassword(w http.ResponseWriter, r *http.Request)
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
 	if err := r.ParseForm(); err != nil {
-		server.render(w, pageData{Title: "Secure your account", View: "setup", Username: user.Username, Error: "Enter a valid new password.", CSRFField: csrf.TemplateField(r)})
+		server.render(w, pageData{Title: "Secure your account", View: "setup", Username: user.Username, Error: "Enter a valid new password.", CSRFToken: nosurf.Token(r)})
 		return
 	}
 	password := r.FormValue("password")
 	if password != r.FormValue("confirm_password") {
-		server.render(w, pageData{Title: "Secure your account", View: "setup", Username: user.Username, Error: "The passwords do not match.", CSRFField: csrf.TemplateField(r)})
+		server.render(w, pageData{Title: "Secure your account", View: "setup", Username: user.Username, Error: "The passwords do not match.", CSRFToken: nosurf.Token(r)})
 		return
 	}
 	updated, err := server.manager.ChangePassword(r.Context(), user, password)
@@ -117,7 +117,7 @@ func (server *authServer) changePassword(w http.ResponseWriter, r *http.Request)
 		} else if errors.Is(err, auth.ErrPasswordUnchanged) {
 			message = "Choose a password different from the temporary password."
 		}
-		server.render(w, pageData{Title: "Secure your account", View: "setup", Username: user.Username, Error: message, CSRFField: csrf.TemplateField(r)})
+		server.render(w, pageData{Title: "Secure your account", View: "setup", Username: user.Username, Error: message, CSRFToken: nosurf.Token(r)})
 		return
 	}
 	if err := server.manager.StartSession(r.Context(), updated); err != nil {
@@ -146,7 +146,7 @@ func (server *authServer) dashboard(w http.ResponseWriter, r *http.Request) {
 	if len(runes) > 0 {
 		initial = strings.ToUpper(string(runes[0]))
 	}
-	server.render(w, pageData{Title: "Overview", View: "dashboard", Username: user.Username, Initial: initial, CSRFField: csrf.TemplateField(r)})
+	server.render(w, pageData{Title: "Overview", View: "dashboard", Username: user.Username, Initial: initial, CSRFToken: nosurf.Token(r)})
 }
 
 func (server *authServer) requireUser(allowPasswordChange bool, next http.Handler) http.Handler {

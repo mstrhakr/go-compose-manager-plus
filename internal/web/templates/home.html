@@ -8,7 +8,7 @@
     <p class="lede">Sign in to manage your Compose projects.</p>
     {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
     <form action="/login" method="post" class="auth-form">
-      {{.CSRFField}}
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <label for="username">Username</label>
       <input id="username" name="username" autocomplete="username" required autofocus>
       <label for="password">Password</label>
@@ -28,14 +28,14 @@
     <p class="account-label">Administrator <strong>{{.Username}}</strong></p>
     {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
     <form action="/setup/password" method="post" class="auth-form">
-      {{.CSRFField}}
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <label for="password">New password</label>
       <input id="password" name="password" type="password" autocomplete="new-password" minlength="15" required autofocus>
       <label for="confirm-password">Confirm new password</label>
       <input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="15" required>
       <button class="primary-button" type="submit">Save password <span aria-hidden="true">&#8594;</span></button>
     </form>
-    <form action="/logout" method="post" class="secondary-form">{{.CSRFField}}<button class="text-button" type="submit">Sign out instead</button></form>
+    <form action="/logout" method="post" class="secondary-form"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="text-button" type="submit">Sign out instead</button></form>
   </section>
 </main>
 {{else}}
@@ -54,7 +54,7 @@
   <main class="dashboard-main">
     <header class="topbar">
       <div><p class="eyebrow">DOCKER HOST <span class="host-dot"></span></p><strong>Local instance</strong></div>
-      <div class="user-menu"><span class="avatar">{{.Initial}}</span><span>{{.Username}}</span><form action="/logout" method="post">{{.CSRFField}}<button class="text-button" type="submit">Sign out</button></form></div>
+      <div class="user-menu"><span class="avatar">{{.Initial}}</span><span>{{.Username}}</span><form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="text-button" type="submit">Sign out</button></form></div>
     </header>
     <section class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1>System status</h1><p class="lede">Your Compose workspace at a glance.</p></div><button class="quiet-button" type="button" disabled>Refresh</button></section>
     <section class="status-grid" aria-label="System summary">

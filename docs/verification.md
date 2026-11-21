@@ -105,8 +105,21 @@ pending `feat/local-auth` work before delivery.
 - `node scripts/scan-image.mjs go-compose-manager-plus:dev`: failed on
   CVE-2025-47909 in `github.com/gorilla/csrf`. The Go reachability scan reports
   the affected code is not called, and this application does not configure
-  `TrustedOrigins`; nevertheless the image scan blocks the current dependency.
-  No scanner exception or security middleware migration has been approved.
+  `TrustedOrigins`; nevertheless the image scan blocked the dependency. The owner
+  approved retaining token and browser-origin protections while replacing the
+  library. The replacement uses `nosurf` masked double-submit tokens with a
+  host-only cookie (and `__Host-` prefix on HTTPS), strict same-origin checks,
+  and Go's cross-origin middleware; it is not the previous signed cookie.
+- After the review fixes, `PLAYWRIGHT_PORT=18148 make check` and
+  `make check-security` passed; the latter reported no vulnerabilities.
+  `docker buildx build --load -t go-compose-manager-plus:auth-review .`
+  and `node scripts/scan-image.mjs go-compose-manager-plus:auth-review`
+  passed, with zero image findings. Focused tests cover schema-v1 migration,
+  stale session commits after logout, expiry cleanup, oversized auth forms and
+  per-client login-key limits. Session cleanup runs on subsequent session
+  commits: expired data is cleared and revoked token markers remain until the
+  absolute session deadline, preventing stale requests from restoring them.
+  No hosted run of these changes is claimed yet.
 
 The dashboard is a visual/authenticated shell with explicit placeholders. Docker
 Engine/Compose discovery, real status, network/volume management and lifecycle
