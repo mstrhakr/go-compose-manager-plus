@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	_ "modernc.org/sqlite"
@@ -54,7 +55,7 @@ func TestBootstrapIsOneTimeAndPersists(t *testing.T) {
 	}
 	if info, err := os.Stat(filepath.Join(dataDir, "app.db")); err != nil {
 		t.Fatal(err)
-	} else if info.Mode().Perm() != 0o600 {
+	} else if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
 		t.Fatalf("database permissions = %o, want 600", info.Mode().Perm())
 	}
 }

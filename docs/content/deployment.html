@@ -19,7 +19,8 @@ variables, not dotenv files. The app persists SQLite state in the named
 <code>app-data</code> volume mounted at <code>/data</code>. Back up this local state
 consistently. Network-shared databases and concurrent multi-instance operation
 are unsupported. Loss of the state volume has no automatic password-reset
-recovery flow.</p>
+recovery flow. On Windows, Unix permission bits do not enforce database
+privacy; restrict access to the data directory using Windows access controls.</p>
 <p>The app's built-in default listener is loopback-only for local use. For reverse
 proxy access, set <code>APP_PUBLIC_URL</code> to the external HTTPS origin and
 <code>APP_TRUSTED_PROXIES</code> to only the immediate proxy CIDRs. Prevent direct

@@ -94,6 +94,19 @@ pending `feat/local-auth` work before delivery.
   bridge port from this development environment, so no additional HTTP
   authentication result is claimed beyond the container verification recorded
   above.
+- Initial PR CI found that the Windows test incorrectly expected POSIX mode
+  bits, and the container smoke job omitted the required bootstrap credentials.
+  The test now checks POSIX mode only on applicable systems; both validation
+  and release-image smoke jobs provide disposable test credentials. Locally,
+  `go test ./internal/auth -count=1`, `PLAYWRIGHT_PORT=18148 make check`,
+  `make check-workflows`, and the Docker liveness smoke passed. Native Windows
+  and hosted workflow results for the fixes require CI verification; Windows
+  data-directory ACL protection is not tested by the POSIX mode check.
+- `node scripts/scan-image.mjs go-compose-manager-plus:dev`: failed on
+  CVE-2025-47909 in `github.com/gorilla/csrf`. The Go reachability scan reports
+  the affected code is not called, and this application does not configure
+  `TrustedOrigins`; nevertheless the image scan blocks the current dependency.
+  No scanner exception or security middleware migration has been approved.
 
 The dashboard is a visual/authenticated shell with explicit placeholders. Docker
 Engine/Compose discovery, real status, network/volume management and lifecycle
