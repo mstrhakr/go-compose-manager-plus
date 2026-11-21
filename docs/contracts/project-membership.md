@@ -4,7 +4,7 @@ weight = 4
 +++
 # PROJ: Project Membership And Activation
 
-**Status:** Draft / nine individually approved requirements; not wholly approved
+**Status:** Draft / ten individually approved requirements; not wholly approved
 or implemented.
 
 **Baseline:** Owner refinement on 2026-11-19, from product revision `f4d6148`.
@@ -145,7 +145,8 @@ selected standard Compose filenames for initial discovery: `compose.yaml`,
 folder solely because `.env` sets `COMPOSE_FILE` is deferred. This is a discovery
 eligibility boundary, not a change to native input resolution for a selected
 project under RES-005/006. Syntactic validity, symlinks, UI-created empty projects,
-custom inputs and already-listed projects whose files disappear remain unresolved.
+custom inputs and other already-listed project lifecycle cases remain unresolved.
+PROJ-010 covers an absent previously discovered project.
 
 **Source provenance:** Standalone owner decision, deliberately narrower than
 source STK-LIFE-01/18's directory-based plugin membership. See the
@@ -232,6 +233,23 @@ previous open question about a possible deactivation workflow.
 
 **Enforcement:** Not implemented. No activation/deactivation controls exist.
 
+### PROJ-010: Retain Previously Discovered Projects That Disappear
+
+When a previously discovered project is no longer found because its folder or
+recognized Compose file has disappeared before a successful scan, retain its
+saved listing and activation state and mark it unavailable. A failed scan is
+not proof that projects were removed.
+
+**Approval:** Owner selected this behavior on 2026-11-21 for persistent
+discovery listing, rather than removing the entry after a successful scan.
+This does not decide explicit removal, identity after replacement or recreation,
+partial scan handling, validation or how unavailable entries recover.
+
+**Source provenance:** Direct standalone owner decision, not adoption of plugin
+removal or deletion semantics.
+
+**Enforcement:** Not implemented or verified.
+
 ## Dependencies
 
 - Depends on [RES](project-resolution.md) before actions: listing and active state
@@ -293,6 +311,9 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   acquisition does not by itself approve a deployment or CI automation policy.
 - PROJ-009: An active stack offers no deactivate action in UI or other supported
   manager entry points. Removal/deletion behavior is not inferred from this case.
+- PROJ-010: A previously discovered and activated project whose folder or
+  recognized file is absent on a successful scan remains listed as unavailable
+  with activation state preserved. A failed scan is not evidence of removal.
 
 ## Decisions
 
@@ -326,6 +347,10 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   and PROJ-002's scope is narrowed explicitly rather than silently generalized.
 - 2026-11-19: Owner ruled out a deactivate option (PROJ-009). This settles the
   earlier deactivation question, not removal/deletion or CI deployment approval.
+- 2026-11-21: Owner selected persistent listing rather than a scan-only preview
+  for the next slice, and chose to retain an absent previously discovered entry
+  as unavailable with its activation state intact (PROJ-010). Other state and
+  path rules remain to be decided before implementation.
 - Open: Root count, candidate-path suggestions, running-container evidence,
   remaining discovery eligibility, symlinks, filesystem/path permissions
   and scan error/results presentation. Runtime refresh is a separate boundary.
@@ -343,4 +368,4 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 No management behavior or SDK integration exists; no behavioral acceptance tests,
 native-host measurements or plugin tests were run for this decision record.
 Document checks can validate structure, IDs and links, not enforcement or approval.
-The whole draft remains unapproved despite its nine individually approved entries.
+The whole draft remains unapproved despite its ten individually approved entries.

@@ -20,6 +20,13 @@ bootstrap publishes their branches or modifies their worktrees.
 
 ## Standalone Owner Refinement
 
+2026-11-21: owner chose persistent project listing over a scan-only preview for
+the next slice. For a previously discovered project absent on a successful scan,
+the owner selected retaining its listing and activation state as unavailable;
+scan failure is not proof of removal. See
+[PROJ-010](../contracts/project-membership.md#proj-010-retain-previously-discovered-projects-that-disappear).
+Removal and other lifecycle details remain open.
+
 2026-11-21: owner selected the four standard Compose filenames for initial
 discovery, deferring `.env`-only `COMPOSE_FILE` discovery. This does not change
 native resolution of selected projects or settle validation and symlink policy.
