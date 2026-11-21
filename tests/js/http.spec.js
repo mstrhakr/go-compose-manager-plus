@@ -7,9 +7,9 @@ test('health endpoint returns JSON liveness and security headers', async ({ requ
   expect(response.headers()['content-type']).toBe('application/json');
   expect(await response.json()).toEqual({ status: 'ok' });
   expect(response.headers()['x-content-type-options']).toBe('nosniff');
-  expect(response.headers()['referrer-policy']).toBe('no-referrer');
+  expect(response.headers()['referrer-policy']).toBe('same-origin');
   expect(response.headers()['content-security-policy']).toBe(
-    "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   );
 });
 
@@ -21,7 +21,7 @@ test('HEAD preserves health metadata without a body', async ({ request }) => {
   expect(await response.body()).toHaveLength(0);
 });
 
-test('unknown paths are not served the landing page', async ({ request }) => {
+test('unknown paths are not served the application shell', async ({ request }) => {
   const response = await request.get('/missing');
 
   expect(response.status()).toBe(404);
@@ -35,18 +35,22 @@ test('health endpoint rejects mutations', async ({ request }) => {
   expect(response.headers().allow).toBe('GET, HEAD');
 });
 
-test('htmx receives escaped HTML fragments instead of full pages', async ({ request }) => {
-  const response = await request.get('/', {
-    params: { name: '<img src=x onerror=alert(1)>' },
-    headers: { 'HX-Request': 'true' },
-  });
+test('application home redirects unauthenticated requests to login', async ({ request }) => {
+  const response = await request.get('/', { maxRedirects: 0 });
+
+  expect(response.status()).toBe(303);
+  expect(response.headers().location).toBe('/login');
+});
+
+test('login page escapes input-free copy and includes a CSRF form token', async ({ request }) => {
+  const response = await request.get('/login');
 
   expect(response.status()).toBe(200);
-  expect(response.headers().vary).toContain('HX-Request');
   const html = await response.text();
-  expect(html).toContain('&lt;img');
-  expect(html).not.toContain('<img');
-  expect(html).not.toContain('<!doctype');
+  expect(html).toContain('Welcome back');
+  expect(html).toContain('name="gorilla.csrf.Token"');
+  expect(html).toContain('autocomplete="current-password"');
+  expect(html).not.toContain('Hello,');
 });
 
 test('htmx is served locally', async ({ request }) => {

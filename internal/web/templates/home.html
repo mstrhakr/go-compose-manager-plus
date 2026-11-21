@@ -1,11 +1,74 @@
 {{define "home"}}
-<form action="/" method="get" hx-get="/" hx-target="#greeting" hx-swap="innerHTML" hx-disabled-elt="find button">
-  <label for="name">Name</label>
-  <div class="fields">
-    <input id="name" name="name" value="{{.Name}}" maxlength="100" autocomplete="given-name">
-    <button type="submit">Greet</button>
-  </div>
-</form>
-<section id="greeting" aria-label="Greeting" role="status" aria-live="polite">{{template "greeting" .}}</section>
-<p id="request-error" role="alert" hidden></p>
+{{if eq .View "login"}}
+<main class="auth-layout">
+  <section class="auth-panel" aria-labelledby="login-title">
+    <a class="brand-lockup" href="/login" aria-label="Compose Manager Plus home"><span class="brand-mark">C</span><span>COMPOSE MANAGER <b>PLUS</b></span></a>
+    <p class="eyebrow">LOCAL INSTANCE</p>
+    <h1 id="login-title">Welcome back</h1>
+    <p class="lede">Sign in to manage your Compose projects.</p>
+    {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+    <form action="/login" method="post" class="auth-form">
+      {{.CSRFField}}
+      <label for="username">Username</label>
+      <input id="username" name="username" autocomplete="username" required autofocus>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button class="primary-button" type="submit">Sign in <span aria-hidden="true">&#8594;</span></button>
+    </form>
+    <p class="auth-footnote">Protected local administration</p>
+  </section>
+</main>
+{{else if eq .View "setup"}}
+<main class="auth-layout">
+  <section class="auth-panel" aria-labelledby="setup-title">
+    <a class="brand-lockup" href="/login" aria-label="Compose Manager Plus home"><span class="brand-mark">C</span><span>COMPOSE MANAGER <b>PLUS</b></span></a>
+    <p class="eyebrow">INITIAL SETUP <span class="step-mark">01 / 01</span></p>
+    <h1 id="setup-title">Secure your account</h1>
+    <p class="lede">Set a new password before opening your dashboard.</p>
+    <p class="account-label">Administrator <strong>{{.Username}}</strong></p>
+    {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+    <form action="/setup/password" method="post" class="auth-form">
+      {{.CSRFField}}
+      <label for="password">New password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="15" required autofocus>
+      <label for="confirm-password">Confirm new password</label>
+      <input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" minlength="15" required>
+      <button class="primary-button" type="submit">Save password <span aria-hidden="true">&#8594;</span></button>
+    </form>
+    <form action="/logout" method="post" class="secondary-form">{{.CSRFField}}<button class="text-button" type="submit">Sign out instead</button></form>
+  </section>
+</main>
+{{else}}
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand-lockup" href="/" aria-label="Compose Manager Plus overview"><span class="brand-mark">C</span><span class="brand-name">COMPOSE MANAGER <b>PLUS</b></span></a>
+    <p class="nav-caption">WORKSPACE</p>
+    <nav aria-label="Main navigation">
+      <a class="nav-item active" href="/" aria-current="page"><span class="nav-glyph" aria-hidden="true">&#9638;</span>Overview</a>
+      <a class="nav-item disabled" aria-disabled="true"><span class="nav-glyph" aria-hidden="true">&#9636;</span>Stacks <span class="nav-count">0</span></a>
+      <a class="nav-item disabled" aria-disabled="true"><span class="nav-glyph" aria-hidden="true">&#9678;</span>Networks</a>
+      <a class="nav-item disabled" aria-disabled="true"><span class="nav-glyph" aria-hidden="true">&#9633;</span>Volumes</a>
+    </nav>
+    <div class="sidebar-bottom"><span class="connection-dot"></span><span>Local host</span><span class="connection-label">SETUP</span></div>
+  </aside>
+  <main class="dashboard-main">
+    <header class="topbar">
+      <div><p class="eyebrow">DOCKER HOST <span class="host-dot"></span></p><strong>Local instance</strong></div>
+      <div class="user-menu"><span class="avatar">{{.Initial}}</span><span>{{.Username}}</span><form action="/logout" method="post">{{.CSRFField}}<button class="text-button" type="submit">Sign out</button></form></div>
+    </header>
+    <section class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1>System status</h1><p class="lede">Your Compose workspace at a glance.</p></div><button class="quiet-button" type="button" disabled>Refresh</button></section>
+    <section class="status-grid" aria-label="System summary">
+      <article class="status-card"><div class="card-label">STACKS <span aria-hidden="true">&#9636;</span></div><strong>--</strong><p>Not connected</p></article>
+      <article class="status-card"><div class="card-label">CONTAINERS <span aria-hidden="true">&#9638;</span></div><strong>--</strong><p>Docker integration pending</p></article>
+      <article class="status-card"><div class="card-label">CPU USAGE <span aria-hidden="true">&#10038;</span></div><strong>--</strong><p>Live metrics pending</p></article>
+      <article class="status-card"><div class="card-label">MEMORY <span aria-hidden="true">&#9641;</span></div><strong>--</strong><p>Live metrics pending</p></article>
+    </section>
+    <section class="workspace-panel" aria-labelledby="workspace-title">
+      <div class="panel-heading"><div><h2 id="workspace-title">Compose projects</h2><p>No projects are connected to this dashboard yet.</p></div><span class="panel-count">0 PROJECTS</span></div>
+      <div class="empty-state"><span class="empty-glyph" aria-hidden="true">&#9636;</span><h3>Workspace ready</h3><p>Project discovery and folder selection will appear here.</p></div>
+    </section>
+    <footer class="dashboard-footer"><span><span class="connection-dot"></span> Application online</span><a href="/healthz">Health</a></footer>
+  </main>
+</div>
+{{end}}
 {{end}}
