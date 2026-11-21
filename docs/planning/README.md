@@ -59,9 +59,12 @@ authorization. Updated 2026-11-21. This repository contains the end product.
   Activation grants permission only: no Compose execution,
   project-file rewriting or schedule enablement. See
   [PROJ-001 through PROJ-009](../contracts/project-membership.md). Exact input
-  recognition, picker path policy, other remaining discovery details and
+  recognition validity, picker path policy, other remaining discovery details and
   activation validation/persistence remain unresolved; no implementation is
   authorized by these decisions.
+- Initially recognize direct-child folders by the standard Compose filenames;
+  discovery based solely on `.env` `COMPOSE_FILE` is deferred. This does not
+  change native input resolution for selected projects.
 - Approval is slice-specific, not authorization for a plugin rewrite,
   shared-backend migration or the entire source roadmap.
 - Prioritize maintainability and clear ownership boundaries within the standalone

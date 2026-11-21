@@ -48,8 +48,9 @@ narrows root-scan eligibility to recognized Compose projects, makes discovery
 on-demand or optional during setup, and adds individual folder selection without
 a prerequisite scan. PROJ-001's automatic inclusion applies when a requested
 scan runs, not continuously. The plugin's directory membership is not adopted
-as a rule to list arbitrary data folders. Exact recognition and picker path
-policies remain open.
+as a rule to list arbitrary data folders. The owner selected the four standard
+Compose filenames for initial discovery and deferred `.env`-only `COMPOSE_FILE`
+discovery; other recognition details and picker path policies remain open.
 
 Standalone [OPS-001](../contracts/operation-coordination.md) now owns approved
 bounded same-stack queueing and serialized execution for manual/CI mutations.

@@ -52,7 +52,8 @@ management changes. PROJ-007 separately allows one-at-a-time folder selection.
 
 **Approval:** Approved by the owner on 2026-11-19. PROJ-004 settles depth,
 PROJ-005 eligibility at a high level, and PROJ-006 the discovery trigger.
-Exact filenames and missing/invalid-file handling remain open.
+Initial recognized filenames are bounded under PROJ-005; missing/invalid-file
+handling remains open.
 
 **Source provenance:** Source STK-LIFE-01/18 distinguish directory discovery and
 membership. The standalone owner selected automatic inclusion after discussing
@@ -138,10 +139,13 @@ every immediate child directory into a project row. Ordinary data, backup or
 grouping directories without recognized Compose inputs are not included solely
 because they are beneath the selected root.
 
-**Approval:** Owner selected option A on 2026-11-19. This defines discovery
-eligibility at a high level, not exact supported filenames or syntactic validity
-rules. UI-created empty projects, custom inputs and already-listed projects whose
-files disappear remain unresolved.
+**Approval:** Owner selected option A on 2026-11-19. On 2026-11-21, the owner
+selected standard Compose filenames for initial discovery: `compose.yaml`,
+`compose.yml`, `docker-compose.yml`, and `docker-compose.yaml`. Discovering a
+folder solely because `.env` sets `COMPOSE_FILE` is deferred. This is a discovery
+eligibility boundary, not a change to native input resolution for a selected
+project under RES-005/006. Syntactic validity, symlinks, UI-created empty projects,
+custom inputs and already-listed projects whose files disappear remain unresolved.
 
 **Source provenance:** Standalone owner decision, deliberately narrower than
 source STK-LIFE-01/18's directory-based plugin membership. See the
@@ -275,7 +279,9 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   `/srv/compose/media` itself meets project eligibility rules.
 - PROJ-005: A requested scan lists `jellyfin/compose.yaml` as a detected project,
   not sibling `appdata/` or `backups/` directories without recognized Compose
-  inputs. The example filename does not settle the complete recognition rules.
+  inputs. The initial recognized names also include `compose.yml`,
+  `docker-compose.yml`, and `docker-compose.yaml`; `.env`-only `COMPOSE_FILE`
+  discovery is deferred. Validity and path handling remain separate questions.
 - PROJ-006: Complete setup without running discovery, then request it later.
   Adding a folder on disk alone does not trigger a background discovery scan.
 - PROJ-007: Without scanning a root, browse for one eligible stack folder and
@@ -306,6 +312,10 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 - 2026-11-19: Owner selected recognized Compose projects only (PROJ-005), rather
   than every child directory. This approval was pending documentation at the next
   message and is recorded here with its original scope.
+- 2026-11-21: Owner selected the four standard Compose filenames as the initial
+  discovery recognition boundary, deferring `.env`-only `COMPOSE_FILE` discovery.
+  This does not disable native `COMPOSE_FILE` resolution for selected projects
+  or settle malformed-file and path-safety behavior.
 - 2026-11-19: Owner added on-demand/optional-setup discovery (PROJ-006) and
   individual folder browsing (PROJ-007). PROJ-001 retains automatic inclusion
   when a requested scan runs; no continuous discovery is implied. PROJ-004's
@@ -317,7 +327,7 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 - 2026-11-19: Owner ruled out a deactivate option (PROJ-009). This settles the
   earlier deactivation question, not removal/deletion or CI deployment approval.
 - Open: Root count, candidate-path suggestions, running-container evidence,
-  exact discovery eligibility/filenames, symlinks, filesystem/path permissions
+  remaining discovery eligibility, symlinks, filesystem/path permissions
   and scan error/results presentation. Runtime refresh is a separate boundary.
   Handling a Compose file directly in the root remains open.
 - Open: UI-created projects, outside-root projects, empty/invalid directories,

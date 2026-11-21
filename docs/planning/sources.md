@@ -20,6 +20,15 @@ bootstrap publishes their branches or modifies their worktrees.
 
 ## Standalone Owner Refinement
 
+2026-11-21: owner selected the four standard Compose filenames for initial
+discovery, deferring `.env`-only `COMPOSE_FILE` discovery. This does not change
+native resolution of selected projects or settle validation and symlink policy.
+See [PROJ-005](../contracts/project-membership.md#proj-005-discover-compose-projects-rather-than-every-directory).
+Compose Specification `03-compose-file.md` at `3a4a6995e4a971f6173dff9130cb3e38e6738651`
+names the default and compatibility filenames; it does not prescribe manager
+discovery. The selected model loader's `cli.DefaultFileNames` supplies these names
+in its own precedence order.
+
 2026-11-20: owner approved [AUTH-006](../contracts/authentication.md#auth-006-bootstrap-env-does-not-reset-persisted-credentials):
 bootstrap env seeds initial auth state only; persisted credentials/setup state
 remain authoritative across restarts, and recovery/reset is explicit and separate.
