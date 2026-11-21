@@ -14,7 +14,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 1
+const schemaVersion = 2
 
 var (
 	ErrBootstrapComplete = errors.New("initial administrator is already provisioned")
@@ -129,12 +129,35 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		if err := migrateV1(ctx, tx); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES (?)`, schemaVersion); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES (1)`); err != nil {
+			return fmt.Errorf("record database schema version: %w", err)
+		}
+		currentVersion = 1
+	}
+	if currentVersion == 1 {
+		if err := migrateV2(ctx, tx); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES (2)`); err != nil {
 			return fmt.Errorf("record database schema version: %w", err)
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit application database migration: %w", err)
+	}
+	return nil
+}
+
+func migrateV2(ctx context.Context, tx *sql.Tx) error {
+	for _, statement := range []string{
+		`ALTER TABLE sessions ADD COLUMN deadline_unix INTEGER NOT NULL DEFAULT 0`,
+		`ALTER TABLE sessions ADD COLUMN revoked INTEGER NOT NULL DEFAULT 0`,
+		`UPDATE sessions SET deadline_unix = expiry_unix + 43200`,
+		`CREATE INDEX sessions_deadline_idx ON sessions(deadline_unix)`,
+	} {
+		if _, err := tx.ExecContext(ctx, statement); err != nil {
+			return fmt.Errorf("apply database migration v2: %w", err)
+		}
 	}
 	return nil
 }
@@ -198,25 +221,6 @@ func (database *Database) NeedsBootstrap(ctx context.Context) (bool, error) {
 		return false, err
 	}
 	return value == "0", nil
-}
-
-func (database *Database) CSRFSecret(ctx context.Context) ([]byte, error) {
-	secret, err := randomHex(32)
-	if err != nil {
-		return nil, fmt.Errorf("generate CSRF secret: %w", err)
-	}
-	if _, err := database.SQL.ExecContext(ctx, `UPDATE app_state SET value = ? WHERE key = 'csrf_secret' AND value = ''`, secret); err != nil {
-		return nil, fmt.Errorf("initialize CSRF secret: %w", err)
-	}
-	var stored string
-	if err := database.SQL.QueryRowContext(ctx, `SELECT value FROM app_state WHERE key = 'csrf_secret'`).Scan(&stored); err != nil {
-		return nil, fmt.Errorf("read CSRF secret: %w", err)
-	}
-	decoded, err := hex.DecodeString(stored)
-	if err != nil || len(decoded) != 32 {
-		return nil, errors.New("stored CSRF secret is invalid")
-	}
-	return decoded, nil
 }
 
 func (database *Database) ProvisionInitialAdmin(ctx context.Context, username, passwordHash string) (User, error) {
