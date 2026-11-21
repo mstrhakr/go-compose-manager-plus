@@ -32,9 +32,10 @@ Node unit tests use the built-in runner; HTTP and browser tests use Playwright.<
 configuration tests and handler tests near the implementation. For an individual
 package, run <code>go test -race ./internal/web</code>.</p>
 <h2>Dependencies and updates</h2>
-<p>The service uses only the Go standard library, so there is no <code>go.sum</code>
-yet. Use <code>go get module@version</code> and <code>go mod tidy</code> when adding
-dependencies, and commit both module files. Docker copies both automatically.</p>
+<p>The auth slice uses third-party Go modules for SQLite, password hashing,
+server-side sessions and CSRF protection. Use <code>go get module@version</code>
+and <code>go mod tidy</code> when adding dependencies, and commit both module
+files. Docker copies both automatically.</p>
 <p>Dependabot checks Go modules/toolchain, npm, GitHub Actions references in
 workflows, and Dockerfile base images. Weekly version updates group minor and
 patch updates by ecosystem; majors get individual PRs. Security updates use

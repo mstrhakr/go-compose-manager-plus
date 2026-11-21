@@ -46,3 +46,82 @@ helper completed successfully, with readback confirming active protected-main
 and immutable-version-tag rulesets, selected SHA-pinned Actions, disabled
 release/container publishing and a release environment requiring owner approval.
 This settings readback is not evidence that hosted workflows have run.
+
+## Local Authentication Slice
+
+Date: 2026-11-20. Branch: `feat/local-auth`, based on product main `f3f3820`.
+Scope: AUTH-001 through AUTH-006 implementation slice for one-time local admin
+bootstrap, local login, forced initial password change, SQLite-backed sessions,
+protected dashboard shell and container/Compose configuration. This is partial
+contract enforcement, not a production Compose manager.
+
+- `go test ./cmd/server ./internal/auth ./internal/config ./internal/web -count=1`:
+  passed.
+- `PLAYWRIGHT_PORT=18127 npm run test:js`: passed, 7 tests.
+- `PLAYWRIGHT_PORT=18128 npm run test:e2e`: passed, 9 tests; 3 expected skips
+  because the one-time provisioning case runs only in desktop Chromium.
+- `docker compose config --quiet`: passed.
+- `make check`: passed Go race tests, vet, formatting and build; 14 Node unit
+  tests, 7 HTTP tests, 9 browser tests with 3 intentional skips; asset and
+  contract structure checks.
+- `make check-security`: npm audit found no vulnerabilities; govulncheck found
+  no reachable vulnerabilities, while reporting one advisory in an imported
+  package whose vulnerable function is not called.
+- `make docs`: passed with Hugo 0.169.0.
+- `docker buildx build --no-cache --load -t go-compose-manager-plus:dev .`:
+  passed. A disposable non-root, read-only container and dedicated data volume
+  passed login, initial password change and restart persistence checks. A second
+  container verified login over the Docker bridge. The image was not published
+  or scanned; access through the remote Docker host's published port was not
+  verified from this development container.
+
+## 2026-11-21 Follow-Up
+
+Environment: Linux development container. Scope: finish and revalidate the
+pending `feat/local-auth` work before delivery.
+
+- `make check`: passed Go race tests, vet, formatting and build; 14 Node unit
+  tests, 7 HTTP tests, 9 browser tests with 3 intentional skips; asset and
+  contract structure checks.
+- `make check-security`: npm audit reported zero vulnerabilities;
+  govulncheck reported no reachable vulnerabilities.
+- `docker compose config --quiet`: passed.
+- `docker buildx build --no-cache --load -t go-compose-manager-plus:dev .`:
+  passed.
+- `make docs`: not run successfully because Hugo is not installed in the
+  current environment.
+- A follow-up disposable container smoke could not reach its published or Docker
+  bridge port from this development environment, so no additional HTTP
+  authentication result is claimed beyond the container verification recorded
+  above.
+- Initial PR CI found that the Windows test incorrectly expected POSIX mode
+  bits, and the container smoke job omitted the required bootstrap credentials.
+  The test now checks POSIX mode only on applicable systems; both validation
+  and release-image smoke jobs provide disposable test credentials. Locally,
+  `go test ./internal/auth -count=1`, `PLAYWRIGHT_PORT=18148 make check`,
+  `make check-workflows`, and the Docker liveness smoke passed. Native Windows
+  and hosted workflow results for the fixes require CI verification; Windows
+  data-directory ACL protection is not tested by the POSIX mode check.
+- `node scripts/scan-image.mjs go-compose-manager-plus:dev`: failed on
+  CVE-2025-47909 in `github.com/gorilla/csrf`. The Go reachability scan reports
+  the affected code is not called, and this application does not configure
+  `TrustedOrigins`; nevertheless the image scan blocked the dependency. The owner
+  approved retaining token and browser-origin protections while replacing the
+  library. The replacement uses `nosurf` masked double-submit tokens with a
+  host-only cookie (and `__Host-` prefix on HTTPS), strict same-origin checks,
+  and Go's cross-origin middleware; it is not the previous signed cookie.
+- After the review fixes, `PLAYWRIGHT_PORT=18148 make check` and
+  `make check-security` passed; the latter reported no vulnerabilities.
+  `docker buildx build --load -t go-compose-manager-plus:auth-review .`
+  and `node scripts/scan-image.mjs go-compose-manager-plus:auth-review`
+  passed, with zero image findings. Focused tests cover schema-v1 migration,
+  stale session commits after logout, expiry cleanup, oversized auth forms and
+  per-client login-key limits. Session cleanup runs on subsequent session
+  commits: expired data is cleared and revoked token markers remain until the
+  absolute session deadline, preventing stale requests from restoring them.
+  No hosted run of these changes is claimed yet.
+
+The dashboard is a visual/authenticated shell with explicit placeholders. Docker
+Engine/Compose discovery, real status, network/volume management and lifecycle
+actions are not implemented. Remote administration is not certified; configure
+TLS/proxy trust carefully and do not expose Docker socket access.

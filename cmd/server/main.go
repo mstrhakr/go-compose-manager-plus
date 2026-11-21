@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/config"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/web"
 )
@@ -51,9 +52,24 @@ func main() {
 }
 
 func run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
+	if ctx.Err() != nil {
+		return nil
+	}
+	database, err := auth.OpenDatabase(ctx, cfg.DataDir)
+	if err != nil {
+		return fmt.Errorf("open application state: %w", err)
+	}
+	defer database.SQL.Close()
+	authManager, err := auth.NewManager(ctx, database, cfg.PublicURL.Scheme == "https", cfg.TrustedProxyRanges)
+	if err != nil {
+		return fmt.Errorf("initialize authentication: %w", err)
+	}
+	if err := authManager.Bootstrap(ctx, cfg.BootstrapUsername, cfg.BootstrapPassword); err != nil {
+		return fmt.Errorf("initialize administrator: %w", err)
+	}
 	server := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           web.Handler(),
+		Handler:           web.Handler(authManager, cfg.PublicURL, cfg.TrustedProxyRanges),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,
