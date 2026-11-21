@@ -10,10 +10,13 @@ session and security policies awaiting review. AUTH-004 limits initial accounts
 to one admin with multi-user-capable identity; AUTH-005 selects env-provisioned
 credentials and a forced first-login password change in the setup wizard.
 AUTH-006 makes bootstrap provisioning one-time and preserves saved credentials.
+An initial local-auth/dashboard-shell slice is implemented on `feat/local-auth`;
+see [executed verification](../verification.md). The contract as a whole remains
+partially enforced and is not security certification or approval of deferred policy.
 
 **Baseline:** 2026-11-19, product `d47835b`, documentation-only refinement.
-The scaffold has public demo/health routes, no app login or sessions. No auth
-dependency, configuration or runtime guard has been added.
+The scaffold then had public demo/health routes, no app login or sessions. The
+current implementation status is tracked separately in executed verification.
 
 ## Purpose And Scope
 
@@ -51,7 +54,9 @@ TLS/proxy trust and exact route protections remain unresolved.
 **Source provenance:** Direct standalone owner decision. Plugin host authorization
 is context, not a standalone login design.
 
-**Enforcement:** Not implemented. The starter is not a secured Docker manager.
+**Enforcement:** Partially implemented on `feat/local-auth`: default app views
+require a local session and the dashboard is protected. No Docker management
+operations exist; this is not a secured Compose manager or remote-exposure certification.
 
 ### AUTH-002: Authentication Methods Share One Application Boundary
 
@@ -67,7 +72,8 @@ no provider, library, session representation or future fallback mode chosen.
 **Source provenance:** Direct owner direction, consistent with the approved
 maintainability/clear-ownership planning direction.
 
-**Enforcement:** Not implemented. OIDC account mapping, issuer/audience checks,
+**Enforcement:** Partially implemented: local authenticated identity flows
+through the shared web access boundary. OIDC account mapping, issuer/audience checks,
 redirect trust, recovery and local/OIDC coexistence need review before support.
 
 ### AUTH-003: Local Form Login With Server-Managed Sessions First
@@ -93,7 +99,10 @@ AUTH-004 subsequently settles the account scope, not those storage/security deta
 versus session tradeoff discussion. See the
 [authentication evidence](../planning/sources.md#authentication-evidence).
 
-**Enforcement:** Not implemented. Credential storage, bootstrap/recovery,
+**Enforcement:** Partially implemented: local form login, server-managed SQLite
+sessions, logout, expiry defaults, session rotation on login/password change, and
+shared route guards exist. Independent-device behavior and detailed session
+security cases still need verification. Credential recovery,
 session issuance/rotation/expiry/logout, cookie/proxy settings and access checks
 still need bounded decisions and execution-based security verification.
 
@@ -125,7 +134,10 @@ of this decision; OIDC remains deferred under AUTH-003.
 **Source provenance:** Direct standalone owner scope/maintainability decision,
 not an Unraid account model imported from the source plugin.
 
-**Enforcement:** Not implemented. Bootstrap, recovery, storage, session lifecycle,
+**Enforcement:** Partially implemented: stable random user IDs and session
+references exist, and provisioning transactionally enforces one initial account.
+Two-device independence, account extension/migrations and full revocation cases
+remain unverified. Bootstrap, recovery, storage, session lifecycle,
 and later account-management/revocation workflows remain to define and test.
 
 ### AUTH-005: Environment Bootstrap With Forced First-Login Password Change
@@ -150,7 +162,9 @@ obtained one-time setup credential is replaced, not independently approved.
 variable names, plaintext versus other supported provisioning formats, secret-file
 alternatives, persistence technology or native-service packaging details.
 
-**Enforcement:** Not implemented. First-run detection, validation of missing or
+**Enforcement:** Partially implemented: one-time env provisioning, forced
+password change, and protected route gating exist. The full fault/recovery cases
+remain unverified. First-run detection, validation of missing or
 partial bootstrap input, atomic setup/password-change completion, restart/env
 handling under AUTH-006, session transitions and recovery/reset implementation
 still need definition and verification.
@@ -174,7 +188,10 @@ values must retain the saved password, not reset it.
 **Source provenance:** Direct standalone owner decision. No credential values,
 configuration names or implementation mechanisms were requested or selected.
 
-**Enforcement:** Not implemented. Initial-state detection, concurrent startup,
+**Enforcement:** Partially implemented: completed credentials remain authoritative
+across ordinary restarts and existing unversioned application tables are rejected.
+Concurrent startup and failure/corruption injection cases remain unverified.
+Initial-state detection, concurrent startup,
 interrupted first-run/password-change persistence, unreadable/corrupt state and
 explicit recovery need execution-based validation before security claims.
 

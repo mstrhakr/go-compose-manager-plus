@@ -1,6 +1,6 @@
 # Compose Manager Plus
 
-A standalone, Compose-native manager being planned for resource-constrained
+A standalone, Compose-native manager for resource-constrained
 Ubuntu Docker hosts, including network and volume management. This is the
 end-product repository, not a separate planning repository.
 
@@ -9,14 +9,17 @@ useful workflows and portable business rules with a modern standalone interface.
 UniFi is the design inspiration; Unraid-specific UI and legacy compatibility
 machinery are not the target. Features will arrive in bounded, tested slices.
 
-**Current stage: scaffold and planning only.** The app currently runs the
-go-template greeting/health demonstration. It cannot manage Docker yet. No Docker
-socket, SDK dependency, credential store or management routes have been added.
+**Current stage: local authentication and dashboard shell.** The initial auth
+slice is implemented and its focused Go and browser checks pass. Docker/Compose
+integration and management actions are not connected yet; dashboard resource
+values are explicit placeholders, not host status. A development image has
+been built and smoke-tested locally; it has not been published.
 
 Start with the [product plan](docs/planning/README.md),
 [contract reuse map](docs/planning/contract-reuse.md), and
-[source provenance](docs/planning/sources.md). Proposed boundaries are not
-approved product contracts. Implementation needs agreement on a bounded slice.
+[source provenance](docs/planning/sources.md). These documents distinguish
+approved direction from proposals; the initial authentication/dashboard slice
+was explicitly authorized.
 Upload the redacted existing VM manager script to [scratch/](scratch/README.md);
 its other contents are ignored by Git and excluded from the Docker build.
 
@@ -27,17 +30,23 @@ release, image and documentation publishing remain disabled.
 
 ## Start here
 
-Install Go **1.27.4** (see `go.mod`), then:
+Install Go **1.27.4** (see `go.mod`). A fresh native run needs a bootstrap admin;
+keep the temporary password out of shell history and logs:
 
 ```sh
+read -rp 'Admin username: ' APP_BOOTSTRAP_USERNAME
+read -rsp 'Temporary admin password: ' APP_BOOTSTRAP_PASSWORD
+printf '\n'
+export APP_BOOTSTRAP_USERNAME APP_BOOTSTRAP_PASSWORD
 go run ./cmd/server
-curl http://localhost:8080/healthz
 ```
 
-Open <http://localhost:8080/>. Set `APP_ADDR=127.0.0.1:9000` to change the
-listener and `APP_LOG_LEVEL=debug` to adjust JSON logging. The default listener
-binds all interfaces; use loopback for local-only development.
-The service validates configuration and shuts down gracefully on SIGINT/SIGTERM.
+Open <http://127.0.0.1:8080/> and complete the forced first-login password change.
+The saved account/database is in `APP_DATA_DIR` (default `./data`); later restarts
+ignore changed bootstrap env values. The native listener defaults to loopback.
+`APP_ADDR`, `APP_PUBLIC_URL`, `APP_TRUSTED_PROXIES` and `APP_LOG_LEVEL` control
+listen/origin/proxy/log configuration. Do not expose admin routes without TLS,
+proxy trust, request protection and app authentication configured.
 
 ## Develop
 
@@ -65,9 +74,10 @@ checks when those surfaces change, as described in the development guide.
 Make is optional; see the Makefile for equivalent Go commands.
 
 ```text
-cmd/server/       process wiring, lifecycle, health probe
+cmd/server/       process wiring, auth-state lifecycle, health probe
 internal/config/  validated environment configuration
-internal/web/     HTTP handlers, HTML layouts/partials, embedded assets
+internal/auth/    SQLite account/bootstrap state, Argon2id, SCS sessions
+internal/web/     auth/access handlers, dashboard shell, local assets
 tests/            JS/unit, API, desktop/mobile browser regressions
 scripts/          test, security, CI/release and repository setup helpers
 docs/contracts/   canonical behavior definitions (not published by default)
@@ -76,28 +86,33 @@ docs/             self-contained Hugo documentation site
 ```
 
 Keep application logic in focused `internal` packages as requirements emerge.
-No database, authentication, scheduler, or client-rendering framework is imposed.
 Go owns business rules and escaped HTML; htmx owns server-driven updates; small
-JS modules own browser-local behavior. The greeting form demonstrates this and
-still works with JS disabled. See the [contract guide](docs/contracts/README.md).
+JS modules own browser-local behavior. Authentication is a first foundation;
+Docker/Compose operations, live state and schedules remain separate slices. See
+the [contract guide](docs/contracts/README.md).
 This foundation is imported from go-template; no Compose Manager or Docker
-Networks runtime code has been copied. Template development/deployment docs below
-describe the scaffold, not implemented Compose-management workflows.
+Networks runtime code has been copied. Development/deployment docs below describe
+the current auth foundation and repository tooling, not implemented
+Compose-management workflows.
 
 ## Deploy locally
 
 ```sh
 cp .env.example .env
+# Set APP_BOOTSTRAP_USERNAME and a temporary APP_BOOTSTRAP_PASSWORD in .env
 docker compose up --build -d
 docker compose logs -f
-docker compose down
 ```
 
-Compose binds `127.0.0.1:8080` by default. Change `APP_PORT` in `.env` for its
-host port; native Go execution reads exported variables, not `.env`.
-The image is multistage, non-root, and includes a built-in health probe. Compose
-uses a read-only filesystem and drops Linux capabilities. Put a TLS reverse
-proxy in front of any remotely accessible deployment.
+Open <http://127.0.0.1:8080/> and complete first-run setup. Compose binds loopback
+and persists the database in its `app-data` volume at `/data`. After setup, remove
+the bootstrap username/password from `.env` and restart; saved credentials remain
+authoritative and are not reset from environment values. Protect `.env` and Docker
+administration access: bootstrap variables may be visible to Docker administrators.
+For a reverse proxy set `APP_PUBLIC_URL` to the external HTTPS origin and
+`APP_TRUSTED_PROXIES` to only the immediate proxy CIDRs; the proxy must prevent
+untrusted direct-backend access. The image remains non-root, read-only except for
+the data volume, and drops Linux capabilities.
 
 ## Documentation
 
@@ -152,8 +167,7 @@ enabling publishing. The inherited
 release provenance schema URI and generic CI image labels may still refer to
 go-template; they are template tooling identifiers, not upstream release claims.
 
-The native starter is unauthenticated and binds all interfaces by default. Use
-loopback for staging. Docker socket access is effectively host-administrative;
-authentication, authorization, host/container paths and recovery must be decided
-before adding reachable administrative routes. The starter deployment is not
-yet a production Compose-manager deployment.
+The initial authentication/dashboard shell is not yet a production Compose
+manager. Docker socket access remains absent. Authentication does not itself
+authorize future per-project operations; request/proxy/session and host/container
+path policies still require verification before remote administration.

@@ -27,7 +27,7 @@ description of every implementation detail or a substitute for tests.
 | [OPS](operation-coordination.md) | Shared same-stack manual/CI mutation coordination | Draft; OPS-001 bounded queueing approved, detailed queue/lifecycle policies unresolved; not implemented or verified |
 | [RES](project-resolution.md) | Runtime identity and Compose inputs | Draft; RES-001/006 native naming/selection approved, RES-002 through RES-005 adopted portable source outcomes; env/profile and identity/adoption details unresolved; not implemented or verified |
 | [LIVE](live-state.md) | Dashboard home and live delivery | Draft; scope and SSE preference recorded, detailed recovery/collection/history policies proposed; not implemented or verified |
-| [AUTH](authentication.md) | App login and shared authentication boundary | Draft; AUTH-001 through AUTH-006 local/session auth, one-admin multi-user-ready identity and one-time env bootstrap with forced first-login password change approved; OIDC/multi-account delivery deferred, detailed recovery/security unresolved; not implemented or verified |
+| [AUTH](authentication.md) | App login and shared authentication boundary | Draft; AUTH-001 through AUTH-006 approved within stated scope; local-auth/dashboard-shell slice partially implemented and verified on `feat/local-auth`; OIDC, recovery, detailed security cases and Compose operations remain deferred or unverified |
 
 ## Shared Format
 
