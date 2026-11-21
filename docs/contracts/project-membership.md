@@ -144,9 +144,12 @@ selected standard Compose filenames for initial discovery: `compose.yaml`,
 `compose.yml`, `docker-compose.yml`, and `docker-compose.yaml`. Discovering a
 folder solely because `.env` sets `COMPOSE_FILE` is deferred. This is a discovery
 eligibility boundary, not a change to native input resolution for a selected
-project under RES-005/006. Syntactic validity, symlinks, UI-created empty projects,
-custom inputs and other already-listed project lifecycle cases remain unresolved.
-PROJ-010 covers an absent previously discovered project.
+project under RES-005/006. The owner also selected listing a newly discovered
+folder with malformed or unresolvable Compose inputs as inactive, with a clear
+resolution error, instead of hiding it. Recognition and successful resolution
+are separate. Symlinks, UI-created empty projects, custom inputs and other
+already-listed project lifecycle cases remain unresolved. PROJ-010 covers an
+absent previously discovered project.
 
 **Source provenance:** Standalone owner decision, deliberately narrower than
 source STK-LIFE-01/18's directory-based plugin membership. See the
@@ -313,7 +316,9 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   not sibling `appdata/` or `backups/` directories without recognized Compose
   inputs. The initial recognized names also include `compose.yml`,
   `docker-compose.yml`, and `docker-compose.yaml`; `.env`-only `COMPOSE_FILE`
-  discovery is deferred. Validity and path handling remain separate questions.
+  discovery is deferred. Path handling remains a separate question.
+- PROJ-005: A newly discovered folder with a standard Compose filename and
+  malformed or unresolvable inputs is listed inactive with a clear error.
 - PROJ-006: Complete setup without running discovery, then request it later.
   Adding a folder on disk alone does not trigger a background discovery scan.
 - PROJ-007: Without scanning a root, browse for one eligible stack folder and
@@ -353,6 +358,9 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   discovery recognition boundary, deferring `.env`-only `COMPOSE_FILE` discovery.
   This does not disable native `COMPOSE_FILE` resolution for selected projects
   or settle malformed-file and path-safety behavior.
+- 2026-11-21: Owner selected listing newly discovered folders whose Compose
+  inputs are malformed or unresolvable as inactive with a clear error; this
+  does not decide the remaining input resolution or path policies.
 - 2026-11-19: Owner added on-demand/optional-setup discovery (PROJ-006) and
   individual folder browsing (PROJ-007). PROJ-001 retains automatic inclusion
   when a requested scan runs; no continuous discovery is implied. PROJ-004's
