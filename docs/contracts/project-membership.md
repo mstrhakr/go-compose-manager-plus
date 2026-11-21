@@ -116,14 +116,16 @@ selected project root, not recursively nested project folders. Given root
 `/srv/compose`, an eligible project in `/srv/compose/jellyfin` is in scope;
 `/srv/compose/media/sonarr` is not automatically discovered as a nested project.
 
-This settles depth only. PROJ-005 excludes ordinary non-project directories and
-PROJ-006 defines the trigger. Filenames, symlink policy and grouping presentation
-remain separate decisions; this depth rule does not decide the folder picker's
-permitted paths.
+PROJ-005 excludes ordinary non-project directories and PROJ-006 defines the
+trigger. For the initial scan, skip symlinked child directories and clearly
+report that limitation. This does not decide symlinks within a project, root
+symlinks, grouping presentation or the folder picker's permitted paths.
 
 **Approval:** Owner explicitly selected direct-child option A on 2026-11-19
 for the current scope. Recursive discovery and UI grouping were discussed as
 possible future ideas, not approved requirements or permanently prohibited ones.
+On 2026-11-21, the owner selected skipping and reporting symlinked child
+directories for the first scan.
 
 **Source provenance:** Source STK-LIFE-01 observes immediate-directory discovery;
 the standalone owner independently approved the bounded depth choice. See the
@@ -147,7 +149,7 @@ eligibility boundary, not a change to native input resolution for a selected
 project under RES-005/006. The owner also selected listing a newly discovered
 folder with malformed or unresolvable Compose inputs as inactive, with a clear
 resolution error, instead of hiding it. Recognition and successful resolution
-are separate. Symlinks, UI-created empty projects, custom inputs and other
+are separate. Other symlink handling, UI-created empty projects, custom inputs and other
 already-listed project lifecycle cases remain unresolved. PROJ-010 covers an
 absent previously discovered project.
 
@@ -312,6 +314,8 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   `/srv/compose/jellyfin`, but do not recursively discover the separate nested
   project `/srv/compose/media/sonarr`. Do not infer that the grouping directory
   `/srv/compose/media` itself meets project eligibility rules.
+- PROJ-004: A symlinked direct child directory is skipped and the scan reports
+  the limitation; it is not followed even if its target is outside the root.
 - PROJ-005: A requested scan lists `jellyfin/compose.yaml` as a detected project,
   not sibling `appdata/` or `backups/` directories without recognized Compose
   inputs. The initial recognized names also include `compose.yml`,
@@ -351,6 +355,8 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   expressing interest in possible recursive discovery/UI grouping. No grouping
   behavior or recursive scope was approved. Organizational grouping does not
   itself require independent projects to share a Compose file or lifecycle.
+- 2026-11-21: Owner selected skipping symlinked child directories in the first
+  scan, with the limitation reported. Other symlink cases remain open.
 - 2026-11-19: Owner selected recognized Compose projects only (PROJ-005), rather
   than every child directory. This approval was pending documentation at the next
   message and is recorded here with its original scope.
@@ -378,7 +384,7 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 - 2026-11-21: Owner selected one saved discovery root initially (PROJ-011);
   changing the setting does not itself remove existing project entries.
 - Open: Root-change reconciliation, candidate-path suggestions, running-container evidence,
-  remaining discovery eligibility, symlinks, filesystem/path permissions
+  remaining discovery eligibility, other symlinks, filesystem/path permissions
   and scan error/results presentation. Runtime refresh is a separate boundary.
   Handling a Compose file directly in the root remains open.
 - Open: UI-created projects, outside-root projects, empty/invalid directories,

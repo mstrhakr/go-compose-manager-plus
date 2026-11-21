@@ -32,9 +32,11 @@ Removal and other lifecycle details remain open.
 
 2026-11-21: owner selected the four standard Compose filenames for initial
 discovery, deferring `.env`-only `COMPOSE_FILE` discovery. This does not change
-native resolution of selected projects or settle symlink policy. The owner also
+native resolution of selected projects. The owner also
 selected listing a newly discovered folder with malformed or unresolvable inputs
 as inactive with a clear resolution error.
+For initial root scans the owner chose to skip symlinked child directories and
+report the limitation; other symlink cases remain open.
 See [PROJ-005](../contracts/project-membership.md#proj-005-discover-compose-projects-rather-than-every-directory).
 Compose Specification `03-compose-file.md` at `3a4a6995e4a971f6173dff9130cb3e38e6738651`
 names the default and compatibility filenames; it does not prescribe manager
