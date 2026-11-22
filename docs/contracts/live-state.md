@@ -5,7 +5,7 @@ weight = 8
 # LIVE: Dashboard And Live State
 
 **Status:** Draft / prototype scope and SSE preference recorded; detailed live
-state, recovery and metrics policies proposed
+state and recovery policies proposed; opt-in metrics direction recorded
 
 **Baseline:** 2026-11-19, product `68ab9d2`, documentation-only planning. Plugin
 runtime-plan passages and metrics-publisher boundaries were inspected, not
@@ -15,8 +15,9 @@ adopted wholesale or reproduced on an Unraid host.
 
 Provide a dashboard home with live project/container/operation status and resource
 visibility within an agreed measurement budget. UniFi is the owner's design and
-interaction inspiration, not a request to copy assets or architecture. Historical
-tracing is later scope, not a prerequisite for the prototype.
+interaction inspiration, not a request to copy assets or architecture. The owner
+has selected per-container metrics history as the next product direction; its
+detailed retention and resource policies still require decisions.
 
 ## Ownership
 
@@ -92,6 +93,31 @@ adopted. See [RES-001](project-resolution.md#res-001-accepted-runtime-identity-i
 **Enforcement:** The opt-in snapshot is implemented with explicit refresh;
 verification and environment limits are recorded separately.
 
+### LIVE-003: Opt-In Container Metrics And Historical Views
+
+The owner wants per-container Docker statistics and historical context in the
+Containers observability view and real metric data in the overview dashboard.
+The dashboard should summarize rather than repeat the complete detailed project
+list, which belongs on the Projects page. Metrics collection is opt-in: a Docker
+socket configuration alone must not enable background metrics collection. The
+owner wants settings suitable for low-power hosts, potentially simple
+low/medium/high presets with automatic tuning; their behavior remains open.
+
+The selected storage direction is tstorage for metrics while SQLite remains
+the application-state store. Netdata-style historical retention and a
+UniFi-inspired display are design goals, not approval of a particular retention
+duration, aggregation, disk limit or visual implementation. A reusable column
+customizer is also requested for inventory views. These directions do not
+authorize Compose mutations or imply that unavailable metrics are zero.
+
+**Approval:** Owner selected the opt-in collection boundary and the above
+product and storage directions on 2026-11-22. Sampling, supported metrics,
+collection scope, preset behavior, retention/downsampling, resource budgets,
+recovery and presentation details remain unresolved. The storage dependency's
+fitness and operational characteristics still need evaluation.
+
+**Enforcement:** Not implemented or verified.
+
 ## Dependencies
 
 - Depends on [AUTH-001 through AUTH-006](authentication.md) for user-bound local-session
@@ -133,11 +159,12 @@ Proposed cases requiring review and eventual execution-based checks:
 - Proposed: fallback or low-rate reconciliation based on connection health and
   freshness, not absence of lifecycle events alone. Runtime status refresh is
   not project discovery; PROJ-006's on-demand discovery remains unchanged.
-- Later history: distinguish operation records, runtime transitions and metric
+- History: distinguish operation records, runtime transitions and metric
   samples, with identities/timestamps/outcomes and redaction boundaries. Retention,
   downsampling, incident thresholds and idle collection remain unapproved. No
-  metrics database, event-sourced core or continuous no-viewer collector is
-  mandated merely to preserve future options.
+  operation-history backend or event-sourced core is mandated merely to preserve
+  future options. LIVE-003 selects an opt-in metrics storage direction, not
+  automatic collection for every configured Docker socket.
 
 ## Verification
 

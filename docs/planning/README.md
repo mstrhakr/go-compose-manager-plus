@@ -230,6 +230,14 @@ the later LIVE-002 approval is limited to on-demand status. Management actions
 require further bounded decisions.
 This work does not require completing Git, metrics history or every queue variant.
 
+On 2026-11-22 the owner selected opt-in per-container metrics and historical
+views as the next direction, including real dashboard charts, a summary-focused
+dashboard and a reusable inventory column customizer. The owner selected
+tstorage for metric history while retaining SQLite for application state, with
+low-power-friendly automatic settings or simple presets as a goal. Collection,
+retention, resource limits and presentation details remain to be decided and
+verified; see [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views).
+
 Before exposing admin operations, close the relevant action, identity/input,
 request-security and execution/job gates above. Complete the current refinement
 branch through its normal PR/check/merge process before starting unrelated work.
@@ -251,11 +259,12 @@ delivery does not remove collection cost. Missing metrics do not prove stopped
 containers. Do not duplicate complete collectors per tab; viewer-aware collection,
 limits and any safety polling require measurement/review, not constant discovery.
 
-For later history, distinguish identity/lifetime, operation intent/outcome and
+For history, distinguish identity/lifetime, operation intent/outcome and
 timestamps from disposable current projections and metric samples. These are
 proposed boundaries, not a mandate for an event store, time-series service,
-retention policy or always-on idle collection now. History/incident detection
-must be separately approved and measured.
+retention policy or automatic collection merely from a configured socket.
+The owner selected opt-in metrics history under LIVE-003; operation history
+and incident detection remain separate and must be approved and measured.
 
 ## Git Stacks And CI Deployment
 
