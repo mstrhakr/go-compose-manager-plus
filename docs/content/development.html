@@ -18,7 +18,9 @@ make check-workflows # workflow lint and token/pin policy
 make check-security  # npm audit and Go vulnerability analysis
 make check-container # Docker build and vulnerability scan
 make docs         # default docs build
-make docs-contracts # opt-in preview including contracts</code></pre>
+make docs-contracts # opt-in preview including contracts
+make docs-development # opt-in preview including contributor docs
+make check-docs   # test public and opt-in site variants</code></pre>
 <p>Linux browser system dependencies can be installed with
 <code>npm exec -- playwright install --with-deps chromium firefox webkit</code>.
 Run privileged OS installation yourself when your environment requires it.
@@ -120,7 +122,13 @@ duplicate pins also need coordination; a Docker or go.mod update does not rewrit
 them all. Check upstream releases and independently verify downloaded checksums.
 Direct Action pins are not a guarantee about transitive Actions or downloads.</p>
 <h2>Documentation</h2>
-<p>Content lives in <code>docs/content/</code>. Existing pages use HTML with TOML
+<p>Content lives in <code>docs/content/</code>. Architecture, development and
+deployment pages are excluded from the default public site and enabled by
+<code>hugo.development.toml</code>; contracts are independently opt-in.
+Add any new contributor-only page to the exclusions in <code>hugo.toml</code>
+before adding it to the content directory.
+<code>make check-docs</code> builds and checks all four combinations in temporary
+directories. Existing pages use HTML with TOML
 front matter; Hugo also supports Markdown pages. Add a title and weight to include
 a page in navigation. Layouts and CSS are local, avoiding theme/submodule drift.
 CI builds the site with a project subpath to check GitHub Pages compatibility.</p>

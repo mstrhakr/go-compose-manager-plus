@@ -11,23 +11,56 @@ printf '\n'
 export APP_BOOTSTRAP_USERNAME APP_BOOTSTRAP_PASSWORD
 make run</code></pre>
 <p>Open <code>http://127.0.0.1:8080/</code>, sign in and complete the required
-password change. The dashboard is an auth-protected shell; Docker status is
-disabled by default and management actions are not connected. Stop the server
-with Ctrl+C.</p>
+password change. Discovery is available on request; Docker inventory is disabled
+by default and management actions are not connected. Stop the server with Ctrl+C.</p>
 <h2>Run in Docker</h2>
-<p>For a container build, install Docker Engine with Docker Compose and BuildKit
-support. Copy <code>.env.example</code> to <code>.env</code>, set a temporary
-bootstrap username and strong password, then build and start the app:</p>
-<pre><code>cp .env.example .env
-docker compose up --build -d
+<p>Install Docker Engine and Docker Compose. The
+<a href="../examples/compose.yaml">example Compose file</a>
+uses the planned <code>latest</code> image tag, which is not yet published.
+Until a normal release exists, use the Linux amd64 <code>dev</code> tag for
+testing instead; it can change and is not a production release. Save the example
+as <code>compose.yaml</code>, change its image tag to <code>dev</code>, and
+create a private <code>.env</code> file containing
+<code>APP_BOOTSTRAP_USERNAME</code> and a strong temporary
+<code>APP_BOOTSTRAP_PASSWORD</code>. Do not commit the file or place the
+password in shell history. For example, edit the file privately and replace
+both placeholders:</p>
+<pre><code>APP_BOOTSTRAP_USERNAME=replace-with-admin-name
+APP_BOOTSTRAP_PASSWORD=replace-with-strong-temporary-password</code></pre>
+<p>Then start the app:</p>
+<pre><code>chmod 600 .env
+docker compose pull
+docker compose up -d
 docker compose logs -f</code></pre>
 <p>Open <code>http://127.0.0.1:8080/</code> and complete the forced password
 change. Compose binds the host port to loopback and stores account/session state
 in its persistent <code>app-data</code> volume. Remove the bootstrap values from
-<code>.env</code> after setup. Docker status is disabled by default; management
-actions are not connected.</p>
+<code>.env</code> after setup and run <code>docker compose up -d --force-recreate</code>
+to remove them from the container environment. Docker status is disabled
+by default; management actions are not connected.</p>
+<h2>Discovery and Docker inventory</h2>
+<p>Mount a trusted project root into the container and save its in-container
+path as the discovery root. Requested scans examine direct-child directories.
+Discovered projects begin inactive; activation grants permission only and does
+not start or modify containers. Project paths shown in the app are container
+paths. A read-only project mount prevents writes but is not a read-access
+sandbox for Compose references outside the project directory.</p>
+<p>Docker inventory requires both <code>APP_DOCKER_SOCKET</code> and a socket
+mount. The app user must have permission to connect: inspect the host socket's
+numeric group with <code>stat -Lc '%g' /var/run/docker.sock</code> and, if its
+group has write permission, add that ID under <code>group_add</code> and recreate
+the service. Inspect socket ownership and mode with
+<code>stat -Lc 'uid=%u gid=%g mode=%a' /var/run/docker.sock</code>.
+Docker API access is effectively host-administrative; a <code>:ro</code> socket
+mount does not make API access read-only. Only grant it inside a trusted security
+boundary. Snapshots list running and stopped containers but do not provide logs,
+live metrics or lifecycle operations.</p>
 <h2>Configuration</h2>
 <p>The native binary reads exported environment variables, not dotenv files.</p>
+<p>In the Compose example, <code>APP_ADDR</code> and <code>APP_DATA_DIR</code>
+are fixed to the container listener and volume path. Change the Compose file
+itself if those container paths need to change; <code>APP_PORT</code> controls
+only the host port.</p>
 <table>
   <thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead>
   <tbody>
@@ -50,15 +83,3 @@ Compose persists app state in a dedicated <code>/data</code> volume.</p>
 multi-instance database. Back it up consistently before upgrades or moving hosts.
 If the volume is lost, the app cannot distinguish a genuinely new installation
 from lost credentials; recovery/reset procedures are not implemented yet.</p>
-<h2>Make it yours</h2>
-<ol>
-  <li>Create a repository from this template and choose its visibility deliberately.</li>
-  <li>Change the module path with <code>go mod edit -module=github.com/OWNER/PROJECT</code>,
-    then update imports in <code>cmd/server/</code>.</li>
-  <li>Update the README, templates, docs titles and release project names.</li>
-  <li>Review the license and retain notices for any reused code.</li>
-  <li>Install Node 24, Make and a C compiler; run <code>make setup</code>, then
-    <code>make check</code>, <code>make docs</code>, and <code>docker compose up --build</code>.</li>
-  <li>Review repository Actions, branch protection, Dependabot, package visibility, and Pages settings.
-    Publishing remains disabled until explicitly enabled.</li>
-</ol>

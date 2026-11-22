@@ -115,12 +115,10 @@ jobs:
           ref: ${{ inputs.ref }}
           persist-credentials: false
       - uses: ./.github/actions/setup-hugo
-      - env:
-          INCLUDE_CONTRACTS: ${{ vars.PUBLISH_CONTRACTS }}
-        run: |
-          config=hugo.toml
-          if [[ "$INCLUDE_CONTRACTS" = true ]]; then config=hugo.toml,hugo.contracts.toml; fi
-          hugo --source docs --config "$config" --minify --panicOnWarning --baseURL https://example.invalid/go-template/
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: '24'
+      - run: make check-docs
 
   contracts:
     if: inputs.contracts
