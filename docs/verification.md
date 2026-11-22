@@ -350,3 +350,29 @@ restricted to local inventory pages or the overview.
 This slice was not tested against a live Docker daemon. Its tests do not establish
 native mobile behavior, continuous freshness, lifecycle control or resource
 ownership, and no such behavior is claimed.
+
+Inventory redesign follow-up on the same branch: server-rendered search, sorting
+and facet combinations have unit and authenticated mock-daemon HTTP coverage,
+including stale selected facets and no-match results. Chromium exercised filter
+controls without JavaScript and in a simulated mobile touch viewport. Mock
+screenshots were captured across multiple iterations, including a filtered view,
+light theme and mobile layouts; these are design checks, not live-Docker or native
+mobile evidence. `PLAYWRIGHT_PORT=18211 make check QUIET=1` passed after fixing
+the shared component fixture.
+
+The inventory filter sidebar and overview host panel use native disclosure
+controls. The main navigation can expand to labels and remembers its setting
+in browser storage; storage errors are reported. Desktop keyboard, simulated
+mobile touch and JavaScript-disabled disclosure paths are covered by the browser
+test. The expanded navigation is a browser enhancement and remains icon-only
+without JavaScript.
+
+The owner approved separate Overview, Projects and Containers primary entries,
+with disabled placeholders for Resources, Activity and Settings. The shared
+view-navigation component renders a current page link and disabled future
+subviews in the contextual sidebar; these placeholders do not implement or
+approve the corresponding functionality. Project status labels are shared by
+the dashboard, inventory rows and inventory filters.
+`PLAYWRIGHT_PORT=18219 make check QUIET=1` and `make docs` passed after these
+changes. Browser checks cover current and disabled navigation entries as well
+as the desktop keyboard, simulated touch and JavaScript-disabled paths above.

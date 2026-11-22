@@ -16,6 +16,7 @@ func TestComponentTemplatesEscapeData(t *testing.T) {
 	}{
 		{"metric-panel", metricPanel{ID: "metric", Title: "<metric>", Value: "<value>"}, "&lt;metric&gt;"},
 		{"chart-panel", chartPanel{ID: "chart", Title: "<chart>", Series: `{"label":"<script>"}`}, "&lt;script&gt;"},
+		{"view-navigation", viewNavigation{Label: "Views", Tabs: []viewTab{{Label: "<view>", Href: "/projects", Current: true}, {Label: "Future"}}}, "&lt;view&gt;"},
 		{"list-panel", listPanel{ID: "list", Title: "Projects", Selectable: true, Columns: []string{"Name"}, Rows: []listRow{{Value: `"><script>`, Label: "<label>", Cells: []string{"<cell>"}}}}, "&lt;cell&gt;"},
 	}
 	for _, tt := range tests {

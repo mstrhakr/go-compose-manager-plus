@@ -341,6 +341,29 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 		!strings.Contains(body, "Docker snapshot taken") || strings.Contains(body, "<script>") {
 		t.Fatalf("container inventory: code=%d calls=%d body=%s", response.Code, calls.Load(), body)
 	}
+	response = perform(handler, http.MethodGet, "/containers?state=exited&group=No+Compose+project+label&q=UNMANAGED&sort=name-desc", nil, cookies, "")
+	body = response.Body.String()
+	if response.Code != http.StatusOK || !strings.Contains(body, "1 of 2 containers") ||
+		!strings.Contains(body, "unmanaged") || strings.Contains(body, "&lt;script&gt;") ||
+		!strings.Contains(body, `value="exited" checked`) {
+		t.Fatalf("filtered containers: %d %s", response.Code, body)
+	}
+	response = perform(handler, http.MethodGet, "/containers?project=shared&state=running&state=exited", nil, cookies, "")
+	body = response.Body.String()
+	if response.Code != http.StatusOK || !strings.Contains(body, "1 of 2 containers") ||
+		!strings.Contains(body, "&lt;script&gt;") || strings.Contains(body, ">unmanaged<") {
+		t.Fatalf("project-filtered containers: %d %s", response.Code, body)
+	}
+	response = perform(handler, http.MethodGet, "/projects?q=one&group=Inactive", nil, cookies, "")
+	body = response.Body.String()
+	if response.Code != http.StatusOK || !strings.Contains(body, "1 of 4 projects") ||
+		!strings.Contains(body, filepath.Join(root, "one")) || strings.Contains(body, filepath.Join(root, "two")) {
+		t.Fatalf("filtered projects: %d %s", response.Code, body)
+	}
+	response = perform(handler, http.MethodGet, "/containers?q=does-not-exist", nil, cookies, "")
+	if !strings.Contains(response.Body.String(), "No containers match these filters.") {
+		t.Fatalf("filtered empty inventory: %s", response.Body.String())
+	}
 	empty.Store(true)
 	response = perform(handler, http.MethodGet, "/containers", nil, cookies, "")
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "No containers found in this snapshot.") {

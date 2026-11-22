@@ -17,6 +17,7 @@ type row struct {
 	Value, Label string
 	Cells        []string
 	Disabled     bool
+	Indicator    string
 }
 type list struct {
 	ID, Title, Status, Empty string
@@ -38,12 +39,12 @@ func main() {
 		Empty: chart{"empty-title", "Empty chart", "Unavailable", "No data", "No observations.", ""},
 		Bad:   chart{"bad-title", "Invalid chart", "Error", "No data", "No observations.", `{"min":0,"max":100,"series":[{"label":"Bad","color":"blue","points":[{"x":1,"y":101}]}]}`},
 		List: list{"projects-title", "Projects", "Fixture", "", true, []string{"Name", "Status"}, []row{
-			{"alpha", "Alpha", []string{"Alpha", "Available"}, false},
-			{"beta", "Beta", []string{"Beta", "Unavailable"}, false},
-			{"locked", "Locked", []string{"Locked", "Unavailable"}, true},
+			{"alpha", "Alpha", []string{"Alpha", "Available"}, false, ""},
+			{"beta", "Beta", []string{"Beta", "Unavailable"}, false, ""},
+			{"locked", "Locked", []string{"Locked", "Unavailable"}, true, ""},
 		}},
 		Other: list{"other-title", "Other resources", "Fixture", "", true, []string{"Name"}, []row{
-			{"other", "Other", []string{"Other"}, false},
+			{"other", "Other", []string{"Other"}, false, ""},
 		}},
 	}
 	if err := t.ExecuteTemplate(os.Stdout, "fixture", data); err != nil {

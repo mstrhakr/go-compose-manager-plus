@@ -1,5 +1,16 @@
 package web
 
+type viewTab struct {
+	Label   string
+	Href    string
+	Current bool
+}
+
+type viewNavigation struct {
+	Label string
+	Tabs  []viewTab
+}
+
 type metricPanel struct {
 	ID     string
 	Title  string
@@ -18,10 +29,11 @@ type chartPanel struct {
 }
 
 type listRow struct {
-	Value    string
-	Label    string
-	Cells    []string
-	Disabled bool
+	Value     string
+	Label     string
+	Cells     []string
+	Indicator string
+	Disabled  bool
 }
 
 type listPanel struct {

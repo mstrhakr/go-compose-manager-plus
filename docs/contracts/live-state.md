@@ -69,6 +69,13 @@ the same kind of snapshot and shows discovered folders with expandable
 project details. Both show snapshot freshness and distinguish a failed or
 unconfigured daemon from an empty result. The overview retains its explicit
 refresh behavior; these pages introduce no background collection or operations.
+The inventory sidebar offers search, name ordering and facets based on the
+displayed discovery or snapshot attributes. Applying or clearing filters
+requests a fresh snapshot; facet counts are calculated before filtering.
+The owner approved an initial navigation shell with separate Overview, Projects
+and Containers entries and disabled future Resources, Activity and Settings
+entries. Contextual subview navigation is present even with one available view;
+future subviews are disabled and do not authorize their capabilities.
 
 **Approval:** Owner approved the bounded read-only status slice and clarified
 on 2026-11-22 that same-name copies should use the Compose runtime name without

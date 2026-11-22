@@ -34,13 +34,33 @@ type pageData struct {
 	Activity       chartPanel
 	Metrics        []metricPanel
 	Containers     listPanel
+	Filters        inventoryFilters
+	SubviewNav     viewNavigation
 }
 
 type projectView struct {
 	discovery.Project
+	DisplayName  string
 	RuntimeName  string
 	RuntimeError string
 	Containers   []runtime.Container
+}
+
+func (project projectView) DiscoveryStatus() string {
+	if !project.Available {
+		return "Unavailable"
+	}
+	if project.ResolutionError != "" {
+		return "Inputs need attention"
+	}
+	return "Available"
+}
+
+func (project projectView) ActivationStatus() string {
+	if project.Active {
+		return "Active"
+	}
+	return "Inactive"
 }
 
 func Handler(manager *auth.Manager, store *discovery.Store, publicURL *url.URL, trustedProxies []netip.Prefix, logger *slog.Logger, docker *runtime.Client) http.Handler {
