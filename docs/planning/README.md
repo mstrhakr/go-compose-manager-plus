@@ -59,9 +59,11 @@ authorization. Updated 2026-11-21. This repository contains the end product.
   Activation grants permission only: no Compose execution,
   project-file rewriting or schedule enablement. See
   [PROJ-001 through PROJ-009](../contracts/project-membership.md). Exact input
-  recognition, picker path policy, other remaining discovery details and
-  activation validation/persistence remain unresolved; no implementation is
-  authorized by these decisions.
+  recognition validity, picker path policy and other discovery details remain
+  unresolved; these decisions alone do not authorize the entire feature set.
+- Initially recognize direct-child folders by the standard Compose filenames;
+  discovery based solely on `.env` `COMPOSE_FILE` is deferred. This does not
+  change native input resolution for selected projects.
 - Approval is slice-specific, not authorization for a plugin rewrite,
   shared-backend migration or the entire source roadmap.
 - Prioritize maintainability and clear ownership boundaries within the standalone
@@ -79,13 +81,14 @@ the scaffold nor source-plugin approval silently approves standalone behavior.
 
 ## Current Stage
 
-The local-auth foundation and protected placeholder dashboard have been merged.
-The development image is published for auth testing; release and documentation
-publishing remain disabled. The owner has authorized a fixture-only Compose
-resolution proof of concept: no Docker socket, host scanning, project storage,
-UI integration, container operations or file mutation. The Compose model loader
-is a test dependency, not an orchestration integration. No project management
-route or job runner has been added.
+The local-auth foundation and fixture-only Compose resolution proof of concept
+have been merged. The development image is published for auth testing; release
+and documentation publishing remain disabled. On 2026-11-21, the owner
+subsequently authorized a bounded read-only discovery slice: one saved root,
+requested direct-child scans, persistent listings, resolution errors and
+permission-only activation. This does not authorize Docker socket access,
+Compose operations or project-file writes. The model loader is not an
+orchestration integration; no project action or job runner is included.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,
@@ -158,8 +161,8 @@ current work; management implementation still requires bounded authorization.
 
 The original stage table is a dependency overview, not the current prototype
 scope or an instruction to complete every workstream before local use. The
-near-term triage below takes priority. The current fixture-only proof of concept
-uses the Compose model loader; it does not implement the full read-only spike.
+near-term triage below takes priority. Fixture and discovery work use the Compose
+model loader; they do not implement the full read-only runtime-state spike.
 
 ## Local Prototype Contract Triage
 
@@ -191,9 +194,9 @@ slices, not removed product goals.
 | 4 | Dashboard/[LIVE](../contracts/live-state.md) | Agree visible runtime/operation states and bounded live/fallback behavior; measure collection cost. |
 | 5 | Host scope/persistence | Establish Docker/path scope and saved membership/identity recovery; AUTH handles app authentication/exposure from the start. |
 
-Build from the fixture-only resolution checkpoint toward a separately approved
-read-only resolution/dashboard slice, then deliberate actions on a disposable
-Docker target. Local installation alone is not a secure exposure boundary.
+Build from the fixture and approved discovery checkpoints toward separately
+approved runtime-state and action slices on a disposable Docker target. Local
+installation alone is not a secure exposure boundary.
 Implementation needs approval of its bounded slice. Inspect the VM script if
 supplied, without blocking unrelated fixture work or inventing script behavior.
 
@@ -202,8 +205,9 @@ supplied, without blocking unrelated fixture work or inventing script behavior.
 **2026-11-21:** six product drafts (PROJ, RES, AUTH, OPS, LIVE, GIT) plus the
 inherited REPO/example documents. Requirements include behavioral decisions,
 portable source adoptions and capability/transport directions; document or entry
-counts are not a measured completion percentage. No management feature has been
-implemented or behaviorally verified.
+counts are not a measured completion percentage. Bounded read-only discovery
+and permission-only activation are being implemented and tested; management
+actions remain unimplemented.
 
 | Area | Settled enough to guide a slice | Remaining gate for that slice |
 | --- | --- | --- |
@@ -215,11 +219,10 @@ implemented or behaviorally verified.
 | GIT / history / resource management | Product direction and selected Git decisions recorded | Later slices; not blockers for initial local auth/dashboard work. |
 
 The [first auth/persistence implementation brief](auth-implementation.md)
-records the foundation delivered in the local-auth slice. The currently approved
-follow-up is limited to disposable Compose resolution fixtures. Connecting
-resolution to actual projects, discovery, persistence, the UI or Docker requires
-a separate bounded decision. Fixtures do not require completing Git, metrics
-history or every queue variant first.
+records the foundation delivered in the local-auth slice. The owner separately
+approved persistent read-only discovery and activation after the fixture work;
+Docker integration and management actions require further bounded decisions.
+This work does not require completing Git, metrics history or every queue variant.
 
 Before exposing admin operations, close the relevant action, identity/input,
 request-security and execution/job gates above. Complete the current refinement

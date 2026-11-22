@@ -4,11 +4,11 @@ weight = 1
 +++
 # Behavioral Contracts
 
-PROJ has nine individually approved requirements; GIT has capability-scope,
+PROJ has eleven individually approved requirements; GIT has capability-scope,
 enabled-CI unattended-deployment and exact CI-selected Git revision approval,
 plus GitHub-first CI scope and explicit CI requests, with other policies awaiting
 review. OPS records approved bounded same-stack queueing. No management draft is wholly approved
-or implemented. The inherited REPO document records
+or implemented; a bounded discovery and activation slice is in progress. The inherited REPO document records
 the template's delivery baseline and historical decisions;
 EXAMPLE is only an example. See the [product plan](../planning/README.md) and
 [reuse map](../planning/contract-reuse.md) before selecting standalone requirements.
@@ -22,10 +22,10 @@ description of every implementation detail or a substitute for tests.
 | --- | --- | --- |
 | [REPO](repo.md) | Inherited repository/delivery baseline | Draft; template decisions, product setup not wholly verified |
 | [EXAMPLE](example-feature.md) | Small example showing the format | Example, not an approved product promise |
-| [PROJ](project-membership.md) | On-demand discovery, active manual/Git additions, discovery-only activation and no deactivate action | Draft; PROJ-001 through PROJ-009 owner-approved within stated scopes, not implemented or behaviorally verified |
+| [PROJ](project-membership.md) | On-demand discovery, activation and retention of missing discovered projects | Draft; PROJ-001 through PROJ-011 owner-approved within stated scopes; bounded discovery/activation slice in progress |
 | [GIT](git-stacks.md) | Git-backed stacks, private-repository credentials and CI/webhook deployment | Draft; GIT-001 through GIT-005 approved within stated scope; remaining behavior/security unresolved, not implemented or verified |
 | [OPS](operation-coordination.md) | Shared same-stack manual/CI mutation coordination | Draft; OPS-001 bounded queueing approved, detailed queue/lifecycle policies unresolved; not implemented or verified |
-| [RES](project-resolution.md) | Runtime identity and Compose inputs | Draft; RES-001/006 native naming/selection approved, RES-002 through RES-005 adopted portable source outcomes; env/profile and identity/adoption details unresolved; not implemented or verified |
+| [RES](project-resolution.md) | Runtime identity and Compose inputs | Draft; RES-001/006 native naming/selection approved, RES-002 through RES-005 adopted portable source outcomes; bounded discovery resolution in progress, with environment and identity limits |
 | [LIVE](live-state.md) | Dashboard home and live delivery | Draft; scope and SSE preference recorded, detailed recovery/collection/history policies proposed; not implemented or verified |
 | [AUTH](authentication.md) | App login and shared authentication boundary | Draft; AUTH-001 through AUTH-006 approved within stated scope; local-auth/dashboard-shell slice partially implemented and verified on `feat/local-auth`; OIDC, recovery, detailed security cases and Compose operations remain deferred or unverified |
 

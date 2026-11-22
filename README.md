@@ -9,11 +9,13 @@ useful workflows and portable business rules with a modern standalone interface.
 UniFi is the design inspiration; Unraid-specific UI and legacy compatibility
 machinery are not the target. Features will arrive in bounded, tested slices.
 
-**Current stage: local authentication and dashboard shell.** The initial auth
-slice is implemented and its focused Go and browser checks pass. Docker/Compose
-integration and management actions are not connected yet; dashboard resource
-values are explicit placeholders, not host status. A Linux amd64 development
-image is published at `ghcr.io/mstrhakr/go-compose-manager-plus:dev`.
+**Current stage: local authentication and read-only project discovery.** Save
+one application-visible root and request a scan to persist discovered project
+entries. Discovery and permission-only activation do not connect to Docker or
+run Compose actions. Container and resource values are placeholders, not host
+status. A Linux amd64 development image is published at
+`ghcr.io/mstrhakr/go-compose-manager-plus:dev`; it reflects the latest published
+main, not unmerged branch work.
 
 Start with the [product plan](docs/planning/README.md),
 [contract reuse map](docs/planning/contract-reuse.md), and
@@ -89,7 +91,7 @@ docs/             self-contained Hugo documentation site
 Keep application logic in focused `internal` packages as requirements emerge.
 Go owns business rules and escaped HTML; htmx owns server-driven updates; small
 JS modules own browser-local behavior. Authentication is a first foundation;
-Docker/Compose operations, live state and schedules remain separate slices. See
+Docker operations, live state and schedules remain separate slices. See
 the [contract guide](docs/contracts/README.md).
 This foundation is imported from go-template; no Compose Manager or Docker
 Networks runtime code has been copied. Development/deployment docs below describe
@@ -137,6 +139,40 @@ select the registry image. After setup, remove the bootstrap values and recreate
 the service with the same `up` command. The dev tag can move; use a SHA tag or
 digest when a fixed image is needed. Registry package visibility is separate
 from repository visibility and may require authentication.
+
+### Discover existing projects
+
+Mount the directory containing project folders read-only, for example by adding
+this to the `app` service in a local Compose override (replace the host path):
+
+```yaml
+services:
+  app:
+    volumes:
+      - /absolute/host/projects:/projects:ro
+```
+
+Recreate the service, sign in, save `/projects` as the discovery root, and
+select **Scan for projects**. The app user must have read/traverse permission on
+the host directory. Paths shown in the UI are paths inside the container, not
+necessarily Docker-host paths. Discovery is manual, reads direct-child folders
+only, and does not require the Docker socket.
+
+Newly discovered projects start inactive; activation changes manager permission
+only and does not start, stop or alter them. Missing entries remain saved, and a
+project found again at the same path retains its saved activation state; a path
+match is not proof of identity. Input resolution uses only the project's local
+`.env`, not the manager's environment, and may differ from the environment used
+to launch an existing stack. `.env`-only `COMPOSE_FILE` discovery is deferred;
+projects whose local `.env` sets `COMPOSE_FILE` are listed with an unsupported
+input error rather than silently resolved with other files. Symlinked child
+entries are skipped and reported. Some `.env` expressions referencing unset
+variables, including defaults, may be conservatively flagged. Compose inputs can
+reference paths outside the project folder that the app can read; a read-only
+mount prevents writes but is not a read-access sandbox. Other environment,
+path and activation edge cases remain under review. The initial `.env` reader
+limits files to 1 MiB and 4,096 lines, with individual statements limited to
+128 KiB and 256 lines.
 
 ## Documentation
 

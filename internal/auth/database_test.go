@@ -87,6 +87,7 @@ func TestOpenDatabaseMigratesV1Sessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -121,7 +122,61 @@ func TestOpenDatabaseMigratesV1Sessions(t *testing.T) {
 	if deadline != 43300 || revoked != 0 {
 		t.Fatalf("migrated session deadline=%d revoked=%d", deadline, revoked)
 	}
-	if err := database.SQL.QueryRowContext(ctx, `SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil || version != 2 {
+	if err := database.SQL.QueryRowContext(ctx, `SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil || version != 3 {
 		t.Fatalf("migration version=%d err=%v", version, err)
+	}
+}
+
+func TestOpenDatabaseMigratesV2WithoutChangingAuth(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	db, err := sql.Open("sqlite", filepath.Join(dir, "app.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.ExecContext(ctx, `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL)`); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateV1(ctx, tx); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateV2(ctx, tx); err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{
+		`INSERT INTO schema_migrations(version) VALUES (1), (2)`,
+		`UPDATE app_state SET value = '1' WHERE key = 'bootstrap_complete'`,
+		`INSERT INTO users VALUES ('user-1', 'admin', 'existing-hash', 0, 1, 100)`,
+		`INSERT INTO sessions(token, data, expiry_unix, deadline_unix, revoked) VALUES ('token', X'01', 200, 300, 0)`,
+	} {
+		if _, err := tx.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	database, err := OpenDatabase(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = database.SQL.Close() })
+	user, err := database.UserByUsername(ctx, "admin")
+	if err != nil || user.PasswordHash != "existing-hash" || user.MustChange {
+		t.Fatalf("migrated user = %+v, error = %v", user, err)
+	}
+	var deadline, version int
+	if err := database.SQL.QueryRowContext(ctx, `SELECT deadline_unix FROM sessions WHERE token = 'token'`).Scan(&deadline); err != nil || deadline != 300 {
+		t.Fatalf("migrated session deadline=%d error=%v", deadline, err)
+	}
+	if err := database.SQL.QueryRowContext(ctx, `SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil || version != 3 {
+		t.Fatalf("migration version=%d error=%v", version, err)
 	}
 }

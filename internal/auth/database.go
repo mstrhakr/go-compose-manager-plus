@@ -14,7 +14,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 2
+const schemaVersion = 3
 
 var (
 	ErrBootstrapComplete = errors.New("initial administrator is already provisioned")
@@ -141,9 +141,40 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES (2)`); err != nil {
 			return fmt.Errorf("record database schema version: %w", err)
 		}
+		currentVersion = 2
+	}
+	if currentVersion == 2 {
+		if err := migrateV3(ctx, tx); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES (3)`); err != nil {
+			return fmt.Errorf("record database schema version: %w", err)
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit application database migration: %w", err)
+	}
+	return nil
+}
+
+func migrateV3(ctx context.Context, tx *sql.Tx) error {
+	for _, statement := range []string{
+		`CREATE TABLE discovery_settings (
+			id INTEGER PRIMARY KEY CHECK (id = 1),
+			root TEXT NOT NULL,
+			revision INTEGER NOT NULL CHECK (revision > 0)
+		)`,
+		`CREATE TABLE discovered_projects (
+			path TEXT PRIMARY KEY NOT NULL,
+			root TEXT NOT NULL,
+			active INTEGER NOT NULL CHECK (active IN (0, 1)),
+			available INTEGER NOT NULL CHECK (available IN (0, 1)),
+			resolution_error TEXT NOT NULL
+		)`,
+	} {
+		if _, err := tx.ExecContext(ctx, statement); err != nil {
+			return fmt.Errorf("apply database migration v3: %w", err)
+		}
 	}
 	return nil
 }

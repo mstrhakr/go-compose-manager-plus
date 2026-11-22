@@ -98,6 +98,18 @@ button:disabled { cursor: not-allowed; opacity: .58; }
 .empty-glyph { width: 42px; height: 42px; display: grid; place-items: center; color: #268ba1; background: #e7f2f4; border-radius: 6px; font-size: 1.25rem; }
 .empty-state h3 { margin: .8rem 0 0; color: #314b57; font-size: .9rem; }
 .empty-state p { margin: .35rem 0 0; color: #829198; font-size: .78rem; }
+.discovery-content { padding: 1rem 1.1rem; }
+.discovery-notice { padding: .75rem .85rem; color: #15566d; background: #e7f2f4; font-size: .84rem; overflow-wrap: anywhere; }
+.discovery-root-form { margin-bottom: .85rem; }
+.discovery-root-form label { display: block; color: #354e5b; font-size: .82rem; font-weight: 650; }
+.discovery-controls { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+.discovery-controls input { flex: 1 1 15rem; min-width: 0; min-height: 38px; padding: .5rem .7rem; border: 1px solid #c9d5d9; border-radius: 4px; }
+.discovery-root-form p { margin: .45rem 0 0; color: #647780; font-size: .75rem; }
+.project-list { margin: 1rem 0 0; padding: 0; list-style: none; }
+.project-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .85rem 0; border-top: 1px solid #e4eaec; }
+.project-details { min-width: 0; overflow-wrap: anywhere; font-size: .85rem; }
+.project-details p { margin: .3rem 0 0; color: #647780; font-size: .75rem; }
+.project-details .project-error { color: #8e3b24; }
 .dashboard-footer { display: flex; justify-content: space-between; margin-top: 1.2rem; color: #788a91; font-size: .7rem; }
 .dashboard-footer > span { display: flex; align-items: center; gap: .45rem; }
 .dashboard-footer .connection-dot { width: 6px; height: 6px; }

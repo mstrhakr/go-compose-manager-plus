@@ -20,6 +20,39 @@ bootstrap publishes their branches or modifies their worktrees.
 
 ## Standalone Owner Refinement
 
+2026-11-21: owner chose persistent project listing over a scan-only preview for
+the next slice. For a previously discovered project absent on a successful scan,
+the owner selected retaining its listing and activation state as unavailable;
+scan failure is not proof of removal. See
+[PROJ-010](../contracts/project-membership.md#proj-010-retain-previously-discovered-projects-that-disappear).
+The owner later selected same-path restoration of saved activation state for
+the prototype. Full comparison and historical changes for easier rollback are
+long-term ideas; snapshots versus Git and detailed policies remain undecided.
+For the first read-only discovery slice, the owner selected project-local `.env`
+interpolation without inheriting the manager process environment; broader
+environment policy remains open.
+The owner also selected blocking activation when a project is missing or its
+Compose inputs cannot be resolved, with a clear error; previously active state
+is retained.
+The owner also selected one saved discovery root initially, with existing entries
+not removed merely by changing that setting, entered as an application-visible
+path in the authenticated UI. Container mounts are configured separately; see
+[PROJ-011](../contracts/project-membership.md#proj-011-one-saved-discovery-root-initially).
+Removal and other lifecycle details remain open.
+
+2026-11-21: owner selected the four standard Compose filenames for initial
+discovery, deferring `.env`-only `COMPOSE_FILE` discovery. This does not change
+native resolution of selected projects. The owner also
+selected listing a newly discovered folder with malformed or unresolvable inputs
+as inactive with a clear resolution error.
+For initial root scans the owner chose to skip symlinked child directories and
+report the limitation; other symlink cases remain open.
+See [PROJ-005](../contracts/project-membership.md#proj-005-discover-compose-projects-rather-than-every-directory).
+Compose Specification `03-compose-file.md` at `3a4a6995e4a971f6173dff9130cb3e38e6738651`
+names the default and compatibility filenames; it does not prescribe manager
+discovery. The selected model loader's `cli.DefaultFileNames` supplies these names
+in its own precedence order.
+
 2026-11-20: owner approved [AUTH-006](../contracts/authentication.md#auth-006-bootstrap-env-does-not-reset-persisted-credentials):
 bootstrap env seeds initial auth state only; persisted credentials/setup state
 remain authoritative across restarts, and recovery/reset is explicit and separate.

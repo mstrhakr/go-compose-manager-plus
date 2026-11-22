@@ -4,7 +4,7 @@ weight = 4
 +++
 # PROJ: Project Membership And Activation
 
-**Status:** Draft / nine individually approved requirements; not wholly approved
+**Status:** Draft / eleven individually approved requirements; not wholly approved
 or implemented.
 
 **Baseline:** Owner refinement on 2026-11-19, from product revision `f4d6148`.
@@ -52,14 +52,16 @@ management changes. PROJ-007 separately allows one-at-a-time folder selection.
 
 **Approval:** Approved by the owner on 2026-11-19. PROJ-004 settles depth,
 PROJ-005 eligibility at a high level, and PROJ-006 the discovery trigger.
-Exact filenames and missing/invalid-file handling remain open.
+Initial recognized filenames are bounded under PROJ-005; missing/invalid-file
+handling remains open.
 
 **Source provenance:** Source STK-LIFE-01/18 distinguish directory discovery and
 membership. The standalone owner selected automatic inclusion after discussing
 a setup-selected root, rather than the earlier explicit-registration proposal.
 See the [reuse map](../planning/contract-reuse.md).
 
-**Enforcement:** Not implemented. No discovery, registry or activation store exists.
+**Enforcement:** Bounded persistent root discovery is implemented; wider
+membership and lifecycle behavior remains unverified.
 
 ### PROJ-002: Activation Before Managing A Discovery-Added Stack
 
@@ -83,8 +85,9 @@ not explicit manual additions or creation of new Git stacks.
 **Source provenance:** Standalone owner review recorded in the
 [source register](../planning/sources.md#standalone-owner-refinement).
 
-**Enforcement:** Not implemented. Runtime identity, action authorization and
-coordination dependencies remain unresolved and separately required.
+**Enforcement:** Discovery entries start inactive. No project-changing actions
+exist yet; runtime identity, action authorization and coordination remain
+unresolved and separately required.
 
 ### PROJ-003: Activation Grants Permission Without Applying Changes
 
@@ -101,12 +104,15 @@ Activation still cannot bypass PROJ-002's independent action prerequisites.
 **Approval:** Owner explicitly selected permission-only option A on 2026-11-19,
 emphasizing that users should not encounter unexpected automatic actions.
 This settles activation effects, not every future automation policy.
+On 2026-11-21, the owner selected blocking activation when the project is
+missing or its Compose inputs cannot be resolved, with a clear error. A
+previously active project's saved state is retained under PROJ-010.
 
 **Source provenance:** Standalone owner review recorded in the
 [source register](../planning/sources.md#standalone-owner-refinement).
 
-**Enforcement:** Not implemented. Activation validation, persistence and failure
-reporting remain to be defined and verified.
+**Enforcement:** Bounded activation state is persisted; other activation
+validation and failure reporting remain to be defined and verified.
 
 ### PROJ-004: Direct-Child Project Discovery
 
@@ -115,21 +121,23 @@ selected project root, not recursively nested project folders. Given root
 `/srv/compose`, an eligible project in `/srv/compose/jellyfin` is in scope;
 `/srv/compose/media/sonarr` is not automatically discovered as a nested project.
 
-This settles depth only. PROJ-005 excludes ordinary non-project directories and
-PROJ-006 defines the trigger. Filenames, symlink policy and grouping presentation
-remain separate decisions; this depth rule does not decide the folder picker's
-permitted paths.
+PROJ-005 excludes ordinary non-project directories and PROJ-006 defines the
+trigger. For the initial scan, skip symlinked child directories and clearly
+report that limitation. This does not decide symlinks within a project, root
+symlinks, grouping presentation or the folder picker's permitted paths.
 
 **Approval:** Owner explicitly selected direct-child option A on 2026-11-19
 for the current scope. Recursive discovery and UI grouping were discussed as
 possible future ideas, not approved requirements or permanently prohibited ones.
+On 2026-11-21, the owner selected skipping and reporting symlinked child
+directories for the first scan.
 
 **Source provenance:** Source STK-LIFE-01 observes immediate-directory discovery;
 the standalone owner independently approved the bounded depth choice. See the
 [source register](../planning/sources.md#standalone-owner-refinement).
 
-**Enforcement:** Not implemented. Detailed eligibility and traversal/path safety remain
-unresolved; this approval does not establish a safe filesystem scanning algorithm.
+**Enforcement:** Bounded scans use direct children and report skipped symlink
+entries. Other traversal/path safety remains unresolved.
 
 ### PROJ-005: Discover Compose Projects Rather Than Every Directory
 
@@ -138,16 +146,24 @@ every immediate child directory into a project row. Ordinary data, backup or
 grouping directories without recognized Compose inputs are not included solely
 because they are beneath the selected root.
 
-**Approval:** Owner selected option A on 2026-11-19. This defines discovery
-eligibility at a high level, not exact supported filenames or syntactic validity
-rules. UI-created empty projects, custom inputs and already-listed projects whose
-files disappear remain unresolved.
+**Approval:** Owner selected option A on 2026-11-19. On 2026-11-21, the owner
+selected standard Compose filenames for initial discovery: `compose.yaml`,
+`compose.yml`, `docker-compose.yml`, and `docker-compose.yaml`. Discovering a
+folder solely because `.env` sets `COMPOSE_FILE` is deferred. This is a discovery
+eligibility boundary, not a change to native input resolution for a selected
+project under RES-005/006. The owner also selected listing a newly discovered
+folder with malformed or unresolvable Compose inputs as inactive, with a clear
+resolution error, instead of hiding it. Recognition and successful resolution
+are separate. Other symlink handling, UI-created empty projects, custom inputs and other
+already-listed project lifecycle cases remain unresolved. PROJ-010 covers an
+absent previously discovered project.
 
 **Source provenance:** Standalone owner decision, deliberately narrower than
 source STK-LIFE-01/18's directory-based plugin membership. See the
 [source register](../planning/sources.md#standalone-owner-refinement).
 
-**Enforcement:** Not implemented; input recognition and validation need refinement.
+**Enforcement:** Bounded filename recognition and loader errors are implemented;
+environment and other input arrangements remain limited.
 
 ### PROJ-006: Discovery Is Requested, Not Continuous
 
@@ -166,7 +182,8 @@ listing rule and does not activate its results.
 **Source provenance:** Direct standalone owner refinement; not adopted from
 plugin refresh/scanner behavior.
 
-**Enforcement:** Not implemented. Scan error handling and interaction remain open.
+**Enforcement:** Bounded authenticated on-demand scanning is implemented; other
+scan error handling and interaction remain open.
 
 ### PROJ-007: Individual Folder Selection Without A Discovery Scan
 
@@ -226,7 +243,50 @@ option after activation.
 **Source provenance:** Direct standalone owner clarification, replacing the
 previous open question about a possible deactivation workflow.
 
-**Enforcement:** Not implemented. No activation/deactivation controls exist.
+**Enforcement:** The discovery UI offers activation, not deactivation. Other
+entry paths and removal behavior remain unimplemented.
+
+### PROJ-010: Retain Previously Discovered Projects That Disappear
+
+When a previously discovered project is no longer found because its folder or
+recognized Compose file has disappeared before a successful scan, retain its
+saved listing and activation state and mark it unavailable. A failed scan is
+not proof that projects were removed. For the prototype, when a project is
+found again at the same path, restore its saved activation state rather than
+requiring review solely because it disappeared. Matching the path does not prove
+project identity or bypass independent input and action-safety checks.
+
+**Approval:** Owner selected this behavior on 2026-11-21 for persistent
+discovery listing, rather than removing the entry after a successful scan. The
+owner subsequently selected same-path restoration for the prototype, accepting
+the identity limitation. Broader comparison and change history for possible
+rollback are long-term ideas, not approved implementation or a choice between
+snapshots and Git. Explicit removal, safe action targeting, partial scan handling
+and other validation remain open.
+
+**Source provenance:** Direct standalone owner decision, not adoption of plugin
+removal or deletion semantics.
+
+**Enforcement:** Bounded discovery persistence implements these transitions;
+see verification for executed tests and limitations.
+
+### PROJ-011: One Saved Discovery Root Initially
+
+The initial persistent discovery implementation supports one saved discovery
+root, entered as an application-visible path in the authenticated UI. For a
+container deployment, the administrator configures a read-only bind mount
+separately. Changing the setting does not itself remove existing project entries.
+Multiple roots, duplicate paths, root-change reconciliation and detailed
+path-access policy remain separate decisions.
+
+**Approval:** Owner selected one saved root for the prototype and authenticated
+UI path entry on 2026-11-21.
+
+**Source provenance:** Direct standalone owner decision, not an adoption of
+plugin storage or path policy.
+
+**Enforcement:** A single root can be saved through the authenticated UI;
+root-change reconciliation beyond retention remains open.
 
 ## Dependencies
 
@@ -269,13 +329,21 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 - PROJ-003: Activate a stopped project; it remains stopped until a separate
   deliberate action starts it.
 - PROJ-003: Activation does not enable schedules or trigger automatic updates.
+- PROJ-003: Refuse activation with a clear error when the discovered project
+  is missing or its Compose inputs cannot be resolved.
 - PROJ-004: With root `/srv/compose`, discover eligible project folder
   `/srv/compose/jellyfin`, but do not recursively discover the separate nested
   project `/srv/compose/media/sonarr`. Do not infer that the grouping directory
   `/srv/compose/media` itself meets project eligibility rules.
+- PROJ-004: A symlinked direct child directory is skipped and the scan reports
+  the limitation; it is not followed even if its target is outside the root.
 - PROJ-005: A requested scan lists `jellyfin/compose.yaml` as a detected project,
   not sibling `appdata/` or `backups/` directories without recognized Compose
-  inputs. The example filename does not settle the complete recognition rules.
+  inputs. The initial recognized names also include `compose.yml`,
+  `docker-compose.yml`, and `docker-compose.yaml`; `.env`-only `COMPOSE_FILE`
+  discovery is deferred. Path handling remains a separate question.
+- PROJ-005: A newly discovered folder with a standard Compose filename and
+  malformed or unresolvable inputs is listed inactive with a clear error.
 - PROJ-006: Complete setup without running discovery, then request it later.
   Adding a folder on disk alone does not trigger a background discovery scan.
 - PROJ-007: Without scanning a root, browse for one eligible stack folder and
@@ -287,6 +355,16 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   acquisition does not by itself approve a deployment or CI automation policy.
 - PROJ-009: An active stack offers no deactivate action in UI or other supported
   manager entry points. Removal/deletion behavior is not inferred from this case.
+- PROJ-010: A previously discovered and activated project whose folder or
+  recognized file is absent on a successful scan remains listed as unavailable
+  with activation state preserved. A failed scan is not evidence of removal.
+- PROJ-010: When a project is found again at the same path, the prototype
+  restores its saved activation state without a review solely for its absence.
+  This does not establish identity or authorize an otherwise unsafe operation.
+- PROJ-011: The initial discovery root is saved, and changing it does not itself
+  remove previously listed project entries.
+- PROJ-011: An authenticated user can enter the application-visible root path;
+  for a container, access depends on an independently configured bind mount.
 
 ## Decisions
 
@@ -299,13 +377,24 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   over activation-plus-reconciliation: permission only, without Compose execution,
   project-file rewrites or schedule enablement. Rationale: no unexpected automatic
   actions. PROJ-003 records this bounded approval.
+- 2026-11-21: Owner selected blocking activation of a missing or unresolved
+  project, with a clear error, without clearing a previously saved active state.
 - 2026-11-19: Owner selected direct-child discovery for now (PROJ-004), while
   expressing interest in possible recursive discovery/UI grouping. No grouping
   behavior or recursive scope was approved. Organizational grouping does not
   itself require independent projects to share a Compose file or lifecycle.
+- 2026-11-21: Owner selected skipping symlinked child directories in the first
+  scan, with the limitation reported. Other symlink cases remain open.
 - 2026-11-19: Owner selected recognized Compose projects only (PROJ-005), rather
   than every child directory. This approval was pending documentation at the next
   message and is recorded here with its original scope.
+- 2026-11-21: Owner selected the four standard Compose filenames as the initial
+  discovery recognition boundary, deferring `.env`-only `COMPOSE_FILE` discovery.
+  This does not disable native `COMPOSE_FILE` resolution for selected projects
+  or settle malformed-file and path-safety behavior.
+- 2026-11-21: Owner selected listing newly discovered folders whose Compose
+  inputs are malformed or unresolvable as inactive with a clear error; this
+  does not decide the remaining input resolution or path policies.
 - 2026-11-19: Owner added on-demand/optional-setup discovery (PROJ-006) and
   individual folder browsing (PROJ-007). PROJ-001 retains automatic inclusion
   when a requested scan runs; no continuous discovery is implied. PROJ-004's
@@ -316,8 +405,19 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   and PROJ-002's scope is narrowed explicitly rather than silently generalized.
 - 2026-11-19: Owner ruled out a deactivate option (PROJ-009). This settles the
   earlier deactivation question, not removal/deletion or CI deployment approval.
-- Open: Root count, candidate-path suggestions, running-container evidence,
-  exact discovery eligibility/filenames, symlinks, filesystem/path permissions
+- 2026-11-21: Owner selected persistent listing rather than a scan-only preview
+  for the next slice, and chose to retain an absent previously discovered entry
+  as unavailable with its activation state intact (PROJ-010). Other state and
+  path rules remain to be decided before implementation.
+- 2026-11-21: Owner selected same-path restoration of saved activation state for
+  the prototype. Full comparison and history for easier rollback are long-term
+  direction only; snapshots versus Git and detailed policies remain undecided.
+- 2026-11-21: Owner selected one saved discovery root initially (PROJ-011);
+  changing the setting does not itself remove existing project entries. The
+  root is entered in the authenticated UI using its application-visible path;
+  an administrator separately configures any container bind mount.
+- Open: Root-change reconciliation, candidate-path suggestions, running-container evidence,
+  remaining discovery eligibility, other symlinks, filesystem/path permissions
   and scan error/results presentation. Runtime refresh is a separate boundary.
   Handling a Compose file directly in the root remains open.
 - Open: UI-created projects, outside-root projects, empty/invalid directories,
@@ -330,7 +430,8 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 
 ## Verification
 
-No management behavior or SDK integration exists; no behavioral acceptance tests,
-native-host measurements or plugin tests were run for this decision record.
-Document checks can validate structure, IDs and links, not enforcement or approval.
-The whole draft remains unapproved despite its nine individually approved entries.
+The bounded discovery and activation implementation and executed checks are
+recorded in [verification](../verification.md). No Docker management behavior,
+native-host measurements or plugin tests are implied. Document checks validate
+structure, IDs and links, not enforcement or approval.
+The whole draft remains unapproved despite its eleven individually approved entries.

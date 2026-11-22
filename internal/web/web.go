@@ -11,6 +11,7 @@ import (
 
 	"github.com/justinas/nosurf"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
 )
 
 //go:embed templates static
@@ -23,19 +24,22 @@ type pageData struct {
 	Initial   string
 	Error     string
 	CSRFToken string
+	Root      string
+	Projects  []discovery.Project
+	Notice    string
 }
 
-func Handler(manager *auth.Manager, publicURL *url.URL, trustedProxies []netip.Prefix) http.Handler {
+func Handler(manager *auth.Manager, store *discovery.Store, publicURL *url.URL, trustedProxies []netip.Prefix) http.Handler {
 	pages := template.Must(template.ParseFS(content, "templates/*.html", "templates/partials/*.html"))
 	assets, err := fs.Sub(content, "static")
 	if err != nil {
 		panic(err)
 	}
-	if manager == nil || publicURL == nil {
+	if manager == nil || store == nil || publicURL == nil {
 		panic("authenticated web handler requires auth manager and public origin")
 	}
 	mux := http.NewServeMux()
-	server := &authServer{manager: manager, pages: pages, publicURL: publicURL, trustedProxies: trustedProxies}
+	server := &authServer{manager: manager, discovery: store, pages: pages, publicURL: publicURL, trustedProxies: trustedProxies}
 	server.registerRoutes(mux)
 	static := http.StripPrefix("/static/", http.FileServerFS(assets))
 	mux.Handle("GET /static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +77,7 @@ func Handler(manager *auth.Manager, publicURL *url.URL, trustedProxies []netip.P
 		w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("Cache-Control", "no-store")
-		if r.Method == http.MethodPost && (r.URL.Path == "/login" || r.URL.Path == "/setup/password" || r.URL.Path == "/logout") {
+		if r.Method == http.MethodPost {
 			r.Body = http.MaxBytesReader(w, r.Body, maxFormBytes)
 		}
 		withCanonicalHost.ServeHTTP(w, r)

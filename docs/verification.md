@@ -167,3 +167,38 @@ directory, not the supplied fixture working directory; no product policy is
 inferred from that behavior. File checks cover the fixture directory contents,
 not metadata or arbitrary external paths. No host scanning, project persistence,
 Docker socket access, UI integration or container operation was exercised.
+
+## Persistent Discovery Slice
+
+Date: 2026-11-21. Linux development container, branch `feat/read-only-discovery`
+based on `4f8215b`; results refer to the uncommitted implementation alongside
+the branch's decision and schema commits. The slice implements a single saved
+root, requested direct-child scans, persistent listings and permission-only
+activation. It uses compose-go v2.17.0 without inheriting the manager process
+environment. It does not connect to Docker or run Compose actions.
+
+- `go test ./internal/discovery ./internal/web ./internal/auth ./cmd/server -count=1`:
+  passed. Cases cover schema v1/v2 migration with auth/session preservation,
+  root and project persistence, stale scan/activation rejection, discovery of
+  valid and invalid projects, missing/restored entries, local interpolation,
+  skipped symlinks, failed scans, authenticated requests and activation without
+  implicitly discovering other projects.
+- `PLAYWRIGHT_PORT=18148 make check`: passed after activation revalidation;
+  includes Go race tests, vet, build, 14 Node tests,
+  7 HTTP tests, 9 browser tests with 3 intentional skips, assets and contract
+  structure checks. The browser flow exercised discovery/activation in desktop
+  Chromium and the resulting dashboard on mobile Chromium.
+- `make check-security`: passed npm audit and govulncheck, no vulnerabilities.
+- `make check-container`: Linux amd64 image built and scanned with zero findings.
+- Contract-inclusive Hugo v0.169.0 build via `go run` passed.
+
+The scanned project filesystem is external to manager-owned state: it can change
+after validation, and activation is not a guarantee of safe targeting by future
+actions. Path restoration is not identity proof. Availability is last-scan state,
+not live status. `COMPOSE_FILE` selection is explicitly unsupported during this
+slice, and `.env` defaults referring to missing variables can be conservatively
+flagged. The bounded `.env` reader checks references in file order and limits
+file and statement sizes. Compose input references may read outside the project folder if
+accessible to the process; a read-only mount prevents writes but is not a read
+sandbox. No native-host, Docker operations, full Compose compatibility or
+comprehensive contract compliance is claimed.
