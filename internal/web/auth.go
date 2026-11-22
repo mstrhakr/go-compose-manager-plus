@@ -163,6 +163,11 @@ func (server *authServer) dashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	server.render(w, pageData{Title: "Overview", View: "dashboard", Username: user.Username, Initial: initial,
 		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: projects,
+		Activity: chartPanel{ID: "activity-title", Title: "Container activity", Status: "Unavailable", EmptyTitle: "Runtime metrics unavailable", EmptyDetail: "Docker is not connected. No live activity is being collected."},
+		Metrics: []metricPanel{
+			{ID: "restart-title", Title: "Container restart & OOM rate", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
+			{ID: "health-title", Title: "Stack health & readiness", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
+		},
 		Error:  server.manager.SessionManager().PopString(r.Context(), "discovery_error"),
 		Notice: server.manager.SessionManager().PopString(r.Context(), "discovery_notice")})
 }

@@ -202,3 +202,59 @@ file and statement sizes. Compose input references may read outside the project 
 accessible to the process; a read-only mount prevents writes but is not a read
 sandbox. No native-host, Docker operations, full Compose compatibility or
 comprehensive contract compliance is claimed.
+
+## UI Foundation Slice
+
+Environment: Linux development container. The dashboard was restructured using
+the owner's supplied design reference; the reference's simulated runtime data
+and actions were not implemented. The theme follows the system or an explicit
+browser-local selection. Discovery and permission-only activation remain the
+only project workflows in this slice.
+
+- `PLAYWRIGHT_PORT=18176 make check`: passed Go vet, race tests and build,
+  14 Node tests, 7 HTTP tests, 17 browser tests with 3 intentional skips,
+  embedded-asset and contract-structure checks.
+- Chromium exercised first login, password setup, discovery errors, keyboard
+  navigation, scanning, activation, theme persistence, no-JavaScript and
+  touch-enabled mobile scanning. Login and theme behavior were also exercised
+  in Firefox, WebKit and mobile Chromium. Desktop checks measure the header,
+  rail, sidebar and telemetry dimensions and test horizontal overflow.
+- Desktop dark and mobile light screenshots were inspected locally. This is
+  not a pixel-comparison test against the reference, nor native-device evidence.
+- `make docs` could not run because the Hugo binary is not installed;
+  `go run github.com/gohugoio/hugo@v0.169.0 --source docs --minify --panicOnWarning`
+  passed instead.
+
+Runtime telemetry, Docker integration and management actions remain unimplemented.
+The supplied reference was inspected as text, not executed or included in the app.
+
+## Reusable UI Components
+
+Environment: Linux development container. Scope: server-rendered metric, chart
+and selectable list panels, compact filter styling, and a test-only component
+fixture. The production dashboard continues to show unavailable runtime data;
+the fixture is not an application route and its data is synthetic.
+
+- `PLAYWRIGHT_PORT=18187 make check`: passed Go vet, race tests and build,
+  14 Node tests, 7 HTTP tests, 37 browser tests with 3 intentional skips,
+  embedded-asset and contract-structure checks.
+- Browser coverage exercises chart ranges, missing samples, accessible data,
+  empty and invalid states, independent multi-selection, disabled entries,
+  keyboard operation, htmx reinitialization, no-JavaScript behavior, themes
+  and responsive overflow in Chromium, Firefox, WebKit and mobile Chromium.
+  Desktop and mobile dark/light fixture screenshots were inspected locally.
+- `PLAYWRIGHT_PORT=18188 npx playwright test tests/e2e/components.spec.js
+  --project=chromium --project=mobile-chromium`: passed 10 tests after adding
+  touch-selection and chart-data removal checks.
+- `make check-security`: npm audit and govulncheck reported no vulnerabilities.
+- Hugo 0.169.0 documentation build through its Go runner passed. A standalone
+  Hugo executable is not installed.
+
+These are component-level results, not evidence of live Docker metrics,
+filtering, bulk operations, real-device testing or production accessibility
+certification.
+
+PR review follow-up: `PLAYWRIGHT_PORT=18191 make check` and the Hugo 0.169.0
+Go-runner build passed after preserving missing chart observations in the
+accessible table, namespacing list events, and correcting text contrast.
+Browser tests assert at least 4.5:1 contrast for the reviewed theme colors.

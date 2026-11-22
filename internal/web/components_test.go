@@ -1,0 +1,32 @@
+package web
+
+import (
+	"bytes"
+	"html/template"
+	"strings"
+	"testing"
+)
+
+func TestComponentTemplatesEscapeData(t *testing.T) {
+	pages := template.Must(template.ParseFS(content, "templates/partials/*.html"))
+	tests := []struct {
+		name string
+		data any
+		want string
+	}{
+		{"metric-panel", metricPanel{ID: "metric", Title: "<metric>", Value: "<value>"}, "&lt;metric&gt;"},
+		{"chart-panel", chartPanel{ID: "chart", Title: "<chart>", Series: `{"label":"<script>"}`}, "&lt;script&gt;"},
+		{"list-panel", listPanel{ID: "list", Title: "Projects", Selectable: true, Columns: []string{"Name"}, Rows: []listRow{{Value: `"><script>`, Label: "<label>", Cells: []string{"<cell>"}}}}, "&lt;cell&gt;"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var output bytes.Buffer
+			if err := pages.ExecuteTemplate(&output, tt.name, tt.data); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(output.String(), tt.want) || strings.Contains(output.String(), "<script>") {
+				t.Fatalf("unescaped component output: %s", output.String())
+			}
+		})
+	}
+}

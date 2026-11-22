@@ -1,0 +1,38 @@
+{{define "metric-panel"}}
+<section class="metric-panel" aria-labelledby="{{.ID}}">
+  <div class="section-heading"><h2 id="{{.ID}}">{{.Title}}</h2><span>{{.Status}}</span></div>
+  <div class="metric-value">{{.Value}}</div>
+  <p>{{.Detail}}</p>
+</section>
+{{end}}
+
+{{define "chart-panel"}}
+<section class="chart-panel" aria-labelledby="{{.ID}}">
+  <div class="section-heading"><h2 id="{{.ID}}">{{.Title}}</h2><span>{{.Status}}</span></div>
+  <div class="chart" data-chart{{if .Series}} data-chart-series="{{.Series}}"{{end}}>
+    <div class="chart-message" data-chart-message{{if .Series}} hidden{{end}}><strong>{{.EmptyTitle}}</strong><p>{{.EmptyDetail}}</p></div>
+    <div class="chart-message" data-chart-error role="alert" hidden>Chart data could not be displayed.</div>
+    {{if .Series}}<noscript><div class="chart-message">Chart data requires JavaScript to display.</div></noscript>{{end}}
+    <div class="chart-plot" data-chart-plot hidden></div>
+    <div class="chart-data" data-chart-data hidden></div>
+  </div>
+</section>
+{{end}}
+
+{{define "list-panel"}}
+<section class="list-panel" aria-labelledby="{{.ID}}"{{if .Selectable}} data-select-list{{end}}>
+  <div class="list-panel-header">
+    <h2 id="{{.ID}}">{{.Title}}</h2>
+    <div class="list-panel-tools">{{if .Selectable}}<span class="selection-count" data-select-count aria-live="polite" hidden></span>{{end}}<span>{{.Status}}</span></div>
+  </div>
+  {{if .Rows}}
+  <div class="list-scroll"><table class="data-table">
+    <thead><tr>{{if .Selectable}}<th class="selection-cell"><label data-select-all-control hidden><input type="checkbox" data-select-all aria-label="Select all {{.Title}}"></label></th>{{end}}{{range .Columns}}<th scope="col">{{.}}</th>{{end}}</tr></thead>
+    <tbody>{{range .Rows}}<tr>
+      {{if $.Selectable}}<td class="selection-cell"><label><input type="checkbox" data-select-item value="{{.Value}}" aria-label="Select {{.Label}}" {{if .Disabled}}disabled{{end}}></label></td>{{end}}
+      {{range .Cells}}<td>{{.}}</td>{{end}}
+    </tr>{{end}}</tbody>
+  </table></div>
+  {{else}}<div class="list-empty">{{.Empty}}</div>{{end}}
+</section>
+{{end}}
