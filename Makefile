@@ -1,7 +1,7 @@
 .SHELLFLAGS := -eu -o pipefail -c
 SHELL := bash
 .DEFAULT_GOAL := help
-.PHONY: help run build setup test test-go test-unit test-js test-e2e test-live-docker test-smoke vet fmt check check-go check-assets check-contracts docs docs-serve docs-contracts check-workflows check-security check-container pr-checks run-watch
+.PHONY: help run build setup test test-go test-unit test-js test-e2e test-live-docker test-smoke vet fmt check check-go check-assets check-contracts docs docs-serve docs-contracts docs-development check-docs check-workflows check-security check-container pr-checks run-watch
 
 QUIET ?= 0
 PR ?=
@@ -86,13 +86,19 @@ run-watch:
 	@gh run watch "$$RUN" --compact --exit-status --interval 20
 
 docs:
-	hugo --source docs --minify --panicOnWarning
+	hugo --source docs --cleanDestinationDir --minify --panicOnWarning
 
 docs-serve:
 	hugo server --source docs --bind 127.0.0.1
 
 docs-contracts:
 	hugo server --source docs --config hugo.toml,hugo.contracts.toml --bind 127.0.0.1
+
+docs-development:
+	hugo server --source docs --config hugo.toml,hugo.development.toml --bind 127.0.0.1
+
+check-docs:
+	node scripts/check-docs.mjs
 
 check-workflows:
 	node scripts/workflows.mjs

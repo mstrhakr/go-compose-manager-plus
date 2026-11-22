@@ -9,11 +9,11 @@ useful workflows and portable business rules with a modern standalone interface.
 UniFi is the design inspiration; Unraid-specific UI and legacy compatibility
 machinery are not the target. Features will arrive in bounded, tested slices.
 
-**Current stage: local authentication and read-only project discovery.** Save
+**Current stage: local authentication, project discovery and read-only Docker inventory.** Save
 one application-visible root and request a scan to persist discovered project
 entries. Discovery and permission-only activation do not connect to Docker or
-run Compose actions. Container and resource values are placeholders, not host
-status. A Linux amd64 development image is published at
+run Compose actions. Optional on-demand snapshots show containers and their
+state; resource metrics and management actions are not implemented. A Linux amd64 development image is published at
 `ghcr.io/mstrhakr/go-compose-manager-plus:dev`; it reflects the latest published
 main, not unmerged branch work.
 
@@ -117,8 +117,8 @@ selection in browser-local storage for this origin, not to the account; storage
 failure is reported. Without JavaScript, the system preference still applies and
 the selection control is hidden. Reusable color tokens and workspace primitives
 live in `internal/web/static/foundation.css`; server-rendered templates remain
-the source of page content. Runtime metrics, inventory and Docker operations
-remain unavailable; the dashboard does not display simulated observations.
+the source of page content. Runtime metrics and Docker operations remain
+unavailable; the dashboard does not display simulated observations.
 
 ## Deploy locally
 
@@ -220,6 +220,22 @@ services:
 
 The app's user must have permission to connect to the host socket; group
 membership granting that access is also effectively host-administrative.
+For a group-writable socket, inspect its numeric GID and mode on the Docker host:
+
+```sh
+stat -Lc 'uid=%u gid=%g mode=%a' /var/run/docker.sock
+```
+
+If needed, add the reported GID as a supplemental group in the same override
+(replace `281` with the actual GID), then recreate the service:
+
+```yaml
+services:
+  app:
+    group_add:
+      - "281"
+```
+
 Mounting a socket `:ro` does not make Docker API access read-only. Expose the
 app only within a trusted security boundary; TLS alone does not make Docker
 access safe.
@@ -240,6 +256,9 @@ verifying the release checksum, then:
 ```sh
 make docs-serve  # http://localhost:1313/
 make docs       # docs/public/
+make check-docs # validate public and opt-in combinations
+make docs-development # preview contributor pages
+make docs-contracts   # preview contracts
 ```
 
 Start with [getting started](docs/content/getting-started.html),
@@ -247,6 +266,10 @@ Start with [getting started](docs/content/getting-started.html),
 [development](docs/content/development.html), and
 [deployment](docs/content/deployment.html). Content, layouts, and styles live
 together under `docs/`, with no third-party theme.
+The default site includes user documentation only. Contributor pages and
+contracts require separate opt-ins. The downloadable
+[Compose example](docs/static/examples/compose.yaml) uses the planned `latest`
+tag, which is not yet published; the `dev` tag is available for testing.
 
 ## Automation and privacy
 
@@ -263,6 +286,8 @@ together under `docs/`, with no third-party theme.
 - Downloads include checksums/provenance; image tags separate dev/beta/RC/normal.
 - Pages requires `PUBLISH_DOCS=true`, Pages configured for GitHub Actions, and
   a manual default-branch run with explicit publication confirmation.
+- Contributor pages and contracts remain excluded unless
+  `PUBLISH_DEVELOPMENT_DOCS=true` and `PUBLISH_CONTRACTS=true`, respectively.
 - **A private repository can still have a public Pages site.** Review content
   and access controls before enabling publishing. Repository/package visibility
   is never changed by these workflows.

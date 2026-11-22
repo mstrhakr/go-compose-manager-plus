@@ -140,5 +140,8 @@ domains do not require hardcoded repository names. Preview locally with
 <code>make docs-serve</code> while publishing remains disabled. Changing either
 opt-in variable back to false prevents future runs, but does not delete already
 published sites, packages, or artifacts.</p>
-<p>Contracts stay excluded unless <code>PUBLISH_CONTRACTS=true</code>. Preview
-them locally with <code>make docs-contracts</code> before enabling that variable.</p>
+<p>Contracts stay excluded unless <code>PUBLISH_CONTRACTS=true</code>. Contributor
+pages stay excluded unless <code>PUBLISH_DEVELOPMENT_DOCS=true</code>. Preview
+them locally with <code>make docs-contracts</code> and
+<code>make docs-development</code> before enabling either variable. Review both
+sets separately; enabling one does not enable the other.</p>
