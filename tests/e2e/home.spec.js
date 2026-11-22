@@ -177,6 +177,19 @@ test('first login forces password setup before protected dashboard and works on 
       await themedPage.getByRole('link', { name: 'Compose projects', exact: true }).click();
       await expect(themedPage.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
       const filters = themedPage.locator('.inventory-filter-disclosure');
+      for (const width of [1024, 901, 621]) {
+        await themedPage.setViewportSize({ width, height: 900 });
+        expect(await themedPage.evaluate(() => {
+          const panel = document.querySelector('.inventory-panel').getBoundingClientRect();
+          const elements = document.querySelectorAll('.inventory-columns, .inventory-columns > span, .inventory-item summary, .inventory-item summary > span');
+          return document.documentElement.scrollWidth <= window.innerWidth &&
+            [...elements].every(element => {
+              const rect = element.getBoundingClientRect();
+              return rect.left >= panel.left && rect.right <= panel.right;
+            });
+        })).toBe(true);
+      }
+      await themedPage.setViewportSize({ width: 1440, height: 900 });
       await filters.locator('summary').click();
       await expect(filters).not.toHaveAttribute('open', '');
       await expect(themedPage.getByLabel('Search', { exact: true })).toBeHidden();

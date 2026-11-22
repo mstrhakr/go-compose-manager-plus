@@ -142,6 +142,24 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 		t.Fatalf("inventory form error missing: %s", response.Body.String())
 	}
 	token = tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {"relative"}, "return_to": {"/containers"}}, cookies, token)
+	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/containers" {
+		t.Fatalf("containers form return = %d, location %q", response.Code, response.Header().Get("Location"))
+	}
+	response = perform(handler, http.MethodGet, "/containers", nil, cookies, "")
+	if !strings.Contains(response.Body.String(), `role="alert">Enter an absolute`) {
+		t.Fatalf("containers form error missing: %s", response.Body.String())
+	}
+	token = tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {root}, "return_to": {"/containers"}}, cookies, token)
+	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/containers" {
+		t.Fatalf("containers notice return = %d, location %q", response.Code, response.Header().Get("Location"))
+	}
+	response = perform(handler, http.MethodGet, "/containers", nil, cookies, "")
+	if !strings.Contains(response.Body.String(), `role="status">Discovery root saved.`) {
+		t.Fatalf("containers notice missing: %s", response.Body.String())
+	}
+	token = tokenFromBody(t, response.Body.String())
 	response = perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {"relative"}, "return_to": {"https://example.com"}}, cookies, token)
 	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/" {
 		t.Fatalf("untrusted form return = %d, location %q", response.Code, response.Header().Get("Location"))

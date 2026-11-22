@@ -225,8 +225,9 @@ circle.chart-line { fill: currentColor; stroke: none; }
 .state-dot-running { background: #2baf67; }
 .state-dot-stopped { background: var(--dim); }
 .project-glyph { display: inline-block; width: 16px; margin-right: 8px; color: var(--muted); font-weight: normal; }
-.inventory-columns, .inventory-item summary { display: grid; grid-template-columns: minmax(200px, 1fr) 150px 120px 110px; gap: 12px; align-items: center; }
+.inventory-columns, .inventory-item summary { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.5fr) minmax(0, 1.2fr) minmax(0, 1.1fr); gap: 12px; align-items: center; }
 .inventory-columns { padding: 10px 12px 10px 28px; color: var(--muted); font-weight: 650; }
+.inventory-columns > span { min-width: 0; overflow-wrap: anywhere; }
 .inventory-description { margin: 0; padding: 10px 12px; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
 .inventory-list { margin: 0; padding: 0; list-style: none; }
 .inventory-item { border-top: 1px solid var(--border); }
@@ -235,7 +236,7 @@ circle.chart-line { fill: currentColor; stroke: none; }
 .inventory-item summary::before { position: absolute; left: 10px; content: '\25b8'; color: var(--muted); }
 .inventory-item[open] summary::before { content: '\25be'; }
 .inventory-item summary:hover { background: var(--raised); }
-.inventory-item summary > span { color: var(--muted); overflow-wrap: anywhere; }
+.inventory-item summary > span { min-width: 0; color: var(--muted); overflow-wrap: anywhere; }
 .inventory-item summary .inventory-name { min-width: 0; color: var(--text); font-weight: 650; }
 .inventory-details { padding: 0 12px 12px 30px; color: var(--muted); overflow-wrap: anywhere; }
 .inventory-details .project-error { color: var(--danger); }
@@ -294,7 +295,7 @@ circle.chart-line { fill: currentColor; stroke: none; }
   .host-sidebar:has(.sidebar-disclosure:not([open])) { padding: 12px 10px; }
   .inventory-sidebar + .console-main { grid-column: 2; grid-row: 1; }
   .inventory-filter-link { display: inline-block; }
-  .inventory-columns, .inventory-item summary { grid-template-columns: minmax(120px, 1fr) repeat(3, minmax(70px, auto)); gap: 8px; }
+  .inventory-columns, .inventory-item summary { gap: 8px; }
 }
 @media (max-width: 620px) {
   .auth-panel { padding: 1.5rem; }

@@ -36,6 +36,8 @@
 
 {{define "containers-page"}}
 <div class="inventory-toolbar"><div><h1>Containers</h1><p>{{if eq .RuntimeState "Snapshot"}}{{.Filters.Shown}} of {{.Filters.Total}} containers{{else}}Inventory unavailable{{end}}</p></div><a class="inventory-filter-link" href="#inventory-filter-toggle">Filters &amp; sort</a><span>{{.RuntimeMessage}}</span></div>
+{{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+{{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
 <div class="inventory-panel">{{template "list-panel" .Containers}}</div>
 <p class="inventory-footnote">Includes stopped containers and containers without a Compose project label. <span class="inventory-scroll-hint">Scroll the table horizontally to see all columns.</span></p>
 {{end}}
