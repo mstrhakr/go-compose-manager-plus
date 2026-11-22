@@ -25,6 +25,9 @@ the next slice. For a previously discovered project absent on a successful scan,
 the owner selected retaining its listing and activation state as unavailable;
 scan failure is not proof of removal. See
 [PROJ-010](../contracts/project-membership.md#proj-010-retain-previously-discovered-projects-that-disappear).
+The owner later selected same-path restoration of saved activation state for
+the prototype. Full comparison and historical changes for easier rollback are
+long-term ideas; snapshots versus Git and detailed policies remain undecided.
 The owner also selected one saved discovery root initially, with existing entries
 not removed merely by changing that setting, entered as an application-visible
 path in the authenticated UI. Container mounts are configured separately; see

@@ -243,12 +243,18 @@ previous open question about a possible deactivation workflow.
 When a previously discovered project is no longer found because its folder or
 recognized Compose file has disappeared before a successful scan, retain its
 saved listing and activation state and mark it unavailable. A failed scan is
-not proof that projects were removed.
+not proof that projects were removed. For the prototype, when a project is
+found again at the same path, restore its saved activation state rather than
+requiring review solely because it disappeared. Matching the path does not prove
+project identity or bypass independent input and action-safety checks.
 
 **Approval:** Owner selected this behavior on 2026-11-21 for persistent
-discovery listing, rather than removing the entry after a successful scan.
-This does not decide explicit removal, identity after replacement or recreation,
-partial scan handling, validation or how unavailable entries recover.
+discovery listing, rather than removing the entry after a successful scan. The
+owner subsequently selected same-path restoration for the prototype, accepting
+the identity limitation. Broader comparison and change history for possible
+rollback are long-term ideas, not approved implementation or a choice between
+snapshots and Git. Explicit removal, safe action targeting, partial scan handling
+and other validation remain open.
 
 **Source provenance:** Direct standalone owner decision, not adoption of plugin
 removal or deletion semantics.
@@ -340,6 +346,9 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 - PROJ-010: A previously discovered and activated project whose folder or
   recognized file is absent on a successful scan remains listed as unavailable
   with activation state preserved. A failed scan is not evidence of removal.
+- PROJ-010: When a project is found again at the same path, the prototype
+  restores its saved activation state without a review solely for its absence.
+  This does not establish identity or authorize an otherwise unsafe operation.
 - PROJ-011: The initial discovery root is saved, and changing it does not itself
   remove previously listed project entries.
 - PROJ-011: An authenticated user can enter the application-visible root path;
@@ -386,6 +395,9 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   for the next slice, and chose to retain an absent previously discovered entry
   as unavailable with its activation state intact (PROJ-010). Other state and
   path rules remain to be decided before implementation.
+- 2026-11-21: Owner selected same-path restoration of saved activation state for
+  the prototype. Full comparison and history for easier rollback are long-term
+  direction only; snapshots versus Git and detailed policies remain undecided.
 - 2026-11-21: Owner selected one saved discovery root initially (PROJ-011);
   changing the setting does not itself remove existing project entries. The
   root is entered in the authenticated UI using its application-visible path;
