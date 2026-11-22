@@ -30,6 +30,7 @@
         throw new Error('Invalid chart range or series');
       }
       const points = [];
+      const samples = [];
       for (const series of input.series) {
         if (typeof series.label !== 'string' || !series.label.trim() ||
             !colors.has(series.color) || !Array.isArray(series.points)) {
@@ -42,10 +43,11 @@
             throw new Error('Invalid chart point');
           }
           lastX = point.x;
+          samples.push(point);
           if (point.y !== null) points.push(point);
         }
       }
-      if (!points.length) {
+      if (!samples.length) {
         plot.replaceChildren();
         data.replaceChildren();
         plot.hidden = true;
@@ -54,8 +56,8 @@
         errorMessage.hidden = true;
         return;
       }
-      const minX = points.reduce((min, point) => Math.min(min, point.x), Infinity);
-      const maxX = points.reduce((max, point) => Math.max(max, point.x), -Infinity);
+      const minX = samples.reduce((min, point) => Math.min(min, point.x), Infinity);
+      const maxX = samples.reduce((max, point) => Math.max(max, point.x), -Infinity);
       if (!Number.isFinite(maxX - minX)) throw new Error('Invalid chart time range');
       const svg = document.createElementNS(svgNS, 'svg');
       svg.setAttribute('viewBox', '0 0 1000 200');
@@ -105,6 +107,10 @@
           segment = [];
         };
         for (const point of series.points) {
+          const row = body.insertRow();
+          for (const value of [series.label, point.x, point.y === null ? 'Missing observation' : point.y]) {
+            row.insertCell().textContent = String(value);
+          }
           if (point.y === null) {
             flush();
             continue;
@@ -112,10 +118,6 @@
           const x = minX === maxX ? 500 : 10 + (point.x - minX) / (maxX - minX) * 980;
           const y = 190 - (point.y - input.min) / (input.max - input.min) * 180;
           segment.push([x, y]);
-          const row = body.insertRow();
-          for (const value of [series.label, point.x, point.y]) {
-            row.insertCell().textContent = String(value);
-          }
         }
         flush();
       }
@@ -125,9 +127,9 @@
       details.append(tableScroll);
       plot.replaceChildren(svg);
       data.replaceChildren(axis, legend, details);
-      plot.hidden = false;
+      plot.hidden = points.length === 0;
       data.hidden = false;
-      message.hidden = true;
+      message.hidden = points.length > 0;
       errorMessage.hidden = true;
     } catch (error) {
       plot.replaceChildren();
@@ -187,7 +189,7 @@
       return;
     }
     updateList(list);
-    list.dispatchEvent(new CustomEvent('selectionchange', {
+    list.dispatchEvent(new CustomEvent('list:selectionchange', {
       bubbles: true,
       detail: { selected: items(list).filter(item => item.checked).map(item => item.value) },
     }));

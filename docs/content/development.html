@@ -56,7 +56,7 @@ error. With JavaScript disabled it reports that chart data cannot be displayed.<
 <p>List panels render semantic tables and optional native checkboxes; enable
 <code>Selectable</code> only when a consumer needs selection. Local enhancement
 provides a scoped select-all checkbox, count and a bubbling
-<code>selectionchange</code> event whose <code>detail.selected</code> contains
+<code>list:selectionchange</code> event whose <code>detail.selected</code> contains
 the selected values. Disabled rows are excluded. Selection is ephemeral and
 does not authorize or perform any operation. After htmx swaps, controls are
 reinitialized from the new DOM; consumers own persistence, data refresh and

@@ -17,6 +17,7 @@ test('renders chart series, gaps, data table and explicit empty/error states', a
   await expect(chart.locator('.chart-key').filter({ hasText: 'CPU' })).toBeVisible();
   await chart.getByText('View chart data').click();
   await expect(chart.getByRole('cell', { name: '100', exact: true })).toBeVisible();
+  await expect(chart.getByRole('row').filter({ hasText: 'Missing observation' })).toContainText('CPU3Missing observation');
   await expect(page.locator('.chart-panel').filter({ has: page.getByRole('heading', { name: 'Empty chart' }) }).getByText('No observations.')).toBeVisible();
   await expect(page.getByRole('alert')).toHaveText('Chart data could not be displayed.');
   await expect(page.getByText('42%')).toBeVisible();
@@ -29,7 +30,8 @@ test('selection is scoped, keyboard operable and handles disabled rows', async (
   const selectAll = projects.getByLabel('Select all Projects');
   await page.evaluate(() => {
     window.selectionEvents = [];
-    document.addEventListener('selectionchange', event => window.selectionEvents.push(event.detail.selected));
+    document.addEventListener('list:selectionchange', event => window.selectionEvents.push(event.detail.selected));
+    document.dispatchEvent(new Event('selectionchange'));
   });
   await projects.getByLabel('Select Alpha').focus();
   await page.keyboard.press('Space');
@@ -63,6 +65,8 @@ test('reinitializes swapped components and handles zero selectable entries', asy
   });
   await expect(chart.getByText('No observations.')).toBeVisible();
   await expect(chart.getByRole('alert')).toBeHidden();
+  await chart.getByText('View chart data').click();
+  await expect(chart.getByRole('cell', { name: 'Missing observation' })).toBeVisible();
   await chart.locator('[data-chart]').evaluate(element => {
     element.dataset.chartSeries = JSON.stringify({ min: 0, max: 1, series: [{ label: 'Recovered', color: 'blue', points: [{ x: 1, y: 1 }] }] });
     element.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
@@ -80,6 +84,33 @@ test('fixture remains usable in both themes and on narrow screens', async ({ pag
   for (const theme of ['light', 'dark']) {
     await page.evaluate(value => { document.documentElement.dataset.theme = value; }, theme);
     await expect(page.getByRole('heading', { name: 'Projects', exact: true })).toBeVisible();
+    const contrasts = await page.evaluate(() => {
+      function rgb(color) {
+        const element = document.createElement('span');
+        element.style.color = color;
+        document.body.append(element);
+        const values = getComputedStyle(element).color.match(/\d+/g).slice(0, 3).map(Number);
+        element.remove();
+        return values;
+      }
+      function luminance(color) {
+        return rgb(color).map(value => value / 255).map(value => value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4)
+          .reduce((sum, value, index) => sum + value * [.2126, .7152, .0722][index], 0);
+      }
+      function contrast(first, second) {
+        const values = [luminance(first), luminance(second)].sort((a, b) => a - b);
+        return (values[1] + .05) / (values[0] + .05);
+      }
+      const style = getComputedStyle(document.documentElement);
+      const token = name => style.getPropertyValue(name).trim();
+      const label = getComputedStyle(document.querySelector('.chart-key')).color;
+      return [
+        contrast(token('--dim'), token('--bg')),
+        contrast(token('--dim'), token('--panel')),
+        contrast(label, token('--sidebar')),
+      ];
+    });
+    for (const ratio of contrasts) expect(ratio).toBeGreaterThanOrEqual(4.5);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: `test-results/components-${testInfo.project.name}-${theme}.png`, fullPage: true });
   }

@@ -253,3 +253,8 @@ the fixture is not an application route and its data is synthetic.
 These are component-level results, not evidence of live Docker metrics,
 filtering, bulk operations, real-device testing or production accessibility
 certification.
+
+PR review follow-up: `PLAYWRIGHT_PORT=18191 make check` and the Hugo 0.169.0
+Go-runner build passed after preserving missing chart observations in the
+accessible table, namespacing list events, and correcting text contrast.
+Browser tests assert at least 4.5:1 contrast for the reviewed theme colors.

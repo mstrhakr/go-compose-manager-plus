@@ -8,7 +8,7 @@
   --border: #d7dce1;
   --text: #202832;
   --muted: #586574;
-  --dim: #6f7a86;
+  --dim: #606b77;
   --blue: #0067d6;
   --blue-soft: #e0efff;
   --danger: #a23828;
@@ -136,12 +136,14 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 .chart-plot svg { width: 100%; height: 100%; overflow: visible; }
 .chart-line { fill: none; stroke: currentColor; stroke-width: 2; vector-effect: non-scaling-stroke; }
 circle.chart-line { fill: currentColor; stroke: none; }
-.chart-blue { color: #008de5; } .chart-amber { color: #b67b00; }
-.chart-purple { color: #a855f7; } .chart-green { color: #158450; } .chart-red { color: #db4242; }
+.chart-blue { --series-color: #008de5; } .chart-amber { --series-color: #b67b00; }
+.chart-purple { --series-color: #a855f7; } .chart-green { --series-color: #158450; } .chart-red { --series-color: #db4242; }
+.chart-line { color: var(--series-color); }
 .chart-data { position: absolute; bottom: 8px; left: 12px; right: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .chart-axis { display: flex; justify-content: space-between; gap: 8px; width: 100%; color: var(--muted); font-size: 10px; }
 .chart-legend { display: flex; flex-wrap: wrap; gap: 10px; }
-.chart-key::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 5px; background: currentColor; border-radius: 50%; }
+.chart-key { color: var(--text); }
+.chart-key::before { content: ''; display: inline-block; width: 8px; height: 8px; margin-right: 5px; background: var(--series-color); border-radius: 50%; }
 .chart-data details { position: relative; margin-left: auto; }
 .chart-data summary { color: var(--blue); cursor: pointer; white-space: nowrap; }
 .chart-data details[open] { z-index: 1; }
