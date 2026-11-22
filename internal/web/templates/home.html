@@ -16,6 +16,7 @@
       <button class="primary-button" type="submit">Sign in <span aria-hidden="true">&#8594;</span></button>
     </form>
     <p class="auth-footnote">Protected local administration</p>
+    {{template "theme-control" .}}
   </section>
 </main>
 {{else if eq .View "setup"}}
@@ -36,48 +37,96 @@
       <button class="primary-button" type="submit">Save password <span aria-hidden="true">&#8594;</span></button>
     </form>
     <form action="/logout" method="post" class="secondary-form"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="text-button" type="submit">Sign out instead</button></form>
+    {{template "theme-control" .}}
   </section>
 </main>
 {{else}}
-<div class="app-shell">
-  <aside class="sidebar">
-    <a class="brand-lockup" href="/" aria-label="Compose Manager Plus overview"><span class="brand-mark">C</span><span class="brand-name">COMPOSE MANAGER <b>PLUS</b></span></a>
-    <p class="nav-caption">WORKSPACE</p>
-    <nav aria-label="Main navigation">
-      <a class="nav-item active" href="/" aria-current="page"><span class="nav-glyph" aria-hidden="true">&#9638;</span>Overview</a>
-      <a class="nav-item" href="#workspace-title"><span class="nav-glyph" aria-hidden="true">&#9636;</span>Stacks <span class="nav-count">{{len .Projects}}</span></a>
-      <a class="nav-item disabled" aria-disabled="true"><span class="nav-glyph" aria-hidden="true">&#9678;</span>Networks</a>
-      <a class="nav-item disabled" aria-disabled="true"><span class="nav-glyph" aria-hidden="true">&#9633;</span>Volumes</a>
+<div class="console">
+  <header class="console-header">
+    <div class="header-group">
+      <a class="console-brand" href="/" aria-label="Compose Manager Plus overview"><span class="brand-orb">C</span><strong>Compose Manager Plus</strong></a>
+      <span class="header-divider" aria-hidden="true"></span>
+      <span class="module-pill"><span aria-hidden="true">&#9638;</span> Compose</span>
+      <span class="header-context">Local instance</span>
+    </div>
+    <div class="header-group user-menu">
+      {{template "theme-control" .}}
+      <span class="avatar" aria-hidden="true">{{.Initial}}</span><span class="username">{{.Username}}</span>
+      <form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="text-button" type="submit">Sign out</button></form>
+    </div>
+  </header>
+  <div class="console-body">
+    <nav class="console-rail" aria-label="Main navigation">
+      <a class="rail-item selected" href="/" aria-current="page" aria-label="Overview" title="Overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h7V3H3v10Zm0 8h7v-5H3v5Zm11 0h7V11h-7v10Zm0-18v5h7V3h-7Z"/></svg></a>
+      <a class="rail-item" href="#workspace-title" aria-label="Compose projects" title="Compose projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4zM6 7h12M8 4h8"/></svg></a>
+      <span class="rail-item unavailable" title="Containers unavailable" aria-label="Containers unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4v10l-8 4-8-4V7l8-4Zm-8 4 8 4 8-4m-8 4v10"/></svg></span>
+      <span class="rail-item unavailable" title="Volumes unavailable" aria-label="Volumes unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 2 3.6 3 8 3s8-1 8-3V6M4 12c0 2 3.6 3 8 3s8-1 8-3"/></svg></span>
+      <span class="rail-item unavailable" title="Networks unavailable" aria-label="Networks unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-4 4-4 14 0 18M12 3c4 4 4 14 0 18"/></svg></span>
     </nav>
-    <div class="sidebar-bottom"><span class="connection-dot"></span><span>Local host</span><span class="connection-label">SETUP</span></div>
-  </aside>
-  <main class="dashboard-main">
-    <header class="topbar">
-      <div><p class="eyebrow">DOCKER HOST <span class="host-dot"></span></p><strong>Local instance</strong></div>
-      <div class="user-menu"><span class="avatar">{{.Initial}}</span><span>{{.Username}}</span><form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="text-button" type="submit">Sign out</button></form></div>
-    </header>
-    <section class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1>System status</h1><p class="lede">Your Compose workspace at a glance.</p></div><button class="quiet-button" type="button" disabled>Refresh</button></section>
-    <section class="status-grid" aria-label="System summary">
-      <article class="status-card"><div class="card-label">STACKS <span aria-hidden="true">&#9636;</span></div><strong>{{len .Projects}}</strong><p>Discovered projects</p></article>
-      <article class="status-card"><div class="card-label">CONTAINERS <span aria-hidden="true">&#9638;</span></div><strong>--</strong><p>Docker integration pending</p></article>
-      <article class="status-card"><div class="card-label">CPU USAGE <span aria-hidden="true">&#10038;</span></div><strong>--</strong><p>Live metrics pending</p></article>
-      <article class="status-card"><div class="card-label">MEMORY <span aria-hidden="true">&#9641;</span></div><strong>--</strong><p>Live metrics pending</p></article>
-    </section>
-    <section class="workspace-panel" aria-labelledby="workspace-title">
-      <div class="panel-heading"><div><h2 id="workspace-title">Compose projects</h2><p>Availability reflects the last successful scan for each root, not live status. Docker actions are not connected.</p></div><span class="panel-count">{{len .Projects}} PROJECTS</span></div>
-      <div class="discovery-content">
+    <aside class="host-sidebar" aria-labelledby="host-context-title">
+      <div class="host-title"><span class="host-icon" aria-hidden="true"><i></i><i></i><b></b></span><h2 id="host-context-title">Local instance</h2></div>
+      <div class="topology" aria-label="Discovery summary"><span><b>&#9636;</b> {{len .Projects}} {{if eq (len .Projects) 1}}project{{else}}projects{{end}}</span><span> / </span><span>Docker unavailable</span></div>
+      <dl class="detail-list">
+        <div><dt>Discovery</dt><dd>On demand</dd></div>
+        <div><dt>Projects</dt><dd>{{len .Projects}}</dd></div>
+        <div><dt>Docker engine</dt><dd>Not connected</dd></div>
+        <div><dt>Runtime status</dt><dd>Unavailable</dd></div>
+      </dl>
+      <section class="host-section">
+        <h3>Project discovery</h3>
+        <p>Availability reflects the last successful scan, not live status.</p>
         {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
         {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
         <form action="/discovery/root" method="post" class="discovery-root-form">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
           <label for="discovery-root">Discovery root (application-visible path)</label>
           <div class="discovery-controls"><input id="discovery-root" name="root" value="{{.Root}}" placeholder="/projects" required><button class="quiet-button" type="submit">Save root</button></div>
-          <p>For containers, mount your projects directory read-only before scanning. Resolution uses the project-local .env, not the manager's environment; it may differ from an external Compose invocation.</p>
+          <p>Mount the projects directory read-only. Resolution uses the project-local .env, not the manager's environment, and may differ from an external Compose invocation.</p>
         </form>
         <form action="/discovery/scan" method="post">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-          <button class="quiet-button" type="submit" {{if not .Root}}disabled{{end}}>Scan for projects</button>
+          <button class="quiet-button scan-button" type="submit" {{if not .Root}}disabled{{end}}>Scan for projects</button>
         </form>
+      </section>
+      <section class="host-section">
+        <h3>Resource allocation</h3>
+        <dl class="detail-list compact"><div><dt>CPU usage</dt><dd>Unavailable</dd></div><div><dt>Memory usage</dt><dd>Unavailable</dd></div><div><dt>Storage</dt><dd>Unavailable</dd></div></dl>
+        <p>Live metrics pending.</p>
+      </section>
+      <section class="host-section">
+        <h3>Engine integration</h3>
+        <p>Docker integration pending. Container status, logs, and operations are not connected.</p>
+      </section>
+    </aside>
+    <main class="console-main">
+      <div class="workspace-toolbar">
+        <div><h1>System status</h1><p>Local instance / Overview</p></div>
+        <span class="toolbar-pill">Cluster metrics <span>Unavailable</span></span>
+      </div>
+      <section class="telemetry-section" aria-labelledby="activity-title">
+        <div class="section-heading"><h2 id="activity-title">Container activity</h2><div class="legend"><span><i class="legend-cpu"></i> CPU usage</span><span><i class="legend-memory"></i> Memory</span><span><i class="legend-restarts"></i> Restarts</span></div></div>
+        <div class="telemetry-empty"><div><strong>Runtime metrics unavailable</strong><p>Docker is not connected. No live activity is being collected.</p></div></div>
+        <div class="timeline"><span>Activity history unavailable</span><span>Now</span></div>
+      </section>
+      <div class="resource-grid">
+        <section class="resource-section"><div class="section-heading"><h2>Discovered stacks</h2><span>{{len .Projects}} discovered</span></div>
+          {{if .Projects}}<div class="stack-grid">{{range .Projects}}<a class="stack-tile" href="#workspace-title" title="{{.Path}}"><span class="resource-icon" aria-hidden="true">&#9636;</span><span>{{.Path}}</span></a>{{end}}</div>
+          {{else}}<div class="resource-placeholder"><span class="resource-icon">&#9636;</span><span>No projects discovered</span></div>{{end}}
+        </section>
+        <section class="resource-section"><div class="section-heading"><h2>Top resource containers</h2><span>Unavailable</span></div>
+          <div class="resource-placeholder"><span class="resource-icon">&#9633;</span><span>Container metrics are not available</span></div>
+        </section>
+      </div>
+      <section class="resource-section"><div class="section-heading"><h2>Images &amp; base layers</h2><span>Unavailable</span></div>
+        <div class="resource-placeholder resource-wide"><span class="resource-icon">&#9635;</span><span>Image inventory is not connected</span></div>
+      </section>
+      <div class="health-grid">
+        <section><div class="section-heading"><h2>Container restart &amp; OOM rate</h2><span>Unavailable</span></div><div class="empty-bar"></div><p>No runtime data</p></section>
+        <section><div class="section-heading"><h2>Stack health &amp; readiness</h2><span>Unavailable</span></div><div class="empty-bar"></div><p>No runtime data</p></section>
+      </div>
+      <section class="workspace-panel" aria-labelledby="workspace-title">
+        <div class="panel-heading"><div><h2 id="workspace-title">Compose projects</h2><p>Availability reflects the last successful scan for each root, not live status. Docker actions are not connected.</p></div><span class="panel-count">{{len .Projects}} PROJECTS</span></div>
+        <div class="discovery-content">
         {{if .Projects}}
         <ul class="project-list">
           {{range .Projects}}
@@ -96,10 +145,13 @@
           {{end}}
         </ul>
         {{else}}<div class="empty-state"><span class="empty-glyph" aria-hidden="true">&#9636;</span><h3>No projects discovered</h3><p>Save a root and request a scan to list projects.</p></div>{{end}}
-      </div>
-    </section>
-    <footer class="dashboard-footer"><span><span class="connection-dot"></span> Application online</span><a href="/healthz">Health</a></footer>
-  </main>
+        </div>
+      </section>
+      <footer class="dashboard-footer"><span>Application online</span><a href="/healthz">Health</a></footer>
+    </main>
+  </div>
 </div>
 {{end}}
 {{end}}
+
+{{define "theme-control"}}<span class="theme-control"><button class="text-button" type="button" data-theme-toggle hidden></button><span class="theme-notice" data-theme-notice role="status" hidden></span></span>{{end}}

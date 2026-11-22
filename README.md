@@ -98,6 +98,15 @@ Networks runtime code has been copied. Development/deployment docs below describ
 the current auth foundation and repository tooling, not implemented
 Compose-management workflows.
 
+The interface follows the browser's light or dark system preference until a
+theme is selected. The theme button on login, setup and the workspace saves that
+selection in browser-local storage for this origin, not to the account; storage
+failure is reported. Without JavaScript, the system preference still applies and
+the selection control is hidden. Reusable color tokens and workspace primitives
+live in `internal/web/static/foundation.css`; server-rendered templates remain
+the source of page content. Runtime metrics, inventory and Docker operations
+remain unavailable; the dashboard does not display simulated observations.
+
 ## Deploy locally
 
 ```sh
