@@ -37,7 +37,11 @@ func scanFailureReason(err error) string {
 
 func (server *authServer) discoveryMessage(w http.ResponseWriter, r *http.Request, key, message string) {
 	server.manager.SessionManager().Put(r.Context(), key, message)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	destination := "/"
+	if target := r.FormValue("return_to"); target == "/projects" || target == "/containers" {
+		destination = target
+	}
+	http.Redirect(w, r, destination, http.StatusSeeOther)
 }
 
 func (server *authServer) saveRoot(w http.ResponseWriter, r *http.Request) {

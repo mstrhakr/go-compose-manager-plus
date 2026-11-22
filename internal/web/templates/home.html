@@ -57,9 +57,9 @@
   </header>
   <div class="console-body">
     <nav class="console-rail" aria-label="Main navigation">
-      <a class="rail-item selected" href="/" aria-current="page" aria-label="Overview" title="Overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h7V3H3v10Zm0 8h7v-5H3v5Zm11 0h7V11h-7v10Zm0-18v5h7V3h-7Z"/></svg></a>
-      <a class="rail-item" href="#workspace-title" aria-label="Compose projects" title="Compose projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4zM6 7h12M8 4h8"/></svg></a>
-      <span class="rail-item unavailable" title="Containers unavailable" aria-label="Containers unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4v10l-8 4-8-4V7l8-4Zm-8 4 8 4 8-4m-8 4v10"/></svg></span>
+      <a class="rail-item{{if eq .View "dashboard"}} selected{{end}}" href="/" {{if eq .View "dashboard"}}aria-current="page"{{end}} aria-label="Overview" title="Overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h7V3H3v10Zm0 8h7v-5H3v5Zm11 0h7V11h-7v10Zm0-18v5h7V3h-7Z"/></svg></a>
+      <a class="rail-item{{if eq .View "projects"}} selected{{end}}" href="/projects" {{if eq .View "projects"}}aria-current="page"{{end}} aria-label="Compose projects" title="Compose projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4zM6 7h12M8 4h8"/></svg></a>
+      <a class="rail-item{{if eq .View "containers"}} selected{{end}}" href="/containers" {{if eq .View "containers"}}aria-current="page"{{end}} aria-label="Containers" title="Containers"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4v10l-8 4-8-4V7l8-4Zm-8 4 8 4 8-4m-8 4v10"/></svg></a>
       <span class="rail-item unavailable" title="Volumes unavailable" aria-label="Volumes unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 2 3.6 3 8 3s8-1 8-3V6M4 12c0 2 3.6 3 8 3s8-1 8-3"/></svg></span>
       <span class="rail-item unavailable" title="Networks unavailable" aria-label="Networks unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c-4 4-4 14 0 18M12 3c4 4 4 14 0 18"/></svg></span>
     </nav>
@@ -78,12 +78,14 @@
         {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
         <form action="/discovery/root" method="post" class="discovery-root-form">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          {{if eq .View "projects"}}<input type="hidden" name="return_to" value="/projects">{{else if eq .View "containers"}}<input type="hidden" name="return_to" value="/containers">{{end}}
           <label for="discovery-root">Discovery root (application-visible path)</label>
           <div class="discovery-controls"><input id="discovery-root" name="root" value="{{.Root}}" placeholder="/projects" required><button class="quiet-button" type="submit">Save root</button></div>
           <p>Mount the projects directory read-only. Resolution uses the project-local .env, not the manager's environment, and may differ from an external Compose invocation.</p>
         </form>
         <form action="/discovery/scan" method="post">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          {{if eq .View "projects"}}<input type="hidden" name="return_to" value="/projects">{{else if eq .View "containers"}}<input type="hidden" name="return_to" value="/containers">{{end}}
           <button class="quiet-button scan-button" type="submit" {{if not .Root}}disabled{{end}}>Scan for projects</button>
         </form>
       </section>
@@ -95,13 +97,14 @@
       <section class="host-section">
         <h3>Engine integration</h3>
         <p>{{.RuntimeMessage}}</p>
-        <form action="/#workspace-title" method="get">
+        <form action="{{if eq .View "projects"}}/projects{{else if eq .View "containers"}}/containers{{else}}/#workspace-title{{end}}" method="get">
           <button class="quiet-button" name="runtime" value="1" type="submit">Refresh Docker status</button>
         </form>
         <p>Snapshots are read-only. Logs, metrics and operations are not connected.</p>
       </section>
     </aside>
     <main class="console-main">
+      {{if eq .View "dashboard"}}
       <div class="workspace-toolbar">
         <div><h1>System status</h1><p>Local instance / Overview</p></div>
         <span class="toolbar-pill">Cluster metrics <span>Unavailable</span></span>
@@ -112,7 +115,7 @@
       </div>
       <div class="resource-grid">
         <section class="resource-section"><div class="section-heading"><h2>Discovered stacks</h2><span>{{len .Projects}} discovered</span></div>
-          {{if .Projects}}<div class="stack-grid">{{range .Projects}}<a class="stack-tile" href="#workspace-title" title="{{.Path}}"><span class="resource-icon" aria-hidden="true">&#9636;</span><span>{{.Path}}</span></a>{{end}}</div>
+          {{if .Projects}}<div class="stack-grid">{{range .Projects}}<a class="stack-tile" href="/projects" title="{{.Path}}"><span class="resource-icon" aria-hidden="true">&#9636;</span><span>{{.Path}}</span></a>{{end}}</div>
           {{else}}<div class="resource-placeholder"><span class="resource-icon">&#9636;</span><span>No projects discovered</span></div>{{end}}
         </section>
         <section class="resource-section"><div class="section-heading"><h2>Top resource containers</h2><span>Unavailable</span></div>
@@ -154,6 +157,11 @@
         {{else}}<div class="empty-state"><span class="empty-glyph" aria-hidden="true">&#9636;</span><h3>No projects discovered</h3><p>Save a root and request a scan to list projects.</p></div>{{end}}
         </div>
       </section>
+      {{else if eq .View "projects"}}
+      {{template "projects-page" .}}
+      {{else if eq .View "containers"}}
+      {{template "containers-page" .}}
+      {{end}}
       <footer class="dashboard-footer"><span>Application online</span><a href="/healthz">Health</a></footer>
     </main>
   </div>

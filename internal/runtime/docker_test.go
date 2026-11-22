@@ -31,9 +31,9 @@ func TestSnapshotGroupsAllContainerStatesByComposeName(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 || len(got["shared"]) != 2 || got["shared"][0].Name != "first" ||
-		got["shared"][0].Service != "web" || got["shared"][0].State != "running" ||
-		got["shared"][1].State != "exited" || len(got["other"]) != 1 {
+	if len(got.Containers) != 4 || len(got.ByProject) != 2 || len(got.ByProject["shared"]) != 2 || got.ByProject["shared"][0].Name != "first" ||
+		got.ByProject["shared"][0].Service != "web" || got.ByProject["shared"][0].State != "running" ||
+		got.ByProject["shared"][1].State != "exited" || len(got.ByProject["other"]) != 1 || got.Containers[3].Project != "" {
 		t.Fatalf("unexpected snapshot: %#v", got)
 	}
 }
@@ -71,7 +71,7 @@ func TestSnapshotEmptyArray(t *testing.T) {
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader("[]"))}, nil
 	})}}
 	got, err := client.Snapshot(context.Background())
-	if err != nil || len(got) != 0 {
+	if err != nil || len(got.Containers) != 0 || len(got.ByProject) != 0 {
 		t.Fatalf("snapshot = %#v, error = %v", got, err)
 	}
 }

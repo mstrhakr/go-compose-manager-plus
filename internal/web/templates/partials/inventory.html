@@ -1,0 +1,37 @@
+{{define "projects-page"}}
+<div class="workspace-toolbar"><div><h1>Compose projects</h1><p>Discovered folders and their Docker project snapshots</p></div><span class="toolbar-pill">{{len .Projects}} projects</span></div>
+<section class="list-panel inventory-panel" aria-labelledby="projects-list-title">
+  <div class="list-panel-header"><h2 id="projects-list-title">Projects</h2><span>{{.RuntimeState}}</span></div>
+  <p class="inventory-description">Discovery availability reflects the last scan. Runtime containers are grouped by Compose project name; copies with the same name show the same containers. {{.RuntimeMessage}}</p>
+  {{if .Projects}}
+  <ul class="inventory-list">
+    {{range .Projects}}
+    <li><details class="inventory-item">
+      <summary><span class="inventory-name">{{.Path}}</span><span>{{if not .Available}}Unavailable{{else if .ResolutionError}}Inputs need attention{{else}}Available{{end}} &middot; {{if .Active}}Active{{else}}Inactive{{end}}</span><span>{{if .RuntimeName}}{{len .Containers}} containers{{else}}Runtime unknown{{end}}</span></summary>
+      <div class="inventory-details">
+        {{if ne .Root $.Root}}<p>Outside the current discovery root; save its root to activate.</p>{{end}}
+        {{if .ResolutionError}}<p class="project-error">{{.ResolutionError}}</p>{{end}}
+        {{if .RuntimeError}}<p>{{.RuntimeError}}</p>{{end}}
+        {{if .RuntimeName}}
+        <p>Docker project: <strong>{{.RuntimeName}}</strong></p>
+        {{if .Containers}}<div class="list-scroll"><table class="data-table"><thead><tr><th scope="col">Container</th><th scope="col">Service</th><th scope="col">State</th></tr></thead><tbody>
+          {{range .Containers}}<tr><td>{{if .Name}}{{.Name}}{{else if .ID}}{{.ID}}{{else}}Unknown{{end}}</td><td>{{if .Service}}{{.Service}}{{else}}—{{end}}</td><td>{{.State}}</td></tr>{{end}}
+        </tbody></table></div>{{else}}<p>No matching containers in this snapshot.</p>{{end}}
+        {{else if ne $.RuntimeState "Snapshot"}}<p>Runtime status unavailable; {{$.RuntimeMessage}}</p>{{end}}
+        {{if not .Active}}<form action="/discovery/activate" method="post">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="path" value="{{.Path}}"><input type="hidden" name="return_to" value="/projects">
+          <button class="quiet-button" type="submit" {{if or (not .Available) .ResolutionError (ne .Root $.Root)}}disabled{{end}}>Activate</button>
+        </form>{{end}}
+      </div>
+    </details></li>
+    {{end}}
+  </ul>
+  {{else}}<div class="list-empty">No projects discovered. Save a discovery root and scan to add projects.</div>{{end}}
+</section>
+{{end}}
+
+{{define "containers-page"}}
+<div class="workspace-toolbar"><div><h1>Containers</h1><p>All containers returned by the Docker daemon, including stopped and non-Compose containers.</p></div></div>
+<p class="inventory-description">{{.RuntimeMessage}}</p>
+<div class="inventory-panel">{{template "list-panel" .Containers}}</div>
+{{end}}

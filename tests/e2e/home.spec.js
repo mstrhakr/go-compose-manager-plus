@@ -61,7 +61,7 @@ test('unavailable browser storage is reported and theme remains usable', async (
 test('first login forces password setup before protected dashboard and works on mobile', async ({ browser, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'Single bootstrap account is exercised once to avoid parallel setup races.');
   const root = await mkdtemp(join(tmpdir(), 'compose-manager-discovery-'));
-  const project = join(root, 'sample');
+  const project = join(root, `sample-${'long-name-'.repeat(8)}`);
   const compose = join(project, 'compose.yaml');
   await mkdir(project);
   await writeFile(compose, 'services:\n  web:\n    image: example\n');
@@ -100,11 +100,26 @@ test('first login forces password setup before protected dashboard and works on 
     await page.getByRole('button', { name: 'Save root' }).click();
     await page.getByRole('button', { name: 'Scan for projects' }).click();
     await expect(page.getByText('Available · Inactive')).toBeVisible();
-    await page.getByRole('button', { name: 'Activate' }).click();
-    await expect(page.getByText('Available · Active')).toBeVisible();
+    await page.getByRole('link', { name: 'Compose projects', exact: true }).click();
+    await expect(page).toHaveURL(/\/projects$/);
+    const projectRow = page.locator('.inventory-item').filter({ hasText: project });
+    const projectSummary = projectRow.locator('summary');
+    await projectSummary.focus();
+    await page.keyboard.press('Enter');
+    await expect(projectRow).toHaveAttribute('open', '');
+    await expect(projectRow.getByText('Runtime status unavailable', { exact: false })).toBeVisible();
+    await projectRow.getByRole('button', { name: 'Activate' }).click();
+    await expect(page).toHaveURL(/\/projects$/);
     await expect(page.getByRole('status')).toContainText('No Compose operation was performed');
+    await page.getByRole('link', { name: 'Overview', exact: true }).click();
+    await expect(page.getByText('Available · Active')).toBeVisible();
     await page.getByRole('button', { name: 'Refresh Docker status' }).click();
     await expect(page.getByText('Docker status unavailable: no socket configured.')).toBeVisible();
+    await page.getByRole('link', { name: 'Containers', exact: true }).click();
+    await expect(page).toHaveURL(/\/containers$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Containers' })).toBeVisible();
+    await expect(page.locator('.list-empty')).toContainText('Docker status unavailable');
+    await expect(page.locator('.list-empty')).not.toContainText('No containers found');
     await page.goto('/');
     await page.screenshot({ path: 'test-results/auth-dashboard-desktop.png', fullPage: true });
 
@@ -159,6 +174,13 @@ test('first login forces password setup before protected dashboard and works on 
       await touchPage.getByRole('button', { name: 'Scan for projects' }).tap();
       await expect(touchPage.getByRole('status')).toContainText('Scan complete');
       await expect(touchPage.getByText('Available · Active')).toBeVisible();
+      await touchPage.getByRole('link', { name: 'Compose projects', exact: true }).tap();
+      const touchRow = touchPage.locator('.inventory-item').filter({ hasText: project });
+      await touchRow.locator('summary').tap();
+      await expect(touchRow).toHaveAttribute('open', '');
+      expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await touchPage.getByRole('link', { name: 'Containers', exact: true }).tap();
+      await expect(touchPage.locator('.list-empty')).toContainText('Docker status unavailable');
       expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     } finally {
       await touch.close();

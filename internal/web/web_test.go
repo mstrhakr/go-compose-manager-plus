@@ -30,9 +30,12 @@ const testOrigin = "http://127.0.0.1:8080"
 func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 	handler := testHandler(t, nil)
 	cookies := make(map[string]*http.Cookie)
-	response := perform(handler, http.MethodGet, "/", nil, cookies, "")
-	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/login" {
-		t.Fatalf("anonymous dashboard = %d, location %q", response.Code, response.Header().Get("Location"))
+	var response *httptest.ResponseRecorder
+	for _, path := range []string{"/", "/projects", "/containers"} {
+		response = perform(handler, http.MethodGet, path, nil, cookies, "")
+		if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/login" {
+			t.Fatalf("anonymous %s = %d, location %q", path, response.Code, response.Header().Get("Location"))
+		}
 	}
 	response = perform(handler, http.MethodGet, "/healthz", nil, cookies, "")
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `"status":"ok"`) {
@@ -56,9 +59,11 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 		t.Fatalf("bootstrap login = %d, location %q", response.Code, response.Header().Get("Location"))
 	}
 	collectCookies(cookies, response)
-	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
-	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/setup/password" {
-		t.Fatalf("forced-change dashboard gate = %d, location %q", response.Code, response.Header().Get("Location"))
+	for _, path := range []string{"/", "/projects", "/containers"} {
+		response = perform(handler, http.MethodGet, path, nil, cookies, "")
+		if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/setup/password" {
+			t.Fatalf("forced-change gate %s = %d, location %q", path, response.Code, response.Header().Get("Location"))
+		}
 	}
 	response = perform(handler, http.MethodGet, "/setup/password", nil, cookies, "")
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Secure your account") {
@@ -78,6 +83,12 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 	}
 	if strings.Contains(response.Body.String(), "Hello,") {
 		t.Fatal("template greeting is still exposed as the application home")
+	}
+	for _, path := range []string{"/projects", "/containers"} {
+		response = perform(handler, http.MethodGet, path, nil, cookies, "")
+		if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Docker status unavailable: no socket configured.") {
+			t.Fatalf("unconfigured %s = %d %q", path, response.Code, response.Body.String())
+		}
 	}
 	csrfToken = tokenFromBody(t, response.Body.String())
 	response = perform(handler, http.MethodPost, "/logout", url.Values{}, cookies, csrfToken)
@@ -119,6 +130,21 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	response = perform(handler, http.MethodPost, "/setup/password", url.Values{"password": {"new-local-password-456"}, "confirm_password": {"new-local-password-456"}}, cookies, token)
 	if response.Code != http.StatusSeeOther {
 		t.Fatalf("setup = %d", response.Code)
+	}
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	token = tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {"relative"}, "return_to": {"/projects"}}, cookies, token)
+	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/projects" {
+		t.Fatalf("inventory form return = %d, location %q", response.Code, response.Header().Get("Location"))
+	}
+	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
+	if !strings.Contains(response.Body.String(), "Enter an absolute") {
+		t.Fatalf("inventory form error missing: %s", response.Body.String())
+	}
+	token = tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {"relative"}, "return_to": {"https://example.com"}}, cookies, token)
+	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/" {
+		t.Fatalf("untrusted form return = %d, location %q", response.Code, response.Header().Get("Location"))
 	}
 	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
 	token = tokenFromBody(t, response.Body.String())
@@ -219,6 +245,7 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	}
 	var calls atomic.Int32
 	var failure atomic.Bool
+	var empty atomic.Bool
 	dockerServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
 		if r.Method != http.MethodGet || r.URL.Path != "/v1.40/containers/json" || r.URL.Query().Get("all") != "1" {
@@ -230,7 +257,11 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 			http.Error(w, "unavailable", http.StatusServiceUnavailable)
 			return
 		}
-		_, _ = io.WriteString(w, `[{"Names":["/<script>"],"State":"running","Labels":{"com.docker.compose.project":"shared","com.docker.compose.service":"app"}}]`)
+		if empty.Load() {
+			_, _ = io.WriteString(w, `[]`)
+			return
+		}
+		_, _ = io.WriteString(w, `[{"Names":["/<script>"],"State":"running","Labels":{"com.docker.compose.project":"shared","com.docker.compose.service":"app"}},{"Id":"abcdef","Names":["/unmanaged"],"State":"exited","Labels":{}}]`)
 	}))
 	_ = dockerServer.Listener.Close()
 	dockerServer.Listener = listener
@@ -248,7 +279,9 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 		}
 	}
 	cookies := make(map[string]*http.Cookie)
-	perform(handler, http.MethodGet, "/?runtime=1", nil, cookies, "")
+	for _, path := range []string{"/?runtime=1", "/projects", "/containers"} {
+		perform(handler, http.MethodGet, path, nil, cookies, "")
+	}
 	if calls.Load() != 0 {
 		t.Fatal("anonymous request reached Docker")
 	}
@@ -290,11 +323,37 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 		strings.Count(body, "Runtime status unknown: unable to resolve Compose inputs.") != 1 || calls.Load() != 1 {
 		t.Fatalf("snapshot: code=%d calls=%d body=%s", response.Code, calls.Load(), body)
 	}
-	failure.Store(true)
-	response = perform(handler, http.MethodGet, "/?runtime=1", nil, cookies, "")
+	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
 	body = response.Body.String()
-	if !strings.Contains(body, "Docker status unavailable") || strings.Contains(body, "No matching containers") {
-		t.Fatalf("failed snapshot displayed as empty: %s", body)
+	if response.Code != http.StatusOK || calls.Load() != 2 ||
+		strings.Count(body, "Docker project: <strong>shared</strong>") != 2 ||
+		strings.Count(body, "&lt;script&gt;") != 2 ||
+		strings.Count(body, "No matching containers in this snapshot.") != 1 ||
+		!strings.Contains(body, "Runtime status unknown: unable to resolve Compose inputs.") ||
+		!strings.Contains(body, "<details") || strings.Contains(body, "unmanaged") {
+		t.Fatalf("project inventory: code=%d calls=%d body=%s", response.Code, calls.Load(), body)
+	}
+	response = perform(handler, http.MethodGet, "/containers", nil, cookies, "")
+	body = response.Body.String()
+	if response.Code != http.StatusOK || calls.Load() != 3 ||
+		!strings.Contains(body, "&lt;script&gt;") || !strings.Contains(body, "unmanaged") ||
+		!strings.Contains(body, "exited") || !strings.Contains(body, "No Compose project label") ||
+		!strings.Contains(body, "Docker snapshot taken") || strings.Contains(body, "<script>") {
+		t.Fatalf("container inventory: code=%d calls=%d body=%s", response.Code, calls.Load(), body)
+	}
+	empty.Store(true)
+	response = perform(handler, http.MethodGet, "/containers", nil, cookies, "")
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "No containers found in this snapshot.") {
+		t.Fatalf("empty inventory = %d %s", response.Code, response.Body.String())
+	}
+	empty.Store(false)
+	failure.Store(true)
+	for _, path := range []string{"/?runtime=1", "/projects", "/containers"} {
+		response = perform(handler, http.MethodGet, path, nil, cookies, "")
+		body = response.Body.String()
+		if !strings.Contains(body, "Docker status unavailable") || strings.Contains(body, "No matching containers") || strings.Contains(body, "No containers found") {
+			t.Fatalf("failed snapshot displayed as empty at %s: %s", path, body)
+		}
 	}
 }
 

@@ -33,6 +33,7 @@ type pageData struct {
 	Notice         string
 	Activity       chartPanel
 	Metrics        []metricPanel
+	Containers     listPanel
 }
 
 type projectView struct {

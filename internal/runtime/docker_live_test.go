@@ -135,7 +135,7 @@ func TestLiveDockerSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if containers := snapshot[project]; len(containers) != 1 || containers[0].Service != "app" || containers[0].State != "created" {
+	if containers := snapshot.ByProject[project]; len(containers) != 1 || containers[0].Service != "app" || containers[0].State != "created" {
 		t.Fatalf("fixture snapshot = %#v", containers)
 	}
 }

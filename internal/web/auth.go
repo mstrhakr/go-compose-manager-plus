@@ -37,6 +37,8 @@ func (server *authServer) registerRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /setup/password", server.requireUser(true, http.HandlerFunc(server.changePassword)))
 	mux.Handle("POST /logout", server.requireUser(true, http.HandlerFunc(server.logout)))
 	mux.Handle("GET /{$}", server.requireUser(false, http.HandlerFunc(server.dashboard)))
+	mux.Handle("GET /projects", server.requireUser(false, http.HandlerFunc(server.projectsPage)))
+	mux.Handle("GET /containers", server.requireUser(false, http.HandlerFunc(server.containersPage)))
 	mux.Handle("POST /discovery/root", server.requireUser(false, http.HandlerFunc(server.saveRoot)))
 	mux.Handle("POST /discovery/scan", server.requireUser(false, http.HandlerFunc(server.scanProjects)))
 	mux.Handle("POST /discovery/activate", server.requireUser(false, http.HandlerFunc(server.activateProject)))
@@ -146,6 +148,18 @@ func (server *authServer) logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (server *authServer) dashboard(w http.ResponseWriter, r *http.Request) {
+	server.workspace(w, r, "dashboard")
+}
+
+func (server *authServer) projectsPage(w http.ResponseWriter, r *http.Request) {
+	server.workspace(w, r, "projects")
+}
+
+func (server *authServer) containersPage(w http.ResponseWriter, r *http.Request) {
+	server.workspace(w, r, "containers")
+}
+
+func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view string) {
 	user, _, err := server.manager.CurrentUser(r.Context())
 	if err != nil {
 		http.Error(w, "Unable to verify session", http.StatusInternalServerError)
@@ -170,7 +184,8 @@ func (server *authServer) dashboard(w http.ResponseWriter, r *http.Request) {
 	for _, project := range projects {
 		views = append(views, projectView{Project: project})
 	}
-	requested := r.URL.Query().Get("runtime") == "1"
+	requested := r.URL.Query().Get("runtime") == "1" || view == "projects" || view == "containers"
+	containerList := listPanel{ID: "containers-title", Title: "Containers", Columns: []string{"Name", "State", "Compose project", "Service"}, Empty: "No containers found in this snapshot."}
 	runtimeMessage := "Docker integration pending. Container status, logs, and operations are not connected."
 	runtimeState := "Not configured"
 	if server.docker != nil {
@@ -189,19 +204,49 @@ func (server *authServer) dashboard(w http.ResponseWriter, r *http.Request) {
 		} else {
 			runtimeMessage = "Docker snapshot taken " + time.Now().UTC().Format("2006-01-02 15:04:05 UTC") + "."
 			runtimeState = "Snapshot"
-			for i := range views {
-				project := &views[i]
-				name, resolveErr := discovery.ResolveProjectName(r.Context(), project.Root, project.Path)
-				if resolveErr != nil {
-					project.RuntimeError = "Runtime status unknown: unable to resolve Compose inputs."
-					continue
+			if view != "containers" {
+				for i := range views {
+					project := &views[i]
+					name, resolveErr := discovery.ResolveProjectName(r.Context(), project.Root, project.Path)
+					if resolveErr != nil {
+						project.RuntimeError = "Runtime status unknown: unable to resolve Compose inputs."
+						continue
+					}
+					project.RuntimeName = name
+					project.Containers = snapshot.ByProject[name]
 				}
-				project.RuntimeName = name
-				project.Containers = snapshot[name]
+			}
+			for _, container := range snapshot.Containers {
+				name := container.Name
+				if name == "" {
+					name = container.ID
+				}
+				if name == "" {
+					name = "Unknown"
+				}
+				project := container.Project
+				if project == "" {
+					project = "No Compose project label"
+				}
+				service := container.Service
+				if service == "" {
+					service = "—"
+				}
+				containerList.Rows = append(containerList.Rows, listRow{Cells: []string{name, container.State, project, service}})
 			}
 		}
 	}
-	server.render(w, pageData{Title: "Overview", View: "dashboard", Username: user.Username, Initial: initial,
+	if runtimeState != "Snapshot" {
+		containerList.Empty = runtimeMessage
+	}
+	containerList.Status = runtimeState
+	title := "Overview"
+	if view == "projects" {
+		title = "Compose projects"
+	} else if view == "containers" {
+		title = "Containers"
+	}
+	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList,
 		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: views, RuntimeMessage: runtimeMessage, RuntimeState: runtimeState,
 		Activity: chartPanel{ID: "activity-title", Title: "Container activity", Status: "Unavailable", EmptyTitle: "Runtime metrics unavailable", EmptyDetail: "No live activity is being collected."},
 		Metrics: []metricPanel{

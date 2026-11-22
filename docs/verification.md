@@ -327,3 +327,26 @@ remove and verify the fixture's anonymous volume along with its container.
 The authenticated handler regression also checks that a project restored since
 the last discovery scan can display current runtime status without changing
 saved discovery availability or activation.
+
+## Project And Container Inventory Foundation
+
+Linux development container, branch `feat/project-container-views` based on
+`b97ca66`: distinct authenticated inventory pages use the existing read-only
+Docker container-list endpoint. Visiting either page requests a snapshot; the
+overview still requests one only on refresh. Go integration tests use a mock
+Unix-socket daemon to cover unlabelled and stopped containers, escaped names,
+same-name folders, unresolved inputs, empty and failed snapshots, authentication
+gates and the one-request-per-view boundary. Discovery form redirects are
+restricted to local inventory pages or the overview.
+
+- `go test ./internal/runtime ./internal/web` passed focused tests.
+- `PLAYWRIGHT_PORT=18208 make check QUIET=1` passed Go vet and race tests,
+  build, Node, HTTP, browser, asset and contract checks. The authenticated
+  inventory interaction test runs in Chromium, including keyboard, a simulated
+  mobile touch viewport, long paths, no JavaScript and overflow checks; the
+  other browser projects skip that bootstrap-dependent interaction.
+- `make docs` passed with Hugo 0.169.0.
+
+This slice was not tested against a live Docker daemon. Its tests do not establish
+native mobile behavior, continuous freshness, lifecycle control or resource
+ownership, and no such behavior is claimed.

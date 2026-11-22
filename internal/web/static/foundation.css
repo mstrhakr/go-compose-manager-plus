@@ -166,6 +166,18 @@ circle.chart-line { fill: currentColor; stroke: none; }
 .data-table .selection-cell { width: 36px; }
 .data-table .selection-cell label { min-width: 32px; min-height: 32px; display: inline-flex; align-items: center; justify-content: center; }
 .data-table .selection-cell label[hidden] { display: none; }
+.inventory-panel { margin-top: 16px; }
+.inventory-description { margin: 0; padding: 10px 12px; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+.inventory-list { margin: 0; padding: 0; list-style: none; }
+.inventory-item { border-top: 1px solid var(--border); }
+.inventory-item summary { min-height: 48px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; padding: 10px 12px; cursor: pointer; }
+.inventory-item summary::before { content: '\25b8'; color: var(--muted); }
+.inventory-item[open] summary::before { content: '\25be'; }
+.inventory-item summary:hover { background: var(--raised); }
+.inventory-item summary > span { color: var(--muted); overflow-wrap: anywhere; }
+.inventory-item summary .inventory-name { flex: 1 1 200px; min-width: 0; color: var(--text); font-weight: 650; }
+.inventory-details { padding: 0 12px 12px 30px; color: var(--muted); overflow-wrap: anywhere; }
+.inventory-details .project-error { color: var(--danger); }
 .filter-group { min-width: 0; margin: 0; padding: 10px; border: 1px solid var(--border); border-radius: 4px; }
 .filter-group legend { padding: 0 4px; font-weight: 600; }
 .filter-options { display: grid; gap: 6px; max-height: 180px; overflow-y: auto; }
