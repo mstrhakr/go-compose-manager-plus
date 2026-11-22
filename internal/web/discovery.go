@@ -1,13 +1,39 @@
 package web
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
 )
+
+type scanFailure struct {
+	stage   string
+	message string
+	cause   error
+}
+
+func (failure *scanFailure) Error() string { return failure.message }
+func (failure *scanFailure) Unwrap() error { return failure.cause }
+
+func scanFailureReason(err error) string {
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return "not_found"
+	case errors.Is(err, os.ErrPermission):
+		return "permission_denied"
+	case errors.Is(err, context.Canceled):
+		return "canceled"
+	case errors.Is(err, context.DeadlineExceeded):
+		return "deadline_exceeded"
+	default:
+		return "other"
+	}
+}
 
 func (server *authServer) discoveryMessage(w http.ResponseWriter, r *http.Request, key, message string) {
 	server.manager.SessionManager().Put(r.Context(), key, message)
@@ -33,17 +59,17 @@ func (server *authServer) saveRoot(w http.ResponseWriter, r *http.Request) {
 func (server *authServer) runScan(r *http.Request) (discovery.Settings, discovery.ScanResult, error) {
 	settings, err := server.discovery.Settings(r.Context())
 	if err != nil {
-		return discovery.Settings{}, discovery.ScanResult{}, err
+		return discovery.Settings{}, discovery.ScanResult{}, &scanFailure{stage: "read_settings", message: "Unable to read discovery settings.", cause: err}
 	}
 	if settings.Root == "" {
-		return discovery.Settings{}, discovery.ScanResult{}, fmt.Errorf("save a discovery root before scanning")
+		return discovery.Settings{}, discovery.ScanResult{}, &scanFailure{stage: "configuration", message: "save a discovery root before scanning"}
 	}
 	result, err := discovery.Scan(r.Context(), settings.Root)
 	if err != nil {
-		return discovery.Settings{}, discovery.ScanResult{}, fmt.Errorf("unable to scan the discovery root; check its path and permissions")
+		return discovery.Settings{}, discovery.ScanResult{}, &scanFailure{stage: "scan_filesystem", message: "unable to scan the discovery root; check its path and permissions", cause: err}
 	}
 	if err := server.discovery.ApplyScan(r.Context(), settings, result.Projects); err != nil {
-		return discovery.Settings{}, discovery.ScanResult{}, err
+		return discovery.Settings{}, discovery.ScanResult{}, &scanFailure{stage: "save_results", message: err.Error(), cause: err}
 	}
 	settings.Revision++
 	return settings, result, nil
@@ -52,6 +78,10 @@ func (server *authServer) runScan(r *http.Request) (discovery.Settings, discover
 func (server *authServer) scanProjects(w http.ResponseWriter, r *http.Request) {
 	_, result, err := server.runScan(r)
 	if err != nil {
+		var failure *scanFailure
+		if errors.As(err, &failure) {
+			server.logger.WarnContext(r.Context(), "discovery scan failed", "stage", failure.stage, "reason", scanFailureReason(failure.cause))
+		}
 		server.discoveryMessage(w, r, "discovery_error", err.Error())
 		return
 	}

@@ -258,3 +258,23 @@ PR review follow-up: `PLAYWRIGHT_PORT=18191 make check` and the Hugo 0.169.0
 Go-runner build passed after preserving missing chart observations in the
 accessible table, namespacing list events, and correcting text contrast.
 Browser tests assert at least 4.5:1 contrast for the reviewed theme colors.
+
+## Discovery Scan Diagnostics
+
+Environment: Linux development container. Based on merged UI revision
+`ccf1865`, this bounded follow-up adds categorized scan failure logs without
+logging paths or file contents. It does not change scanning, activation, or
+failed-scan retention policy under PROJ-006, PROJ-010 and PROJ-011.
+
+- `go test ./internal/web ./cmd/server -count=1`: passed, including a failed
+  authenticated scan that preserves the previous project state and logs a
+  `not_found` category without the root path.
+- `PLAYWRIGHT_PORT=18192 make check`: passed Go vet/race/build, 14 Node tests,
+  7 HTTP tests, 37 browser tests with 3 intentional skips, asset and contract
+  structure checks.
+- `make check-security`: npm audit and govulncheck reported no vulnerabilities.
+- Hugo 0.169.0 documentation build through its Go runner passed.
+
+The reported user's container and host filesystem were not accessed; the
+previously shared Compose configuration had no projects bind mount. The exact
+cause of that deployment's failure remains unverified until tested there.

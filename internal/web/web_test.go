@@ -1,8 +1,11 @@
 package web
 
 import (
+	"bytes"
 	"context"
 	"html"
+	"io"
+	"log/slog"
 	"mime"
 	"net/http"
 	"net/http/httptest"
@@ -85,7 +88,8 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 }
 
 func TestDiscoveryAuthenticatedFlow(t *testing.T) {
-	handler := testHandler(t, nil)
+	var logs bytes.Buffer
+	handler := testHandlerWithLogger(t, nil, slog.New(slog.NewJSONHandler(&logs, nil)))
 	root := t.TempDir()
 	project := filepath.Join(root, "example")
 	if err := os.Mkdir(project, 0o700); err != nil {
@@ -155,6 +159,12 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
 	if !strings.Contains(response.Body.String(), "unable to scan") || !strings.Contains(response.Body.String(), "Available") || !strings.Contains(response.Body.String(), "Active") {
 		t.Fatalf("failed scan did not preserve state: %s", response.Body.String())
+	}
+	if !strings.Contains(logs.String(), `"msg":"discovery scan failed"`) ||
+		!strings.Contains(logs.String(), `"stage":"scan_filesystem"`) ||
+		!strings.Contains(logs.String(), `"reason":"not_found"`) ||
+		strings.Contains(logs.String(), root) {
+		t.Fatalf("unexpected scan diagnostic: %s", logs.String())
 	}
 	if err := os.Rename(root+"-temporarily-unavailable", root); err != nil {
 		t.Fatal(err)
@@ -285,7 +295,7 @@ func TestTrustedProxyLoginRequiresHTTPSOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := Handler(manager, discovery.NewStore(database.SQL), publicURL, proxies)
+	handler := Handler(manager, discovery.NewStore(database.SQL), publicURL, proxies, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	page := httptest.NewRequest(http.MethodGet, "/login", nil)
 	page.Host = "backend:8080"
 	page.RemoteAddr = "192.0.2.10:12345"
@@ -325,6 +335,10 @@ func TestTrustedProxyLoginRequiresHTTPSOrigin(t *testing.T) {
 }
 
 func testHandler(t *testing.T, trustedProxies []netip.Prefix) http.Handler {
+	return testHandlerWithLogger(t, trustedProxies, slog.New(slog.NewTextHandler(io.Discard, nil)))
+}
+
+func testHandlerWithLogger(t *testing.T, trustedProxies []netip.Prefix, logger *slog.Logger) http.Handler {
 	t.Helper()
 	ctx := context.Background()
 	database, err := auth.OpenDatabase(ctx, filepath.Join(t.TempDir(), "state"))
@@ -343,7 +357,7 @@ func testHandler(t *testing.T, trustedProxies []netip.Prefix) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Handler(manager, discovery.NewStore(database.SQL), publicURL, trustedProxies)
+	return Handler(manager, discovery.NewStore(database.SQL), publicURL, trustedProxies, logger)
 }
 
 func perform(handler http.Handler, method, path string, values url.Values, cookies map[string]*http.Cookie, csrfToken string) *httptest.ResponseRecorder {
