@@ -115,7 +115,13 @@ and data-retention effects when changing settings remain to be decided.
 The selected storage direction is tstorage for metrics while SQLite remains
 the application-state store. Netdata-style historical retention and a
 UniFi-inspired display are design goals, not approval of a particular retention
-duration, aggregation, disk limit or visual implementation. A reusable column
+duration, aggregation, disk limit or visual implementation. The owner wants
+the storage budget managed toward approximately 90% usage, reserving roughly
+10% as working headroom. Downsampling should happen before eligible raw data is
+removed; configurations known to prevent that should be rejected. This is a
+target rather than a guarantee against storage exhaustion. Exact accounting,
+compatibility validation and exceptional exhaustion behavior remain open.
+A reusable column
 customizer is also requested for inventory views. These directions do not
 authorize Compose mutations or imply that unavailable metrics are zero.
 
