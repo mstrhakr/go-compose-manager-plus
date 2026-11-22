@@ -107,10 +107,9 @@ association ambiguity and scope-change behavior remain open.
 
 The owner wants an opt-in setup wizard with Low, Medium, High and Custom
 profiles, with the underlying collection and retention options available in
-Settings. Low selects containers associated with activated stacks; High selects
-all running containers. Changing an individual preset option switches the
-profile to Custom. Medium's scope was suggested as activated stacks but remains
-undecided. Exact settings, any automatic tuning, preset defaults, confirmation
+Settings. Low and Medium select containers associated with activated stacks;
+High selects all running containers. Changing an individual preset option
+switches the profile to Custom. Exact settings, any automatic tuning, preset defaults, confirmation
 and data-retention effects when changing settings remain to be decided.
 
 The selected storage direction is tstorage for metrics while SQLite remains
@@ -122,7 +121,7 @@ authorize Compose mutations or imply that unavailable metrics are zero.
 
 **Approval:** Owner selected the opt-in collection boundary and the above
 product and storage directions on 2026-11-22. Sampling, supported metrics,
-Medium scope and collection edge cases, remaining preset behavior,
+collection edge cases, remaining preset behavior,
 retention/downsampling, resource budgets,
 recovery and presentation details remain unresolved. The storage dependency's
 fitness and operational characteristics still need evaluation.
