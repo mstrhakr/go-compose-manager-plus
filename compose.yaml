@@ -9,10 +9,17 @@ services:
       APP_DATA_DIR: /data
       APP_PUBLIC_URL: "${APP_PUBLIC_URL:-http://127.0.0.1:${APP_PORT:-8080}}"
       APP_TRUSTED_PROXIES: "${APP_TRUSTED_PROXIES:-}"
+      APP_DOCKER_SOCKET: "${APP_DOCKER_SOCKET:-}"
       APP_BOOTSTRAP_USERNAME: "${APP_BOOTSTRAP_USERNAME:-}"
       APP_BOOTSTRAP_PASSWORD: "${APP_BOOTSTRAP_PASSWORD:-}"
     volumes:
       - app-data:/data
+      # Optional Docker access requires an explicit socket mount and permissions.
+      # Docker socket access is effectively host-administrative, even with :ro.
+      # - /var/run/docker.sock:/var/run/docker.sock
+    # If needed, add the host socket's numeric group ID as a supplemental group:
+    # group_add:
+    #   - "REPLACE_WITH_SOCKET_GID"
     read_only: true
     cap_drop:
       - ALL
