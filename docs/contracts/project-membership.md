@@ -102,11 +102,14 @@ Activation still cannot bypass PROJ-002's independent action prerequisites.
 **Approval:** Owner explicitly selected permission-only option A on 2026-11-19,
 emphasizing that users should not encounter unexpected automatic actions.
 This settles activation effects, not every future automation policy.
+On 2026-11-21, the owner selected blocking activation when the project is
+missing or its Compose inputs cannot be resolved, with a clear error. A
+previously active project's saved state is retained under PROJ-010.
 
 **Source provenance:** Standalone owner review recorded in the
 [source register](../planning/sources.md#standalone-owner-refinement).
 
-**Enforcement:** Not implemented. Activation validation, persistence and failure
+**Enforcement:** Not implemented. Other activation validation, persistence and failure
 reporting remain to be defined and verified.
 
 ### PROJ-004: Direct-Child Project Discovery
@@ -319,6 +322,8 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 - PROJ-003: Activate a stopped project; it remains stopped until a separate
   deliberate action starts it.
 - PROJ-003: Activation does not enable schedules or trigger automatic updates.
+- PROJ-003: Refuse activation with a clear error when the discovered project
+  is missing or its Compose inputs cannot be resolved.
 - PROJ-004: With root `/srv/compose`, discover eligible project folder
   `/srv/compose/jellyfin`, but do not recursively discover the separate nested
   project `/srv/compose/media/sonarr`. Do not infer that the grouping directory
@@ -365,6 +370,8 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   over activation-plus-reconciliation: permission only, without Compose execution,
   project-file rewrites or schedule enablement. Rationale: no unexpected automatic
   actions. PROJ-003 records this bounded approval.
+- 2026-11-21: Owner selected blocking activation of a missing or unresolved
+  project, with a clear error, without clearing a previously saved active state.
 - 2026-11-19: Owner selected direct-child discovery for now (PROJ-004), while
   expressing interest in possible recursive discovery/UI grouping. No grouping
   behavior or recursive scope was approved. Organizational grouping does not
