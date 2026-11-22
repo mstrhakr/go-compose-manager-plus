@@ -11,8 +11,9 @@ printf '\n'
 export APP_BOOTSTRAP_USERNAME APP_BOOTSTRAP_PASSWORD
 make run</code></pre>
 <p>Open <code>http://127.0.0.1:8080/</code>, sign in and complete the required
-password change. The dashboard is an auth-protected shell; Docker status and
-management actions are not connected yet. Stop the server with Ctrl+C.</p>
+password change. The dashboard is an auth-protected shell; Docker status is
+disabled by default and management actions are not connected. Stop the server
+with Ctrl+C.</p>
 <h2>Run in Docker</h2>
 <p>For a container build, install Docker Engine with Docker Compose and BuildKit
 support. Copy <code>.env.example</code> to <code>.env</code>, set a temporary
@@ -23,8 +24,8 @@ docker compose logs -f</code></pre>
 <p>Open <code>http://127.0.0.1:8080/</code> and complete the forced password
 change. Compose binds the host port to loopback and stores account/session state
 in its persistent <code>app-data</code> volume. Remove the bootstrap values from
-<code>.env</code> after setup. Docker/Compose status and management actions are
-not connected yet.</p>
+<code>.env</code> after setup. Docker status is disabled by default; management
+actions are not connected.</p>
 <h2>Configuration</h2>
 <p>The native binary reads exported environment variables, not dotenv files.</p>
 <table>
@@ -33,6 +34,7 @@ not connected yet.</p>
     <tr><td>APP_ADDR</td><td>127.0.0.1:8080</td><td>Listen host and numeric port (1–65535)</td></tr>
     <tr><td>APP_LOG_LEVEL</td><td>info</td><td>debug, info, warn, or error</td></tr>
     <tr><td>APP_DATA_DIR</td><td>./data</td><td>Persistent SQLite state directory</td></tr>
+    <tr><td>APP_DOCKER_SOCKET</td><td>unset</td><td>Optional absolute Unix socket path for on-demand read-only status; socket access is effectively host-administrative</td></tr>
     <tr><td>APP_PUBLIC_URL</td><td>http://127.0.0.1:8080</td><td>Canonical app origin; remote origin requires HTTPS</td></tr>
     <tr><td>APP_TRUSTED_PROXIES</td><td>empty</td><td>Comma-separated immediate proxy CIDRs</td></tr>
     <tr><td>APP_BOOTSTRAP_USERNAME</td><td>unset</td><td>Required with password only for an uninitialized database</td></tr>

@@ -1,7 +1,7 @@
 .SHELLFLAGS := -eu -o pipefail -c
 SHELL := bash
 .DEFAULT_GOAL := help
-.PHONY: help run build setup test test-go test-unit test-js test-e2e test-smoke vet fmt check check-go check-assets check-contracts docs docs-serve docs-contracts check-workflows check-security check-container pr-checks run-watch
+.PHONY: help run build setup test test-go test-unit test-js test-e2e test-live-docker test-smoke vet fmt check check-go check-assets check-contracts docs docs-serve docs-contracts check-workflows check-security check-container pr-checks run-watch
 
 QUIET ?= 0
 PR ?=
@@ -22,6 +22,7 @@ help:
 	@echo "make test-go     Race-enabled Go tests (requires a C compiler)"
 	@echo "make test-js     JS/unit and browserless API tests"
 	@echo "make test-e2e    Desktop browsers and mobile Chromium"
+	@echo "make test-live-docker  Opt-in disposable Docker snapshot test"
 	@echo "make run         Start the application"
 	@echo "make docs        Build documentation (requires Hugo)"
 	@echo "make check QUIET=1  Show phase progress and full output only on failure"
@@ -51,6 +52,10 @@ test-js: test-unit
 
 test-e2e:
 	$(RUN_CHECK) "Browser tests" npm run test:e2e
+
+test-live-docker:
+	@test "$${CMP_LIVE_DOCKER:-}" = 1 && test -n "$${CMP_LIVE_ACK:-}" || (echo "Set CMP_LIVE_DOCKER=1 and CMP_LIVE_ACK to the exact Docker socket path" >&2; exit 1)
+	$(RUN_CHECK) "Live Docker snapshot test" go test ./internal/runtime -run '^TestLiveDockerSnapshot$$' -count=1 -v
 
 test-smoke:
 	$(RUN_CHECK) "Browser smoke tests" npm run test:smoke

@@ -76,6 +76,19 @@ checks when those surfaces change, as described in the development guide.
 
 Make is optional; see the Makefile for equivalent Go commands.
 
+The opt-in live Docker snapshot test creates one uniquely named disposable
+Compose container on the selected daemon and removes only its verified container
+ID and anonymous volumes. It uses no ports, host mounts, named volumes or networks, and performs no
+pull, build or prune. It requires the development image already present locally:
+
+```sh
+CMP_LIVE_DOCKER=1 CMP_LIVE_ACK=/var/run/docker.sock make test-live-docker
+```
+
+The socket path is an explicit acknowledgement of the target daemon. This
+changes that daemon by creating and removing the fixture, and a crash can leave
+it behind. A disposable daemon is safer than a shared host.
+
 ```text
 cmd/server/       process wiring, auth-state lifecycle, health probe
 internal/config/  validated environment configuration
@@ -190,6 +203,35 @@ path and activation edge cases remain under review. The initial `.env` reader
 limits files to 1 MiB and 4,096 lines, with individual statements limited to
 128 KiB and 256 lines.
 
+### Optional Docker status snapshot
+
+Docker access is disabled unless `APP_DOCKER_SOCKET` names an absolute Unix
+socket path. To enable it in a trusted local installation, add a socket mount
+and environment value in a local override, then recreate the app:
+
+```yaml
+services:
+  app:
+    environment:
+      APP_DOCKER_SOCKET: /var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+```
+
+The app's user must have permission to connect to the host socket; group
+membership granting that access is also effectively host-administrative.
+Mounting a socket `:ro` does not make Docker API access read-only. Expose the
+app only within a trusted security boundary; TLS alone does not make Docker
+access safe.
+
+Choose **Refresh Docker status** for a point-in-time container list. The app
+uses the native resolved project name and the Docker Compose project label, so
+copies with the same name show the same runtime project. This does not establish
+which files created the containers or authorize actions. No matching containers
+does not prove a project was never deployed. The snapshot uses Docker Engine API
+v1.40; incompatible or unreachable daemons are reported as unavailable. Logs,
+metrics, streaming and lifecycle actions are not implemented.
+
 ## Documentation
 
 Install Hugo **0.169.0** from its [official releases](https://github.com/gohugoio/hugo/releases),
@@ -244,6 +286,7 @@ release provenance schema URI and generic CI image labels may still refer to
 go-template; they are template tooling identifiers, not upstream release claims.
 
 The initial authentication/dashboard shell is not yet a production Compose
-manager. Docker socket access remains absent. Authentication does not itself
+manager. Docker socket access is optional and limited in the app to an on-demand
+read-only container snapshot. Authentication does not itself
 authorize future per-project operations; request/proxy/session and host/container
 path policies still require verification before remote administration.

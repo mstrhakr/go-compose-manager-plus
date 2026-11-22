@@ -26,7 +26,7 @@ description of every implementation detail or a substitute for tests.
 | [GIT](git-stacks.md) | Git-backed stacks, private-repository credentials and CI/webhook deployment | Draft; GIT-001 through GIT-005 approved within stated scope; remaining behavior/security unresolved, not implemented or verified |
 | [OPS](operation-coordination.md) | Shared same-stack manual/CI mutation coordination | Draft; OPS-001 bounded queueing approved, detailed queue/lifecycle policies unresolved; not implemented or verified |
 | [RES](project-resolution.md) | Runtime identity and Compose inputs | Draft; RES-001/006 native naming/selection approved, RES-002 through RES-005 adopted portable source outcomes; bounded discovery resolution in progress, with environment and identity limits |
-| [LIVE](live-state.md) | Dashboard home and live delivery | Draft; scope and SSE preference recorded, detailed recovery/collection/history policies proposed; not implemented or verified |
+| [LIVE](live-state.md) | Dashboard home and live delivery | Draft; dashboard scope, SSE preference and LIVE-002 on-demand read-only snapshot approved within their stated scopes; detailed recovery/collection/history policies remain proposed |
 | [AUTH](authentication.md) | App login and shared authentication boundary | Draft; AUTH-001 through AUTH-006 approved within stated scope; local-auth/dashboard-shell slice partially implemented and verified on `feat/local-auth`; OIDC, recovery, detailed security cases and Compose operations remain deferred or unverified |
 
 ## Shared Format

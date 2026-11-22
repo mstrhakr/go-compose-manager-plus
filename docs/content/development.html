@@ -40,6 +40,15 @@ watches the current branch's PR, or use <code>make pr-checks PR=9</code>.
 <code>gh run watch --compact --exit-status</code>. These targets need an
 authenticated GitHub CLI; PR watch output is the standard <code>gh</code> output
 and may repeat status lines.</p>
+<p>For an opt-in live Docker snapshot check, run
+<code>CMP_LIVE_DOCKER=1 CMP_LIVE_ACK=/var/run/docker.sock make test-live-docker</code>,
+replacing the acknowledgement with the exact socket path. It creates a
+uniquely named disposable Compose container with no host mounts, ports, networks
+or named volumes, then removes only a verified fixture container and its
+anonymous volumes. It requires
+the development image to be present locally; it does not pull, build or prune.
+It is not part of <code>make check</code> and a crash can leave a fixture behind.
+Use a disposable daemon when stronger isolation is needed.</p>
 <h2>UI components</h2>
 <p>Reusable server-rendered metric, chart and list panels are defined in
 <code>internal/web/templates/partials/components.html</code>, with their Go

@@ -46,6 +46,35 @@ standalone preference, not unchanged source behavior.
 **Enforcement:** Not implemented. No collector, event subscriber or SSE endpoint
 exists in the scaffold.
 
+### LIVE-002: On-Demand Read-Only Runtime Snapshot
+
+On explicit request, show the current Docker container states for each discovered
+project whose Compose inputs can be resolved. Associate containers by the
+resolved native Compose project name and the `com.docker.compose.project` label.
+This association also applies when multiple project folders resolve to the same
+name: it is a view of that Docker project, not proof that a folder created or
+owns its resources. Discovery activation is not needed to inspect status.
+
+Show an empty result as no matching containers, not as proof that a project was
+never deployed. A disconnected daemon, failed request or unresolved project
+identity is unavailable or unknown, not an empty or stopped result. The
+snapshot changes no containers or project files and does not authorize actions.
+Continuous updates, metrics, identity adoption and lifecycle targeting remain
+separate decisions.
+
+**Approval:** Owner approved the bounded read-only status slice and clarified
+on 2026-11-22 that same-name copies should use the Compose runtime name without
+special adoption handling for this view. Activation remains a separate
+management permission, not evidence of filesystem ownership.
+
+**Source provenance:** Compose Specification `02-model.md` at `3a4a699`
+defines project-name resource grouping and its label. Source STK-ID distinguishes
+runtime names and evidence, but its saved-pin and migration policies are not
+adopted. See [RES-001](project-resolution.md#res-001-accepted-runtime-identity-is-not-a-display-name).
+
+**Enforcement:** The opt-in snapshot is implemented with explicit refresh;
+verification and environment limits are recorded separately.
+
 ## Dependencies
 
 - Depends on [AUTH-001 through AUTH-006](authentication.md) for user-bound local-session

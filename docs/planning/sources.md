@@ -20,6 +20,16 @@ bootstrap publishes their branches or modifies their worktrees.
 
 ## Standalone Owner Refinement
 
+2026-11-22: for the first read-only runtime snapshot the owner selected
+associating discovered projects with Docker containers by their resolved Compose
+project name, even for copies resolving to the same name. This is runtime
+grouping for display, not proof of filesystem ownership or authorization to
+perform actions. See [LIVE-002](../contracts/live-state.md#live-002-on-demand-read-only-runtime-snapshot).
+Compose Specification `02-model.md` at `3a4a699` defines the resource project
+label and allows an external project-name override; it does not prescribe
+manager adoption. Source STK-ID distinguishes accepted name from runtime
+evidence; its plugin-specific trust and migration policies remain unadopted.
+
 2026-11-21: owner chose persistent project listing over a scan-only preview for
 the next slice. For a previously discovered project absent on a successful scan,
 the owner selected retaining its listing and activation state as unavailable;
