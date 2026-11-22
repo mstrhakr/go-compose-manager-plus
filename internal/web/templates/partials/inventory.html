@@ -1,0 +1,74 @@
+{{define "projects-page"}}
+<div class="inventory-toolbar"><div><h1>Compose projects</h1><p>{{.Filters.Shown}} of {{.Filters.Total}} projects</p></div><a class="inventory-filter-link" href="#inventory-filter-toggle">Filters &amp; sort</a><span>{{.RuntimeMessage}}</span></div>
+{{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+{{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
+<section class="list-panel inventory-panel" aria-labelledby="projects-list-title">
+  <h2 class="visually-hidden" id="projects-list-title">Projects</h2>
+  <div class="inventory-columns" aria-hidden="true"><span>Project</span><span>Discovery</span><span>Activation</span><span>Containers</span></div>
+  {{if .Projects}}
+  <ul class="inventory-list">
+    {{range .Projects}}
+    <li><details class="inventory-item">
+      <summary><span class="inventory-name"><span class="project-glyph" aria-hidden="true">&#9636;</span>{{.DisplayName}}</span><span><span class="inventory-mobile-label">Discovery: </span>{{.DiscoveryStatus}}</span><span><span class="inventory-mobile-label">Activation: </span>{{.ActivationStatus}}</span><span><span class="inventory-mobile-label">Containers: </span>{{if .RuntimeName}}{{len .Containers}}{{else}}Unknown{{end}}</span></summary>
+      <div class="inventory-details">
+        <p>Folder: {{.Path}}</p>
+        {{if ne .Root $.Root}}<p>Outside the current discovery root; save its root to activate.</p>{{end}}
+        {{if .ResolutionError}}<p class="project-error">{{.ResolutionError}}</p>{{end}}
+        {{if .RuntimeError}}<p>{{.RuntimeError}}</p>{{end}}
+        {{if .RuntimeName}}
+        <p>Docker project: <strong>{{.RuntimeName}}</strong></p>
+        {{if .Containers}}<div class="list-scroll"><table class="data-table"><thead><tr><th scope="col">Container</th><th scope="col">Service</th><th scope="col">State</th></tr></thead><tbody>
+          {{range .Containers}}<tr><td>{{if .Name}}{{.Name}}{{else if .ID}}{{.ID}}{{else}}Unknown{{end}}</td><td>{{if .Service}}{{.Service}}{{else}}—{{end}}</td><td>{{.State}}</td></tr>{{end}}
+        </tbody></table></div>{{else}}<p>No matching containers in this snapshot.</p>{{end}}
+        {{else if ne $.RuntimeState "Snapshot"}}<p>Runtime status unavailable; {{$.RuntimeMessage}}</p>{{end}}
+        {{if not .Active}}<form action="/discovery/activate" method="post">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="path" value="{{.Path}}"><input type="hidden" name="return_to" value="/projects">
+          <button class="quiet-button" type="submit" {{if or (not .Available) .ResolutionError (ne .Root $.Root)}}disabled{{end}}>Activate</button>
+        </form>{{end}}
+      </div>
+    </details></li>
+    {{end}}
+  </ul>
+  {{else}}<div class="list-empty">{{if .Filters.Total}}No projects match these filters.{{else}}No projects discovered. Set a discovery root and scan from the overview.{{end}}</div>{{end}}
+</section>
+<p class="inventory-footnote">Availability reflects the last successful scan. Projects sharing a Compose name show the same containers; this does not establish ownership.</p>
+{{end}}
+
+{{define "containers-page"}}
+<div class="inventory-toolbar"><div><h1>Containers</h1><p>{{if eq .RuntimeState "Snapshot"}}{{.Filters.Shown}} of {{.Filters.Total}} containers{{else}}Inventory unavailable{{end}}</p></div><a class="inventory-filter-link" href="#inventory-filter-toggle">Filters &amp; sort</a><span>{{.RuntimeMessage}}</span></div>
+{{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+{{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
+<div class="inventory-panel">{{template "list-panel" .Containers}}</div>
+<p class="inventory-footnote">Includes stopped containers and containers without a Compose project label. <span class="inventory-scroll-hint">Scroll the table horizontally to see all columns.</span></p>
+{{end}}
+
+{{define "inventory-filters"}}
+<aside class="host-sidebar inventory-sidebar" id="inventory-filters" aria-label="Inventory filters">
+  <details class="sidebar-disclosure inventory-filter-disclosure" open>
+  <summary class="sidebar-toggle" id="inventory-filter-toggle"><span class="sidebar-collapse-label">Collapse filters</span><span class="sidebar-expand-label">Expand filters</span></summary>
+  {{template "view-navigation" .SubviewNav}}
+  <div class="filter-heading"><h2 id="filter-title">Filters</h2><a href="{{.Filters.Path}}">Clear filters</a></div>
+  <form action="{{.Filters.Path}}" method="get">
+    <label class="filter-label" for="inventory-search">Search</label>
+    <input class="filter-input" id="inventory-search" name="q" type="search" value="{{.Filters.Search}}" placeholder="Search {{.View}}">
+    <label class="filter-label" for="inventory-sort">Sort by</label>
+    <select class="filter-input" id="inventory-sort" name="sort">
+      <option value="name" {{if eq .Filters.Sort "name"}}selected{{end}}>Name (A–Z)</option>
+      <option value="name-desc" {{if eq .Filters.Sort "name-desc"}}selected{{end}}>Name (Z–A)</option>
+    </select>
+    <fieldset class="inventory-filter-group"><legend>{{if eq .View "projects"}}Discovery{{else}}State{{end}}</legend>
+      {{range .Filters.States}}<label><input type="checkbox" name="state" value="{{.Value}}" {{if .Checked}}checked{{end}}> <span>{{.Label}} ({{.Count}})</span></label>{{else}}<p>No values available</p>{{end}}
+    </fieldset>
+    <fieldset class="inventory-filter-group"><legend>{{if eq .View "projects"}}Activation{{else}}Project association{{end}}</legend>
+      {{range .Filters.Groups}}<label><input type="checkbox" name="group" value="{{.Value}}" {{if .Checked}}checked{{end}}> <span>{{.Label}} ({{.Count}})</span></label>{{else}}<p>No values available</p>{{end}}
+    </fieldset>
+    {{if eq .View "containers"}}<fieldset class="inventory-filter-group"><legend>Compose projects</legend>
+      <div class="filter-options">{{range .Filters.Projects}}<label><input type="checkbox" name="project" value="{{.Value}}" {{if .Checked}}checked{{end}}> <span>{{.Label}} ({{.Count}})</span></label>{{else}}<p>No values available</p>{{end}}</div>
+    </fieldset>{{end}}
+    <button class="quiet-button scan-button" type="submit">Apply filters</button>
+    <p class="inventory-filter-note">Applying filters refreshes the read-only Docker snapshot. Counts reflect all {{.View}}, before filtering.</p>
+  </form>
+  <a class="inventory-overview-link" href="/">Discovery settings &amp; overview</a>
+  </details>
+</aside>
+{{end}}

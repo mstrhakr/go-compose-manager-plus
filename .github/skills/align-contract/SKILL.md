@@ -31,6 +31,13 @@ Never implement ambiguous draft intent or rewrite intent to fit code. Route
 missing evidence to [extract-contract](../extract-contract/SKILL.md) and unsettled
 policy to [refine-contract](../refine-contract/SKILL.md).
 
+For affected Compose semantics, consider the local `/code/compose-spec` chapters
+using the [specification evidence procedure](../extract-contract/SKILL.md#compose-specification-evidence).
+Check normative requirements and version qualifications against the selected
+SDK/CLI implementation and approved product scope. Record actual support gaps;
+do not infer CI/webhook behavior from Compose `deploy` settings, silently replace
+approved intent, or modify the sibling spec repository to justify implementation.
+
 ## Assess And Plan
 
 1. State observable outcomes, prohibited effects, input/output shapes,

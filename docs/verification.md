@@ -46,3 +46,333 @@ helper completed successfully, with readback confirming active protected-main
 and immutable-version-tag rulesets, selected SHA-pinned Actions, disabled
 release/container publishing and a release environment requiring owner approval.
 This settings readback is not evidence that hosted workflows have run.
+
+## Local Authentication Slice
+
+Date: 2026-11-20. Branch: `feat/local-auth`, based on product main `f3f3820`.
+Scope: AUTH-001 through AUTH-006 implementation slice for one-time local admin
+bootstrap, local login, forced initial password change, SQLite-backed sessions,
+protected dashboard shell and container/Compose configuration. This is partial
+contract enforcement, not a production Compose manager.
+
+- `go test ./cmd/server ./internal/auth ./internal/config ./internal/web -count=1`:
+  passed.
+- `PLAYWRIGHT_PORT=18127 npm run test:js`: passed, 7 tests.
+- `PLAYWRIGHT_PORT=18128 npm run test:e2e`: passed, 9 tests; 3 expected skips
+  because the one-time provisioning case runs only in desktop Chromium.
+- `docker compose config --quiet`: passed.
+- `make check`: passed Go race tests, vet, formatting and build; 14 Node unit
+  tests, 7 HTTP tests, 9 browser tests with 3 intentional skips; asset and
+  contract structure checks.
+- `make check-security`: npm audit found no vulnerabilities; govulncheck found
+  no reachable vulnerabilities, while reporting one advisory in an imported
+  package whose vulnerable function is not called.
+- `make docs`: passed with Hugo 0.169.0.
+- `docker buildx build --no-cache --load -t go-compose-manager-plus:dev .`:
+  passed. A disposable non-root, read-only container and dedicated data volume
+  passed login, initial password change and restart persistence checks. A second
+  container verified login over the Docker bridge. The image was not published
+  or scanned; access through the remote Docker host's published port was not
+  verified from this development container.
+
+## 2026-11-21 Follow-Up
+
+Environment: Linux development container. Scope: finish and revalidate the
+pending `feat/local-auth` work before delivery.
+
+- `make check`: passed Go race tests, vet, formatting and build; 14 Node unit
+  tests, 7 HTTP tests, 9 browser tests with 3 intentional skips; asset and
+  contract structure checks.
+- `make check-security`: npm audit reported zero vulnerabilities;
+  govulncheck reported no reachable vulnerabilities.
+- `docker compose config --quiet`: passed.
+- `docker buildx build --no-cache --load -t go-compose-manager-plus:dev .`:
+  passed.
+- `make docs`: not run successfully because Hugo is not installed in the
+  current environment.
+- A follow-up disposable container smoke could not reach its published or Docker
+  bridge port from this development environment, so no additional HTTP
+  authentication result is claimed beyond the container verification recorded
+  above.
+- Initial PR CI found that the Windows test incorrectly expected POSIX mode
+  bits, and the container smoke job omitted the required bootstrap credentials.
+  The test now checks POSIX mode only on applicable systems; both validation
+  and release-image smoke jobs provide disposable test credentials. Locally,
+  `go test ./internal/auth -count=1`, `PLAYWRIGHT_PORT=18148 make check`,
+  `make check-workflows`, and the Docker liveness smoke passed. Native Windows
+  and hosted workflow results for the fixes require CI verification; Windows
+  data-directory ACL protection is not tested by the POSIX mode check.
+- `node scripts/scan-image.mjs go-compose-manager-plus:dev`: failed on
+  CVE-2025-47909 in `github.com/gorilla/csrf`. The Go reachability scan reports
+  the affected code is not called, and this application does not configure
+  `TrustedOrigins`; nevertheless the image scan blocked the dependency. The owner
+  approved retaining token and browser-origin protections while replacing the
+  library. The replacement uses `nosurf` masked double-submit tokens with a
+  host-only cookie (and `__Host-` prefix on HTTPS), strict same-origin checks,
+  and Go's cross-origin middleware; it is not the previous signed cookie.
+- After the review fixes, `PLAYWRIGHT_PORT=18148 make check` and
+  `make check-security` passed; the latter reported no vulnerabilities.
+  `docker buildx build --load -t go-compose-manager-plus:auth-review .`
+  and `node scripts/scan-image.mjs go-compose-manager-plus:auth-review`
+  passed, with zero image findings. Focused tests cover schema-v1 migration,
+  stale session commits after logout, expiry cleanup, oversized auth forms and
+  per-client login-key limits. Session cleanup runs on subsequent session
+  commits: expired data is cleared and revoked token markers remain until the
+  absolute session deadline, preventing stale requests from restoring them.
+  No hosted run of these changes is claimed yet.
+
+The dashboard is a visual/authenticated shell with explicit placeholders. Docker
+Engine/Compose discovery, real status, network/volume management and lifecycle
+actions are not implemented. Remote administration is not certified; configure
+TLS/proxy trust carefully and do not expose Docker socket access.
+
+## Fixture-Only Compose Resolution Proof of Concept
+
+Date: 2026-11-21. Linux development container, branch
+`feat/compose-resolution-fixtures`, based on `4db7c0d` with the fixture changes
+uncommitted during these checks. Compose specification checkout:
+`3a4a6995e4a971f6173dff9130cb3e38e6738651`; model loader:
+`github.com/compose-spec/compose-go/v2` v2.17.0; Go 1.27.4. The loader is not
+the Compose orchestration SDK.
+
+- `COMPOSE_FIXTURE_COMPARE_CLI=1 go test ./internal/composeresolution -count=1 -v`:
+  passed. The installed Docker Compose CLI v2.24.1 `config --format json` agreed
+  on name and service image for five valid fixtures: top-level name and `.env`
+  interpolation, directory-derived name and override, default filename
+  precedence, required interpolation from controlled environment, and absolute
+  `COMPOSE_FILE` inputs. These comparisons do not invoke the daemon.
+- Loader-only assertions check selected ordered filenames, an explicit env file
+  with native discovery, explicit Compose files taking precedence over
+  `COMPOSE_FILE`, errors for missing explicit Compose/env files, malformed YAML
+  and missing required interpolation, and unchanged fixture contents and
+  directory entries.
+- `PLAYWRIGHT_PORT=18148 make check`: passed Go race tests, vet, formatting and
+  build, 14 Node tests, 7 HTTP tests, 9 browser tests with 3 intentional skips,
+  and asset and contract structure checks.
+- `make check-security`: passed npm audit and govulncheck with no vulnerabilities.
+- `make check-container`: built and scanned the Linux amd64 image, with zero
+  reported findings.
+- `make docs`: could not run because Hugo was not installed.
+- `go run github.com/gohugoio/hugo@v0.169.0 --source docs --minify --panicOnWarning`:
+  passed using Hugo v0.169.0 as a temporary Go-run tool.
+- The same Hugo invocation with `--config hugo.toml,hugo.contracts.toml`
+  passed the contract-inclusive documentation build.
+
+These are disposable fixtures with a controlled environment, not integration
+with real projects or a claim of full RES compliance. Relative `COMPOSE_FILE`
+paths, includes, profiles, parent-directory discovery, broader CLI versions and
+the product's process-environment policy remain unverified. In this loader
+version, relative `COMPOSE_FILE` paths are resolved against the process working
+directory, not the supplied fixture working directory; no product policy is
+inferred from that behavior. File checks cover the fixture directory contents,
+not metadata or arbitrary external paths. No host scanning, project persistence,
+Docker socket access, UI integration or container operation was exercised.
+
+## Persistent Discovery Slice
+
+Date: 2026-11-21. Linux development container, branch `feat/read-only-discovery`
+based on `4f8215b`; results refer to the uncommitted implementation alongside
+the branch's decision and schema commits. The slice implements a single saved
+root, requested direct-child scans, persistent listings and permission-only
+activation. It uses compose-go v2.17.0 without inheriting the manager process
+environment. It does not connect to Docker or run Compose actions.
+
+- `go test ./internal/discovery ./internal/web ./internal/auth ./cmd/server -count=1`:
+  passed. Cases cover schema v1/v2 migration with auth/session preservation,
+  root and project persistence, stale scan/activation rejection, discovery of
+  valid and invalid projects, missing/restored entries, local interpolation,
+  skipped symlinks, failed scans, authenticated requests and activation without
+  implicitly discovering other projects.
+- `PLAYWRIGHT_PORT=18148 make check`: passed after activation revalidation;
+  includes Go race tests, vet, build, 14 Node tests,
+  7 HTTP tests, 9 browser tests with 3 intentional skips, assets and contract
+  structure checks. The browser flow exercised discovery/activation in desktop
+  Chromium and the resulting dashboard on mobile Chromium.
+- `make check-security`: passed npm audit and govulncheck, no vulnerabilities.
+- `make check-container`: Linux amd64 image built and scanned with zero findings.
+- Contract-inclusive Hugo v0.169.0 build via `go run` passed.
+
+The scanned project filesystem is external to manager-owned state: it can change
+after validation, and activation is not a guarantee of safe targeting by future
+actions. Path restoration is not identity proof. Availability is last-scan state,
+not live status. `COMPOSE_FILE` selection is explicitly unsupported during this
+slice, and `.env` defaults referring to missing variables can be conservatively
+flagged. The bounded `.env` reader checks references in file order and limits
+file and statement sizes. Compose input references may read outside the project folder if
+accessible to the process; a read-only mount prevents writes but is not a read
+sandbox. No native-host, Docker operations, full Compose compatibility or
+comprehensive contract compliance is claimed.
+
+## UI Foundation Slice
+
+Environment: Linux development container. The dashboard was restructured using
+the owner's supplied design reference; the reference's simulated runtime data
+and actions were not implemented. The theme follows the system or an explicit
+browser-local selection. Discovery and permission-only activation remain the
+only project workflows in this slice.
+
+- `PLAYWRIGHT_PORT=18176 make check`: passed Go vet, race tests and build,
+  14 Node tests, 7 HTTP tests, 17 browser tests with 3 intentional skips,
+  embedded-asset and contract-structure checks.
+- Chromium exercised first login, password setup, discovery errors, keyboard
+  navigation, scanning, activation, theme persistence, no-JavaScript and
+  touch-enabled mobile scanning. Login and theme behavior were also exercised
+  in Firefox, WebKit and mobile Chromium. Desktop checks measure the header,
+  rail, sidebar and telemetry dimensions and test horizontal overflow.
+- Desktop dark and mobile light screenshots were inspected locally. This is
+  not a pixel-comparison test against the reference, nor native-device evidence.
+- `make docs` could not run because the Hugo binary is not installed;
+  `go run github.com/gohugoio/hugo@v0.169.0 --source docs --minify --panicOnWarning`
+  passed instead.
+
+Runtime telemetry, Docker integration and management actions remain unimplemented.
+The supplied reference was inspected as text, not executed or included in the app.
+
+## Reusable UI Components
+
+Environment: Linux development container. Scope: server-rendered metric, chart
+and selectable list panels, compact filter styling, and a test-only component
+fixture. The production dashboard continues to show unavailable runtime data;
+the fixture is not an application route and its data is synthetic.
+
+- `PLAYWRIGHT_PORT=18187 make check`: passed Go vet, race tests and build,
+  14 Node tests, 7 HTTP tests, 37 browser tests with 3 intentional skips,
+  embedded-asset and contract-structure checks.
+- Browser coverage exercises chart ranges, missing samples, accessible data,
+  empty and invalid states, independent multi-selection, disabled entries,
+  keyboard operation, htmx reinitialization, no-JavaScript behavior, themes
+  and responsive overflow in Chromium, Firefox, WebKit and mobile Chromium.
+  Desktop and mobile dark/light fixture screenshots were inspected locally.
+- `PLAYWRIGHT_PORT=18188 npx playwright test tests/e2e/components.spec.js
+  --project=chromium --project=mobile-chromium`: passed 10 tests after adding
+  touch-selection and chart-data removal checks.
+- `make check-security`: npm audit and govulncheck reported no vulnerabilities.
+- Hugo 0.169.0 documentation build through its Go runner passed. A standalone
+  Hugo executable is not installed.
+
+These are component-level results, not evidence of live Docker metrics,
+filtering, bulk operations, real-device testing or production accessibility
+certification.
+
+PR review follow-up: `PLAYWRIGHT_PORT=18191 make check` and the Hugo 0.169.0
+Go-runner build passed after preserving missing chart observations in the
+accessible table, namespacing list events, and correcting text contrast.
+Browser tests assert at least 4.5:1 contrast for the reviewed theme colors.
+
+## Discovery Scan Diagnostics
+
+Environment: Linux development container. Based on merged UI revision
+`ccf1865`, this bounded follow-up adds categorized scan failure logs without
+logging paths or file contents. It does not change scanning, activation, or
+failed-scan retention policy under PROJ-006, PROJ-010 and PROJ-011.
+
+- `go test ./internal/web ./cmd/server -count=1`: passed, including a failed
+  authenticated scan that preserves the previous project state and logs a
+  `not_found` category without the root path.
+- `PLAYWRIGHT_PORT=18192 make check`: passed Go vet/race/build, 14 Node tests,
+  7 HTTP tests, 37 browser tests with 3 intentional skips, asset and contract
+  structure checks.
+- `make check-security`: npm audit and govulncheck reported no vulnerabilities.
+- Hugo 0.169.0 documentation build through its Go runner passed.
+
+The reported user's container and host filesystem were not accessed; the
+previously shared Compose configuration had no projects bind mount. The exact
+cause of that deployment's failure remains unverified until tested there.
+
+## Compact Development Checks
+
+Environment: Linux development container. `PLAYWRIGHT_PORT=18193 make check
+QUIET=1` passed with per-phase progress; `PLAYWRIGHT_PORT=18194 make check`
+passed with default output. Node tests verify the quiet runner prints complete
+failure output and retains its exit status, and that GitHub watch targets
+forward selectors and report failures. `make -s pr-checks PR=9` successfully
+read completed PR checks. `make check-workflows`, `make check-security`, and
+the Hugo 0.169.0 Go-runner docs build passed. An actual failing GitHub run and
+native non-Linux Make environments were not exercised.
+
+## On-Demand Docker Snapshot
+
+2026-11-22, Linux development container, branch `feat/read-only-runtime-status`
+based on `cafa352`: the app reads Docker Engine API v1.40 only on explicit
+dashboard refresh. It groups container summaries by Compose project name; this
+is not filesystem ownership evidence or authorization for actions.
+
+- `CMP_LIVE_DOCKER=1 CMP_LIVE_ACK=/var/run/docker.sock make test-live-docker
+  QUIET=1` passed against Docker Engine 29.5.3. It created a uniquely named
+  Compose fixture container, verified its `created` state and service label
+  through the snapshot, removed its verified container ID and checked removal.
+  No image pull, build, published ports, host bind mounts or global cleanup was
+  used. The fixture did not exercise a running or exited container.
+- `PLAYWRIGHT_PORT=18198 make check QUIET=1` passed Go vet, race tests and
+  build, Node, HTTP and browser tests, asset verification and contract checks.
+- A temporary, isolated app instance using the current binary, separate
+  ephemeral state, a read-only playground mount and the host socket was
+  exercised in Chromium. It scanned 27 playground projects, displayed a
+  successful Docker snapshot and resolved names for all 27. Desktop and mobile
+  viewport checks reported no horizontal overflow. It was stopped and removed.
+- `make check-security` passed npm audit and govulncheck. `make docs` could not
+  run because Hugo was not installed; the pinned `go run
+  github.com/gohugoio/hugo@v0.169.0 --source docs --minify --panicOnWarning`
+  build passed.
+- `make check-container` built the Linux amd64 image and scanned it with Trivy;
+  no vulnerabilities were reported. The local build image and scanner image
+  remain available in Docker's image store.
+
+The shared daemon is not isolated by a read-only socket bind mount. No project
+lifecycle action, running-state fixture, automatic refresh, events, metrics,
+remote-administration certification or full Docker compatibility is claimed.
+
+PR review follow-up: the live Docker test was rerun after fixing cleanup to
+remove and verify the fixture's anonymous volume along with its container.
+The authenticated handler regression also checks that a project restored since
+the last discovery scan can display current runtime status without changing
+saved discovery availability or activation.
+
+## Project And Container Inventory Foundation
+
+Linux development container, branch `feat/project-container-views` based on
+`b97ca66`: distinct authenticated inventory pages use the existing read-only
+Docker container-list endpoint. Visiting either page requests a snapshot; the
+overview still requests one only on refresh. Go integration tests use a mock
+Unix-socket daemon to cover unlabelled and stopped containers, escaped names,
+same-name folders, unresolved inputs, empty and failed snapshots, authentication
+gates and the one-request-per-view boundary. Discovery form redirects are
+restricted to local inventory pages or the overview.
+
+- `go test ./internal/runtime ./internal/web` passed focused tests.
+- `PLAYWRIGHT_PORT=18208 make check QUIET=1` passed Go vet and race tests,
+  build, Node, HTTP, browser, asset and contract checks. The authenticated
+  inventory interaction test runs in Chromium, including keyboard, a simulated
+  mobile touch viewport, long paths, no JavaScript and overflow checks; the
+  other browser projects skip that bootstrap-dependent interaction.
+- `make docs` passed with Hugo 0.169.0.
+
+This slice was not tested against a live Docker daemon. Its tests do not establish
+native mobile behavior, continuous freshness, lifecycle control or resource
+ownership, and no such behavior is claimed.
+
+Inventory redesign follow-up on the same branch: server-rendered search, sorting
+and facet combinations have unit and authenticated mock-daemon HTTP coverage,
+including stale selected facets and no-match results. Chromium exercised filter
+controls without JavaScript and in a simulated mobile touch viewport. Mock
+screenshots were captured across multiple iterations, including a filtered view,
+light theme and mobile layouts; these are design checks, not live-Docker or native
+mobile evidence. `PLAYWRIGHT_PORT=18211 make check QUIET=1` passed after fixing
+the shared component fixture.
+
+The inventory filter sidebar and overview host panel use native disclosure
+controls. The main navigation can expand to labels and remembers its setting
+in browser storage; storage errors are reported. Desktop keyboard, simulated
+mobile touch and JavaScript-disabled disclosure paths are covered by the browser
+test. The expanded navigation is a browser enhancement and remains icon-only
+without JavaScript.
+
+The owner approved separate Overview, Projects and Containers primary entries,
+with disabled placeholders for Resources, Activity and Settings. The shared
+view-navigation component renders a current page link and disabled future
+subviews in the contextual sidebar; these placeholders do not implement or
+approve the corresponding functionality. Project status labels are shared by
+the dashboard, inventory rows and inventory filters.
+`PLAYWRIGHT_PORT=18219 make check QUIET=1` and `make docs` passed after these
+changes. Browser checks cover current and disabled navigation entries as well
+as the desktop keyboard, simulated touch and JavaScript-disabled paths above.

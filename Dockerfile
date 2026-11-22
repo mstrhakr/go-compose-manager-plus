@@ -10,10 +10,13 @@ ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
 RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.date=$BUILD_DATE" -o /server ./cmd/server
+RUN mkdir -p /data && chown 65532:65532 /data
 
 FROM scratch
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /server /server
+COPY --from=build --chown=65532:65532 /data /data
+VOLUME ["/data"]
 USER 65532:65532
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 CMD ["/server", "-healthcheck"]

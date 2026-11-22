@@ -7,6 +7,8 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -37,7 +39,7 @@ func TestRunShutdown(t *testing.T) {
 	cancel()
 	done := make(chan error, 1)
 	go func() {
-		done <- run(ctx, config.Config{Addr: "127.0.0.1:0"}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+		done <- run(ctx, testConfig(t, "127.0.0.1:0"), slog.New(slog.NewTextHandler(io.Discard, nil)))
 	}()
 	select {
 	case err := <-done:
@@ -55,7 +57,27 @@ func TestRunListenFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer listener.Close()
-	if err := run(context.Background(), config.Config{Addr: listener.Addr().String()}, slog.New(slog.NewTextHandler(io.Discard, nil))); err == nil {
+	if err := run(context.Background(), testConfig(t, listener.Addr().String()), slog.New(slog.NewTextHandler(io.Discard, nil))); err == nil {
 		t.Fatal("expected listen error")
 	}
+}
+
+func testConfig(t *testing.T, addr string) config.Config {
+	t.Helper()
+	return config.Config{
+		Addr:              addr,
+		DataDir:           filepath.Join(t.TempDir(), "state"),
+		BootstrapUsername: "operator",
+		BootstrapPassword: "bootstrap-password-123",
+		PublicURL:         mustTestURL(t, "http://127.0.0.1:8080"),
+	}
+}
+
+func mustTestURL(t *testing.T, rawURL string) *url.URL {
+	t.Helper()
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return parsed
 }

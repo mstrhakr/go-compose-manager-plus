@@ -4,25 +4,52 @@ weight = 10
 +++
 <h2>Run locally</h2>
 <p>Install the Go version specified in <code>go.mod</code> (currently 1.27.4).
-GNU Make is optional; the commands in the Makefile can also be run directly.</p>
-<pre><code>make run
-# In another terminal:
-curl http://localhost:8080/healthz</code></pre>
-<p>Visit <code>http://localhost:8080/</code> for the embedded starter page.
-Stop the server with Ctrl+C.</p>
+Set a temporary bootstrap account without placing its password in shell history:</p>
+<pre><code>read -rp 'Admin username: ' APP_BOOTSTRAP_USERNAME
+read -rsp 'Temporary admin password: ' APP_BOOTSTRAP_PASSWORD
+printf '\n'
+export APP_BOOTSTRAP_USERNAME APP_BOOTSTRAP_PASSWORD
+make run</code></pre>
+<p>Open <code>http://127.0.0.1:8080/</code>, sign in and complete the required
+password change. The dashboard is an auth-protected shell; Docker status is
+disabled by default and management actions are not connected. Stop the server
+with Ctrl+C.</p>
+<h2>Run in Docker</h2>
+<p>For a container build, install Docker Engine with Docker Compose and BuildKit
+support. Copy <code>.env.example</code> to <code>.env</code>, set a temporary
+bootstrap username and strong password, then build and start the app:</p>
+<pre><code>cp .env.example .env
+docker compose up --build -d
+docker compose logs -f</code></pre>
+<p>Open <code>http://127.0.0.1:8080/</code> and complete the forced password
+change. Compose binds the host port to loopback and stores account/session state
+in its persistent <code>app-data</code> volume. Remove the bootstrap values from
+<code>.env</code> after setup. Docker status is disabled by default; management
+actions are not connected.</p>
 <h2>Configuration</h2>
 <p>The native binary reads exported environment variables, not dotenv files.</p>
 <table>
   <thead><tr><th>Variable</th><th>Default</th><th>Purpose</th></tr></thead>
   <tbody>
-    <tr><td>APP_ADDR</td><td>:8080</td><td>Listen host and numeric port (1–65535)</td></tr>
+    <tr><td>APP_ADDR</td><td>127.0.0.1:8080</td><td>Listen host and numeric port (1–65535)</td></tr>
     <tr><td>APP_LOG_LEVEL</td><td>info</td><td>debug, info, warn, or error</td></tr>
+    <tr><td>APP_DATA_DIR</td><td>./data</td><td>Persistent SQLite state directory</td></tr>
+    <tr><td>APP_DOCKER_SOCKET</td><td>unset</td><td>Optional absolute Unix socket path for on-demand read-only status; socket access is effectively host-administrative</td></tr>
+    <tr><td>APP_PUBLIC_URL</td><td>http://127.0.0.1:8080</td><td>Canonical app origin; remote origin requires HTTPS</td></tr>
+    <tr><td>APP_TRUSTED_PROXIES</td><td>empty</td><td>Comma-separated immediate proxy CIDRs</td></tr>
+    <tr><td>APP_BOOTSTRAP_USERNAME</td><td>unset</td><td>Required with password only for an uninitialized database</td></tr>
+    <tr><td>APP_BOOTSTRAP_PASSWORD</td><td>unset</td><td>Temporary bootstrap password; remove from deployment env after setup</td></tr>
     <tr><td>APP_PORT</td><td>8080</td><td>Compose host port only</td></tr>
   </tbody>
 </table>
-<pre><code>APP_ADDR=127.0.0.1:9000 APP_LOG_LEVEL=debug go run ./cmd/server</code></pre>
-<p>The native default binds all interfaces for container compatibility. Use a
-loopback address for local-only development. Compose exposes only loopback by default.</p>
+<p>Bootstrap credentials are used only once; later environment changes do not
+reset saved credentials. Docker administrators can inspect container environment,
+so protect the temporary bootstrap values and remove them after first-run setup.
+Compose persists app state in a dedicated <code>/data</code> volume.</p>
+<p>The database is local persistent state, not a supported network-shared or
+multi-instance database. Back it up consistently before upgrades or moving hosts.
+If the volume is lost, the app cannot distinguish a genuinely new installation
+from lost credentials; recovery/reset procedures are not implemented yet.</p>
 <h2>Make it yours</h2>
 <ol>
   <li>Create a repository from this template and choose its visibility deliberately.</li>
