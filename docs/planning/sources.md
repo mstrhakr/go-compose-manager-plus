@@ -30,6 +30,14 @@ sampling, retention tiers, limits, and tstorage fitness remain unverified.
 The owner subsequently requested a Settings page with collection scope selectable
 between all running containers and containers associated with activated stacks,
 because collection affects disk use; the default and edge cases remain open.
+The owner then selected a setup wizard with Low, Medium, High and Custom profiles,
+selecting activated stacks for Low and Medium and all running containers for
+High; changing an individual setting switches the profile to Custom. Details and
+actual resource costs remain open.
+The owner selected a roughly 90% metrics-storage usage target with 10%
+headroom, intending downsampling to precede removal and incompatible
+configurations to be prevented. Exceptional exhaustion behavior remains open;
+the target is not a guaranteed disk-space limit.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

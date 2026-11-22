@@ -103,20 +103,32 @@ socket configuration alone must not enable background metrics collection. The
 owner wants a Settings page that lets the user choose whether to collect for
 all running containers or only containers associated with activated stacks.
 Collection scope is separate from view filters and has disk-use consequences;
-its default, association ambiguity and scope-change behavior remain open.
-The owner wants settings suitable for low-power hosts, potentially simple
-low/medium/high presets with automatic tuning; their behavior remains open.
+association ambiguity and scope-change behavior remain open.
+
+The owner wants an opt-in setup wizard with Low, Medium, High and Custom
+profiles, with the underlying collection and retention options available in
+Settings. Low and Medium select containers associated with activated stacks;
+High selects all running containers. Changing an individual preset option
+switches the profile to Custom. Exact settings, any automatic tuning, preset defaults, confirmation
+and data-retention effects when changing settings remain to be decided.
 
 The selected storage direction is tstorage for metrics while SQLite remains
 the application-state store. Netdata-style historical retention and a
 UniFi-inspired display are design goals, not approval of a particular retention
-duration, aggregation, disk limit or visual implementation. A reusable column
+duration, aggregation, disk limit or visual implementation. The owner wants
+the storage budget managed toward approximately 90% usage, reserving roughly
+10% as working headroom. Downsampling should happen before eligible raw data is
+removed; configurations known to prevent that should be rejected. This is a
+target rather than a guarantee against storage exhaustion. Exact accounting,
+compatibility validation and exceptional exhaustion behavior remain open.
+A reusable column
 customizer is also requested for inventory views. These directions do not
 authorize Compose mutations or imply that unavailable metrics are zero.
 
 **Approval:** Owner selected the opt-in collection boundary and the above
 product and storage directions on 2026-11-22. Sampling, supported metrics,
-collection-scope default and edge cases, preset behavior, retention/downsampling, resource budgets,
+collection edge cases, remaining preset behavior,
+retention/downsampling, resource budgets,
 recovery and presentation details remain unresolved. The storage dependency's
 fitness and operational characteristics still need evaluation.
 
