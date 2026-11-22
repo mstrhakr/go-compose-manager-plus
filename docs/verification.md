@@ -376,3 +376,37 @@ the dashboard, inventory rows and inventory filters.
 `PLAYWRIGHT_PORT=18219 make check QUIET=1` and `make docs` passed after these
 changes. Browser checks cover current and disabled navigation entries as well
 as the desktop keyboard, simulated touch and JavaScript-disabled paths above.
+
+## Docker Metrics Storage Proof Of Concept
+
+2026-11-22, Linux x86_64 development environment, branch
+`spike/docker-metrics-storage`, based on `c723364`. The owner approved a bounded
+proof of concept and a read-only test against the running Compose Manager
+container on the shared Docker daemon. No container was created or modified.
+The test uses the Docker Engine v1.40 per-container stats stream and a temporary
+tstorage v0.3.6 database, not the application SQLite database. Only a
+test-only package imports tstorage; no collector is started by the app.
+
+- `go test -race -count=1 ./internal/metricspoc` passed deterministic tests
+  for sample mapping, missing observations and clean storage reopen.
+- `CMP_METRICS_SOCKET=/var/run/docker.sock CMP_METRICS_CONTAINER=compose-manager-plus go test -race -count=1 -run '^TestLiveStatsStorage$' -v ./internal/metricspoc`
+  passed. The ten-second stream produced ten responses and 59 metric points
+  (nine CPU, ten each of raw memory, network receive/transmit and block
+  read/write counters); all points were readable after close and reopen.
+  The resulting temporary directory was 1,678 bytes after close; Go reported
+  144,944 bytes allocated during the measured test loop.
+- `make check-security` reported no npm or Go vulnerabilities.
+
+The sample uses raw memory usage and cumulative network/block byte counters,
+not CLI-adjusted memory or derived rates. CPU requires a prior valid counter
+sample. The first stream response lacked usable previous CPU counters, so it
+was not stored as zero. The test removes its temporary database.
+
+This short single-container run does not measure Docker daemon overhead,
+production memory usage, multi-container scale, retention or downsampling,
+hard disk budgets, crash recovery, long-running collection, native Windows/macOS
+behavior or performance on a representative low-power machine. The directory
+size and Go allocations are observations for this run, not preset budgets.
+tstorage's retention is partition-based, and its own shutdown requires callers
+to stop writers before close. Compatibility, recovery and retention need
+additional investigation before the dependency is used by the running app.

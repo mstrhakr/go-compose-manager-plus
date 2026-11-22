@@ -7,6 +7,7 @@ require (
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/compose-spec/compose-go/v2 v2.17.0
 	github.com/justinas/nosurf v1.2.0
+	github.com/nakabonne/tstorage v0.3.6
 	modernc.org/sqlite v1.62.0
 )
 

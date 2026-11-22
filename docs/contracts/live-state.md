@@ -132,7 +132,10 @@ retention/downsampling, resource budgets,
 recovery and presentation details remain unresolved. The storage dependency's
 fitness and operational characteristics still need evaluation.
 
-**Enforcement:** Not implemented or verified.
+**Enforcement:** Application collection and history are not implemented. A
+test-only, single-container Docker stats/tstorage feasibility spike is recorded
+in [verification](../verification.md#docker-metrics-storage-proof-of-concept);
+it does not implement settings, retention tiers or this requirement.
 
 ## Dependencies
 
