@@ -203,7 +203,16 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	if goruntime.GOOS == "windows" {
 		t.Skip("Unix socket integration is exercised on Unix")
 	}
-	socket := filepath.Join(t.TempDir(), "docker.sock")
+	socketDir, err := os.MkdirTemp("", "cmp-sock-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(socketDir); err != nil {
+			t.Errorf("remove socket directory: %v", err)
+		}
+	})
+	socket := filepath.Join(socketDir, "docker.sock")
 	listener, err := net.Listen("unix", socket)
 	if err != nil {
 		t.Fatal(err)
@@ -255,6 +264,16 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
 	token = tokenFromBody(t, response.Body.String())
 	perform(handler, http.MethodPost, "/discovery/scan", url.Values{}, cookies, token)
+	restored := filepath.Join(root, "two", "compose.yaml")
+	if err := os.Remove(restored); err != nil {
+		t.Fatal(err)
+	}
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	token = tokenFromBody(t, response.Body.String())
+	perform(handler, http.MethodPost, "/discovery/scan", url.Values{}, cookies, token)
+	if err := os.WriteFile(restored, []byte("name: shared\nservices:\n  app:\n    image: example\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(root, "broken", "compose.yaml"), []byte("services: [\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -266,6 +285,7 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	body := response.Body.String()
 	if response.Code != http.StatusOK || strings.Count(body, "Docker project: shared") != 2 ||
 		strings.Count(body, "&lt;script&gt;: running") != 2 ||
+		!strings.Contains(body, "Unavailable &middot; Inactive") ||
 		strings.Count(body, "No matching containers in this snapshot.") != 1 ||
 		strings.Count(body, "Runtime status unknown: unable to resolve Compose inputs.") != 1 || calls.Load() != 1 {
 		t.Fatalf("snapshot: code=%d calls=%d body=%s", response.Code, calls.Load(), body)

@@ -321,3 +321,9 @@ is not filesystem ownership evidence or authorization for actions.
 The shared daemon is not isolated by a read-only socket bind mount. No project
 lifecycle action, running-state fixture, automatic refresh, events, metrics,
 remote-administration certification or full Docker compatibility is claimed.
+
+PR review follow-up: the live Docker test was rerun after fixing cleanup to
+remove and verify the fixture's anonymous volume along with its container.
+The authenticated handler regression also checks that a project restored since
+the last discovery scan can display current runtime status without changing
+saved discovery availability or activation.

@@ -191,10 +191,6 @@ func (server *authServer) dashboard(w http.ResponseWriter, r *http.Request) {
 			runtimeState = "Snapshot"
 			for i := range views {
 				project := &views[i]
-				if !project.Available {
-					project.RuntimeError = "Runtime status unknown: project unavailable at last scan."
-					continue
-				}
 				name, resolveErr := discovery.ResolveProjectName(r.Context(), project.Root, project.Path)
 				if resolveErr != nil {
 					project.RuntimeError = "Runtime status unknown: unable to resolve Compose inputs."

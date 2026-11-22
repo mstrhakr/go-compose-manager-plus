@@ -83,11 +83,33 @@ func TestLiveDockerSnapshot(t *testing.T) {
 				t.Errorf("fixture cleanup refused unverified container %s: %v", id, err)
 				return
 			}
-			remove := exec.CommandContext(cleanupCtx, "docker", "rm", "-f", id)
+			mounts := exec.CommandContext(cleanupCtx, "docker", "inspect", "--format", `{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}{{"\n"}}{{end}}{{end}}`, id)
+			mounts.Env = cmd.Env
+			volumeOutput, err := mounts.Output()
+			if err != nil {
+				t.Errorf("fixture cleanup could not inspect volumes for %s: %v", id, err)
+				return
+			}
+			volumes := strings.Fields(string(volumeOutput))
+			for _, volume := range volumes {
+				if !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(volume) {
+					t.Errorf("fixture cleanup refused unexpected named volume for %s", id)
+					return
+				}
+			}
+			remove := exec.CommandContext(cleanupCtx, "docker", "rm", "-f", "-v", id)
 			remove.Env = cmd.Env
 			if output, err := remove.CombinedOutput(); err != nil {
 				t.Errorf("fixture cleanup failed for %s: %v: %s", id, err, output)
 				return
+			}
+			for _, volume := range volumes {
+				verifyVolume := exec.CommandContext(cleanupCtx, "docker", "volume", "ls", "-q", "--filter", "name=^"+volume+"$")
+				verifyVolume.Env = cmd.Env
+				remainingVolume, err := verifyVolume.Output()
+				if err != nil || strings.TrimSpace(string(remainingVolume)) != "" {
+					t.Errorf("fixture cleanup could not verify removal of anonymous volume %s: %v", volume, err)
+				}
 			}
 		}
 		verify := exec.CommandContext(cleanupCtx, "docker", "ps", "-aq", "--no-trunc", "--filter", "label=com.docker.compose.project="+project)
@@ -104,6 +126,10 @@ func TestLiveDockerSnapshot(t *testing.T) {
 	ids, err = list()
 	if err != nil || len(ids) != 1 {
 		t.Fatalf("expected exactly one fixture container for %s: %v", project, err)
+	}
+	volumeOutput, err := docker("inspect", "--format", `{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}{{"\n"}}{{end}}{{end}}`, ids[0])
+	if err != nil || len(strings.Fields(volumeOutput)) != 1 || !regexp.MustCompile(`^[a-f0-9]{64}$`).MatchString(strings.TrimSpace(volumeOutput)) {
+		t.Fatalf("expected one anonymous fixture volume for %s: %v", project, err)
 	}
 	snapshot, err := NewClient(socket).Snapshot(ctx)
 	if err != nil {

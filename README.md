@@ -78,7 +78,7 @@ Make is optional; see the Makefile for equivalent Go commands.
 
 The opt-in live Docker snapshot test creates one uniquely named disposable
 Compose container on the selected daemon and removes only its verified container
-ID. It uses no ports, host mounts, named volumes or networks, and performs no
+ID and anonymous volumes. It uses no ports, host mounts, named volumes or networks, and performs no
 pull, build or prune. It requires the development image already present locally:
 
 ```sh

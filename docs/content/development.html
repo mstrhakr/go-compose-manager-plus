@@ -44,7 +44,8 @@ and may repeat status lines.</p>
 <code>CMP_LIVE_DOCKER=1 CMP_LIVE_ACK=/var/run/docker.sock make test-live-docker</code>,
 replacing the acknowledgement with the exact socket path. It creates a
 uniquely named disposable Compose container with no host mounts, ports, networks
-or named volumes, then removes only a verified fixture container. It requires
+or named volumes, then removes only a verified fixture container and its
+anonymous volumes. It requires
 the development image to be present locally; it does not pull, build or prune.
 It is not part of <code>make check</code> and a crash can leave a fixture behind.
 Use a disposable daemon when stronger isolation is needed.</p>
