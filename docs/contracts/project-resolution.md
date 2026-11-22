@@ -56,7 +56,7 @@ top-level naming and default behavior, not manager identity-adoption policy.
 
 **Still unresolved:** safe adoption of existing deployments launched under an
 external custom name, collisions, changing native identity after registration,
-and the process-environment/SDK-resolution boundary. No automatic guessing,
+and broader process-environment/SDK-resolution policy. No automatic guessing,
 pinning, alias migration or takeover workflow is approved here.
 
 ### RES-002: Source Location And Input Selection Are Separate
@@ -102,7 +102,11 @@ Service-level `env_file` is a separate concern.
 **Approval:** Portable outcome adopted under owner reuse authorization,
 2026-11-19, from approved STK-FILES-19. Multiple env files, process-environment
 sourcing and exact SDK options remain to review/verify; no Git-specific env
-precedence is inherited.
+precedence is inherited. For the first read-only discovery slice, on 2026-11-21
+the owner selected each project's local `.env` for interpolation without
+inheriting the manager process environment. Other environment sources remain
+unsupported or subject to later review; missing native variables and other
+unsupported arrangements must not be presented as complete resolution.
 
 ### RES-006: Native Compose Inputs By Default
 
@@ -175,6 +179,10 @@ include/environment resolution, profiles, changed queued inputs and host paths.
 - 2026-11-19: Owner selected native input selection first, deferring manager
   ordered-file controls (RES-006). Env sourcing, profiles, SDK support and identity
   adoption/retargeting edge cases remain open.
+- 2026-11-21: For the first read-only discovery slice, the owner selected local
+  project `.env` interpolation without inheriting the manager process environment.
+  This bounded choice does not settle broader environment controls or establish
+  equivalence with an external Compose invocation.
 - No source runtime code or tests were imported, and no management
   implementation is authorized by this record.
 

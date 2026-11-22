@@ -28,6 +28,9 @@ scan failure is not proof of removal. See
 The owner later selected same-path restoration of saved activation state for
 the prototype. Full comparison and historical changes for easier rollback are
 long-term ideas; snapshots versus Git and detailed policies remain undecided.
+For the first read-only discovery slice, the owner selected project-local `.env`
+interpolation without inheriting the manager process environment; broader
+environment policy remains open.
 The owner also selected one saved discovery root initially, with existing entries
 not removed merely by changing that setting, entered as an application-visible
 path in the authenticated UI. Container mounts are configured separately; see
