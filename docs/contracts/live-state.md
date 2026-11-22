@@ -100,7 +100,11 @@ Containers observability view and real metric data in the overview dashboard.
 The dashboard should summarize rather than repeat the complete detailed project
 list, which belongs on the Projects page. Metrics collection is opt-in: a Docker
 socket configuration alone must not enable background metrics collection. The
-owner wants settings suitable for low-power hosts, potentially simple
+owner wants a Settings page that lets the user choose whether to collect for
+all running containers or only containers associated with activated stacks.
+Collection scope is separate from view filters and has disk-use consequences;
+its default, association ambiguity and scope-change behavior remain open.
+The owner wants settings suitable for low-power hosts, potentially simple
 low/medium/high presets with automatic tuning; their behavior remains open.
 
 The selected storage direction is tstorage for metrics while SQLite remains
@@ -112,7 +116,7 @@ authorize Compose mutations or imply that unavailable metrics are zero.
 
 **Approval:** Owner selected the opt-in collection boundary and the above
 product and storage directions on 2026-11-22. Sampling, supported metrics,
-collection scope, preset behavior, retention/downsampling, resource budgets,
+collection-scope default and edge cases, preset behavior, retention/downsampling, resource budgets,
 recovery and presentation details remain unresolved. The storage dependency's
 fitness and operational characteristics still need evaluation.
 

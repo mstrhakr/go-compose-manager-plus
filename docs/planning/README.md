@@ -235,7 +235,9 @@ views as the next direction, including real dashboard charts, a summary-focused
 dashboard and a reusable inventory column customizer. The owner selected
 tstorage for metric history while retaining SQLite for application state, with
 low-power-friendly automatic settings or simple presets as a goal. Collection,
-retention, resource limits and presentation details remain to be decided and
+scope is configurable in Settings between all running containers and containers
+associated with activated stacks. The default, scope edge cases, retention,
+resource limits and presentation details remain to be decided and
 verified; see [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views).
 
 Before exposing admin operations, close the relevant action, identity/input,
