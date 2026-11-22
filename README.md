@@ -1,38 +1,55 @@
 # Compose Manager Plus
 
-A standalone, Compose-native manager being planned for resource-constrained
+A standalone, Compose-native manager for resource-constrained
 Ubuntu Docker hosts, including network and volume management. This is the
 end-product repository, not a separate planning repository.
 
-**Current stage: scaffold and planning only.** The app currently runs the
-go-template greeting/health demonstration. It cannot manage Docker yet. No Docker
-socket, SDK dependency, credential store or management routes have been added.
+The functional baseline is the Unraid Compose Manager Plus plugin, reusing its
+useful workflows and portable business rules with a modern standalone interface.
+UniFi is the design inspiration; Unraid-specific UI and legacy compatibility
+machinery are not the target. Features will arrive in bounded, tested slices.
+
+**Current stage: local authentication and read-only project discovery.** Save
+one application-visible root and request a scan to persist discovered project
+entries. Discovery and permission-only activation do not connect to Docker or
+run Compose actions. Container and resource values are placeholders, not host
+status. A Linux amd64 development image is published at
+`ghcr.io/mstrhakr/go-compose-manager-plus:dev`; it reflects the latest published
+main, not unmerged branch work.
 
 Start with the [product plan](docs/planning/README.md),
 [contract reuse map](docs/planning/contract-reuse.md), and
-[source provenance](docs/planning/sources.md). Proposed boundaries are not
-approved product contracts. Implementation needs agreement on a bounded slice.
+[source provenance](docs/planning/sources.md). These documents distinguish
+approved direction from proposals; the initial authentication/dashboard slice
+was explicitly authorized.
 Upload the redacted existing VM manager script to [scratch/](scratch/README.md);
 its other contents are ignored by Git and excluded from the Docker build.
 
 The scaffold uses one Go executable, escaped HTML templates, local htmx and small
 browser JS modules. Node is development/test tooling only. The MIT license and
 vendored htmx notice are retained. GitHub repository visibility is public;
-release, image and documentation publishing remain disabled.
+development-image publishing is enabled, while release and documentation
+publishing remain disabled. Package access is controlled separately.
 
 ## Start here
 
-Install Go **1.27.4** (see `go.mod`), then:
+Install Go **1.27.4** (see `go.mod`). A fresh native run needs a bootstrap admin;
+keep the temporary password out of shell history and logs:
 
 ```sh
+read -rp 'Admin username: ' APP_BOOTSTRAP_USERNAME
+read -rsp 'Temporary admin password: ' APP_BOOTSTRAP_PASSWORD
+printf '\n'
+export APP_BOOTSTRAP_USERNAME APP_BOOTSTRAP_PASSWORD
 go run ./cmd/server
-curl http://localhost:8080/healthz
 ```
 
-Open <http://localhost:8080/>. Set `APP_ADDR=127.0.0.1:9000` to change the
-listener and `APP_LOG_LEVEL=debug` to adjust JSON logging. The default listener
-binds all interfaces; use loopback for local-only development.
-The service validates configuration and shuts down gracefully on SIGINT/SIGTERM.
+Open <http://127.0.0.1:8080/> and complete the forced first-login password change.
+The saved account/database is in `APP_DATA_DIR` (default `./data`); later restarts
+ignore changed bootstrap env values. The native listener defaults to loopback.
+`APP_ADDR`, `APP_PUBLIC_URL`, `APP_TRUSTED_PROXIES` and `APP_LOG_LEVEL` control
+listen/origin/proxy/log configuration. Do not expose admin routes without TLS,
+proxy trust, request protection and app authentication configured.
 
 ## Develop
 
@@ -59,10 +76,24 @@ checks when those surfaces change, as described in the development guide.
 
 Make is optional; see the Makefile for equivalent Go commands.
 
+The opt-in live Docker snapshot test creates one uniquely named disposable
+Compose container on the selected daemon and removes only its verified container
+ID and anonymous volumes. It uses no ports, host mounts, named volumes or networks, and performs no
+pull, build or prune. It requires the development image already present locally:
+
+```sh
+CMP_LIVE_DOCKER=1 CMP_LIVE_ACK=/var/run/docker.sock make test-live-docker
+```
+
+The socket path is an explicit acknowledgement of the target daemon. This
+changes that daemon by creating and removing the fixture, and a crash can leave
+it behind. A disposable daemon is safer than a shared host.
+
 ```text
-cmd/server/       process wiring, lifecycle, health probe
+cmd/server/       process wiring, auth-state lifecycle, health probe
 internal/config/  validated environment configuration
-internal/web/     HTTP handlers, HTML layouts/partials, embedded assets
+internal/auth/    SQLite account/bootstrap state, Argon2id, SCS sessions
+internal/web/     auth/access handlers, dashboard shell, local assets
 tests/            JS/unit, API, desktop/mobile browser regressions
 scripts/          test, security, CI/release and repository setup helpers
 docs/contracts/   canonical behavior definitions (not published by default)
@@ -71,28 +102,135 @@ docs/             self-contained Hugo documentation site
 ```
 
 Keep application logic in focused `internal` packages as requirements emerge.
-No database, authentication, scheduler, or client-rendering framework is imposed.
 Go owns business rules and escaped HTML; htmx owns server-driven updates; small
-JS modules own browser-local behavior. The greeting form demonstrates this and
-still works with JS disabled. See the [contract guide](docs/contracts/README.md).
+JS modules own browser-local behavior. Authentication is a first foundation;
+Docker operations, live state and schedules remain separate slices. See
+the [contract guide](docs/contracts/README.md).
 This foundation is imported from go-template; no Compose Manager or Docker
-Networks runtime code has been copied. Template development/deployment docs below
-describe the scaffold, not implemented Compose-management workflows.
+Networks runtime code has been copied. Development/deployment docs below describe
+the current auth foundation and repository tooling, not implemented
+Compose-management workflows.
+
+The interface follows the browser's light or dark system preference until a
+theme is selected. The theme button on login, setup and the workspace saves that
+selection in browser-local storage for this origin, not to the account; storage
+failure is reported. Without JavaScript, the system preference still applies and
+the selection control is hidden. Reusable color tokens and workspace primitives
+live in `internal/web/static/foundation.css`; server-rendered templates remain
+the source of page content. Runtime metrics, inventory and Docker operations
+remain unavailable; the dashboard does not display simulated observations.
 
 ## Deploy locally
 
 ```sh
 cp .env.example .env
+# Set APP_BOOTSTRAP_USERNAME and a temporary APP_BOOTSTRAP_PASSWORD in .env
 docker compose up --build -d
 docker compose logs -f
-docker compose down
 ```
 
-Compose binds `127.0.0.1:8080` by default. Change `APP_PORT` in `.env` for its
-host port; native Go execution reads exported variables, not `.env`.
-The image is multistage, non-root, and includes a built-in health probe. Compose
-uses a read-only filesystem and drops Linux capabilities. Put a TLS reverse
-proxy in front of any remotely accessible deployment.
+Open <http://127.0.0.1:8080/> and complete first-run setup. Compose binds loopback
+and persists the database in its `app-data` volume at `/data`. After setup, remove
+the bootstrap username/password from `.env` and restart; saved credentials remain
+authoritative and are not reset from environment values. Protect `.env` and Docker
+administration access: bootstrap variables may be visible to Docker administrators.
+For a reverse proxy set `APP_PUBLIC_URL` to the external HTTPS origin and
+`APP_TRUSTED_PROXIES` to only the immediate proxy CIDRs; the proxy must prevent
+untrusted direct-backend access. The image remains non-root, read-only except for
+the data volume, and drops Linux capabilities.
+
+To test the published Linux amd64 development image instead of building locally,
+create a separate `compose.dev.yaml` alongside `compose.yaml`:
+
+```yaml
+services:
+  app:
+    image: ghcr.io/mstrhakr/go-compose-manager-plus:dev
+```
+
+Set the temporary bootstrap values in the ignored `.env` as above, restrict access
+to it (for example `chmod 600 .env` on Linux), then run:
+
+```sh
+docker compose -f compose.yaml -f compose.dev.yaml pull
+docker compose -f compose.yaml -f compose.dev.yaml up -d --no-build --pull never
+```
+
+The base Compose file normally builds locally; the override and explicit pull
+select the registry image. After setup, remove the bootstrap values and recreate
+the service with the same `up` command. The dev tag can move; use a SHA tag or
+digest when a fixed image is needed. Registry package visibility is separate
+from repository visibility and may require authentication.
+
+### Discover existing projects
+
+Mount the directory containing project folders read-only, for example by adding
+this to the `app` service in a local Compose override (replace the host path):
+
+```yaml
+services:
+  app:
+    volumes:
+      - /absolute/host/projects:/projects:ro
+```
+
+Recreate the service, sign in, save `/projects` as the discovery root, and
+select **Scan for projects**. The app user must have read/traverse permission on
+the host directory. Paths shown in the UI are paths inside the container, not
+necessarily Docker-host paths. Discovery is manual, reads direct-child folders
+only, and does not require the Docker socket.
+
+If scanning fails, confirm that the bind mount exists in the running container
+and that the configured user can read and traverse the host directory. Scan
+failures are logged with a stage and a reason such as `not_found` or
+`permission_denied`; they do not include paths or file contents. A
+`scan_filesystem` / `not_found` failure means the discovery root could not be
+found. A failed scan leaves the previous listing unchanged.
+
+Newly discovered projects start inactive; activation changes manager permission
+only and does not start, stop or alter them. Missing entries remain saved, and a
+project found again at the same path retains its saved activation state; a path
+match is not proof of identity. Input resolution uses only the project's local
+`.env`, not the manager's environment, and may differ from the environment used
+to launch an existing stack. `.env`-only `COMPOSE_FILE` discovery is deferred;
+projects whose local `.env` sets `COMPOSE_FILE` are listed with an unsupported
+input error rather than silently resolved with other files. Symlinked child
+entries are skipped and reported. Some `.env` expressions referencing unset
+variables, including defaults, may be conservatively flagged. Compose inputs can
+reference paths outside the project folder that the app can read; a read-only
+mount prevents writes but is not a read-access sandbox. Other environment,
+path and activation edge cases remain under review. The initial `.env` reader
+limits files to 1 MiB and 4,096 lines, with individual statements limited to
+128 KiB and 256 lines.
+
+### Optional Docker status snapshot
+
+Docker access is disabled unless `APP_DOCKER_SOCKET` names an absolute Unix
+socket path. To enable it in a trusted local installation, add a socket mount
+and environment value in a local override, then recreate the app:
+
+```yaml
+services:
+  app:
+    environment:
+      APP_DOCKER_SOCKET: /var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+```
+
+The app's user must have permission to connect to the host socket; group
+membership granting that access is also effectively host-administrative.
+Mounting a socket `:ro` does not make Docker API access read-only. Expose the
+app only within a trusted security boundary; TLS alone does not make Docker
+access safe.
+
+Choose **Refresh Docker status** for a point-in-time container list. The app
+uses the native resolved project name and the Docker Compose project label, so
+copies with the same name show the same runtime project. This does not establish
+which files created the containers or authorize actions. No matching containers
+does not prove a project was never deployed. The snapshot uses Docker Engine API
+v1.40; incompatible or unreachable daemons are reported as unavailable. Logs,
+metrics, streaming and lifecycle actions are not implemented.
 
 ## Documentation
 
@@ -142,13 +280,13 @@ See [executed verification](docs/verification.md) for what was actually checked.
 
 The owner approved public visibility to enable the full GitHub protection
 baseline. The inherited setup helper configured protected main, immutable
-version tags, scoped Actions, security features and release approval without
-enabling publishing. The inherited
+version tags, scoped Actions, security features and release approval; development
+image publishing was enabled later. The inherited
 release provenance schema URI and generic CI image labels may still refer to
 go-template; they are template tooling identifiers, not upstream release claims.
 
-The native starter is unauthenticated and binds all interfaces by default. Use
-loopback for staging. Docker socket access is effectively host-administrative;
-authentication, authorization, host/container paths and recovery must be decided
-before adding reachable administrative routes. The starter deployment is not
-yet a production Compose-manager deployment.
+The initial authentication/dashboard shell is not yet a production Compose
+manager. Docker socket access is optional and limited in the app to an on-demand
+read-only container snapshot. Authentication does not itself
+authorize future per-project operations; request/proxy/session and host/container
+path policies still require verification before remote administration.

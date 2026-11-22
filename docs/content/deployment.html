@@ -8,15 +8,28 @@ docker compose up --build -d
 docker compose logs -f
 curl http://localhost:8080/healthz
 docker compose down</code></pre>
-<p>Compose reads <code>.env</code> for the host port and log level.
-The multistage image contains a static binary and CA certificates, runs as
+<p>Before first start, set temporary <code>APP_BOOTSTRAP_USERNAME</code> and
+<code>APP_BOOTSTRAP_PASSWORD</code> values in the ignored local <code>.env</code>
+file. Sign in through the browser and complete the forced first-login password
+change, then remove those bootstrap values and restart. Reapplying or changing
+bootstrap env after provisioning does not reset saved credentials.
+Compose reads <code>.env</code> for the host port, log level, public origin,
+trusted proxy CIDRs and bootstrap values; native Go execution reads exported
+variables, not dotenv files. The app persists SQLite state in the named
+<code>app-data</code> volume mounted at <code>/data</code>. Back up this local state
+consistently. Network-shared databases and concurrent multi-instance operation
+are unsupported. Loss of the state volume has no automatic password-reset
+recovery flow. On Windows, Unix permission bits do not enforce database
+privacy; restrict access to the data directory using Windows access controls.</p>
+<p>The app's built-in default listener is loopback-only for local use. For reverse
+proxy access, set <code>APP_PUBLIC_URL</code> to the external HTTPS origin and
+<code>APP_TRUSTED_PROXIES</code> to only the immediate proxy CIDRs. Prevent direct
+untrusted access to the backend; forwarded identity headers are not accepted as
+login credentials. Compose's example <code>.env</code> binds the host port to
+loopback. The multistage image contains a static binary and CA certificates, runs as
 UID/GID 65532, and provides a built-in health check. Compose uses a read-only
 filesystem, drops capabilities, and prevents privilege escalation. No secrets,
 source files, shell, or docs are included in the runtime image.</p>
-<p>The default host binding is <code>127.0.0.1</code>. For remote use, put a
-TLS reverse proxy in front of it. If the proxy is another container, connect it
-to the same Docker network and use <code>app:8080</code> instead of loopback.
-Do not expose future administrative routes without authentication.</p>
 <h2>Container registry (off by default)</h2>
 <p>After explicit setup, relevant passing protected-main CI triggers dev images.
 Only successful main push runs from this repository's CI are accepted, never

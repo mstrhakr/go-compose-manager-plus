@@ -1,0 +1,48 @@
+{
+	"folders": [
+		{
+			"name": "go-compose-manager-plus",
+			"path": ".."
+		},
+		{
+			"name": "go-template",
+			"path": "../../go-template"
+		},
+		{
+			"name": "compose-spec",
+			"path": "../../compose-spec"
+		},
+		{
+			"name": "compose_plugin",
+			"path": "../../compose_plugin"
+		},
+		{
+			"name": "docker.networks",
+			"path": "../../docker.networks"
+		}
+	],
+	"settings": {
+		"pluginTests.workspaceFolders": [
+			"compose_plugin"
+		],
+		"pluginTests.phpunit.enabled": true,
+		"pluginTests.phpunit.pattern": "tests/**/*Test.php",
+		"pluginTests.phpunit.exclude": "**/vendor/**,**/node_modules/**,tests/framework/**",
+		"pluginTests.phpunit.executable": "vendor/bin/phpunit",
+		"pluginTests.bats.enabled": true,
+		"pluginTests.bats.pattern": "tests/**/*.bats",
+		"pluginTests.bats.exclude": "**/vendor/**,**/node_modules/**,tests/framework/**",
+		"pluginTests.bats.useDocker": false,
+		"php.validate.enable": true,
+		"testing.automaticallyOpenPeekView": "failureVisible",
+		"testing.defaultGutterClickAction": "run",
+		"testing.followRunningTest": true,
+		"testing.gutterEnabled": true,
+		"testing.showAllMessages": true,
+		"files.associations": {
+			"*.page": "php",
+			"*.cfg": "ini"
+		},
+		"pluginTests.timeout": 30000
+	}
+}

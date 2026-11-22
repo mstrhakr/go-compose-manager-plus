@@ -22,6 +22,14 @@ come from the product plan, not the plugin's review checkpoint or candidate coun
 Use [extract-contract](../extract-contract/SKILL.md) for missing evidence rather
 than repeating its full research workflow here.
 
+For Compose-related decisions, consider relevant chapters in the local
+`/code/compose-spec` checkout before framing options, following
+[specification evidence](../extract-contract/SKILL.md#compose-specification-evidence).
+Explain normative semantics and actual SDK/CLI support separately from proposed
+manager behavior. Do not invent a custom rule where Compose already decides it,
+or present a product/CI policy as something the spec mandates. Record consulted
+sections and revision in the source register; no full-spec audit is required.
+
 ## Procedure
 
 1. Recover the pending question, prior answers, stable IDs and exact scope. Read

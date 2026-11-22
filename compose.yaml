@@ -6,6 +6,13 @@ services:
     environment:
       APP_ADDR: ":8080"
       APP_LOG_LEVEL: "${APP_LOG_LEVEL:-info}"
+      APP_DATA_DIR: /data
+      APP_PUBLIC_URL: "${APP_PUBLIC_URL:-http://127.0.0.1:${APP_PORT:-8080}}"
+      APP_TRUSTED_PROXIES: "${APP_TRUSTED_PROXIES:-}"
+      APP_BOOTSTRAP_USERNAME: "${APP_BOOTSTRAP_USERNAME:-}"
+      APP_BOOTSTRAP_PASSWORD: "${APP_BOOTSTRAP_PASSWORD:-}"
+    volumes:
+      - app-data:/data
     read_only: true
     cap_drop:
       - ALL
@@ -13,3 +20,6 @@ services:
       - no-new-privileges:true
     restart: unless-stopped
     stop_grace_period: 15s
+
+volumes:
+  app-data:
