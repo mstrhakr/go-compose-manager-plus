@@ -91,6 +91,9 @@ Compose operations or project-file writes. The model loader is not an
 orchestration integration; no project action or job runner is included.
 On 2026-11-22 the owner separately approved an on-demand read-only Docker
 status snapshot under LIVE-002. This does not authorize Compose operations.
+The owner subsequently requested distinct, read-only container and expandable
+project pages as a maintainable UI foundation. Opening these inventory views
+requests a snapshot; it does not authorize management operations.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,

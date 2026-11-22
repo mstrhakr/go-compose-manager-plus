@@ -61,7 +61,7 @@ test('unavailable browser storage is reported and theme remains usable', async (
 test('first login forces password setup before protected dashboard and works on mobile', async ({ browser, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'Single bootstrap account is exercised once to avoid parallel setup races.');
   const root = await mkdtemp(join(tmpdir(), 'compose-manager-discovery-'));
-  const project = join(root, 'sample');
+  const project = join(root, `sample-${'long-name-'.repeat(8)}`);
   const compose = join(project, 'compose.yaml');
   await mkdir(project);
   await writeFile(compose, 'services:\n  web:\n    image: example\n');
@@ -88,6 +88,10 @@ test('first login forces password setup before protected dashboard and works on 
     await page.getByRole('button', { name: /Save password/ }).click();
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole('heading', { name: 'System status' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Overview views' }).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
+    for (const name of ['Resources unavailable', 'Activity unavailable', 'Settings unavailable']) {
+      await expect(page.getByRole('button', { name })).toBeDisabled();
+    }
     await expect(page.getByRole('heading', { name: 'Compose projects' })).toBeVisible();
     await expect(page.getByText('Docker integration pending')).toBeVisible();
     await page.getByLabel('Discovery root (application-visible path)').fill('relative-path');
@@ -100,11 +104,36 @@ test('first login forces password setup before protected dashboard and works on 
     await page.getByRole('button', { name: 'Save root' }).click();
     await page.getByRole('button', { name: 'Scan for projects' }).click();
     await expect(page.getByText('Available · Inactive')).toBeVisible();
-    await page.getByRole('button', { name: 'Activate' }).click();
-    await expect(page.getByText('Available · Active')).toBeVisible();
+    await page.getByRole('link', { name: 'Compose projects', exact: true }).click();
+    await expect(page).toHaveURL(/\/projects$/);
+    const projectViews = page.getByRole('navigation', { name: 'Project views' });
+    await expect(projectViews.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
+    await expect(projectViews.getByRole('button', { name: 'Activity' })).toBeDisabled();
+    await page.getByLabel('Search', { exact: true }).fill('no-such-project');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await expect(page.getByText('No projects match these filters.')).toBeVisible();
+    await page.getByRole('link', { name: 'Clear filters' }).click();
+    const projectRow = page.locator('.inventory-item').filter({ hasText: project });
+    const projectSummary = projectRow.locator('summary');
+    await projectSummary.focus();
+    await page.keyboard.press('Enter');
+    await expect(projectRow).toHaveAttribute('open', '');
+    await expect(projectRow.getByText('Runtime status unavailable', { exact: false })).toBeVisible();
+    await projectRow.getByRole('button', { name: 'Activate' }).click();
+    await expect(page).toHaveURL(/\/projects$/);
     await expect(page.getByRole('status')).toContainText('No Compose operation was performed');
+    await page.getByRole('link', { name: 'Overview', exact: true }).click();
+    await expect(page.getByText('Available · Active')).toBeVisible();
     await page.getByRole('button', { name: 'Refresh Docker status' }).click();
     await expect(page.getByText('Docker status unavailable: no socket configured.')).toBeVisible();
+    await page.getByRole('link', { name: 'Containers', exact: true }).click();
+    await expect(page).toHaveURL(/\/containers$/);
+    const containerViews = page.getByRole('navigation', { name: 'Container views' });
+    await expect(containerViews.getByRole('link', { name: 'Containers' })).toHaveAttribute('aria-current', 'page');
+    await expect(containerViews.getByRole('button', { name: 'Observability' })).toBeDisabled();
+    await expect(page.getByRole('heading', { level: 1, name: 'Containers' })).toBeVisible();
+    await expect(page.locator('.list-empty')).toContainText('Docker status unavailable');
+    await expect(page.locator('.list-empty')).not.toContainText('No containers found');
     await page.goto('/');
     await page.screenshot({ path: 'test-results/auth-dashboard-desktop.png', fullPage: true });
 
@@ -135,6 +164,39 @@ test('first login forces password setup before protected dashboard and works on 
       expect(layout.chart).toBe(245);
       expect(layout.mainLeft).toBe(layout.sidebarRight);
       await themedPage.screenshot({ path: 'test-results/auth-dashboard-dark.png', fullPage: true });
+      const hostPanel = themedPage.locator('.sidebar-disclosure');
+      await hostPanel.locator('summary').focus();
+      await themedPage.keyboard.press('Enter');
+      await expect(hostPanel).not.toHaveAttribute('open', '');
+      await expect(themedPage.getByLabel('Discovery root (application-visible path)')).toBeHidden();
+      await themedPage.keyboard.press('Enter');
+      await expect(themedPage.getByLabel('Discovery root (application-visible path)')).toBeVisible();
+      await themedPage.getByRole('button', { name: 'Expand navigation' }).focus();
+      await themedPage.keyboard.press('Enter');
+      await expect(themedPage.getByRole('button', { name: 'Collapse navigation' })).toHaveAttribute('aria-expanded', 'true');
+      await themedPage.getByRole('link', { name: 'Compose projects', exact: true }).click();
+      await expect(themedPage.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+      const filters = themedPage.locator('.inventory-filter-disclosure');
+      for (const width of [1024, 901, 621]) {
+        await themedPage.setViewportSize({ width, height: 900 });
+        expect(await themedPage.evaluate(() => {
+          const panel = document.querySelector('.inventory-panel').getBoundingClientRect();
+          const elements = document.querySelectorAll('.inventory-columns, .inventory-columns > span, .inventory-item summary, .inventory-item summary > span');
+          return document.documentElement.scrollWidth <= window.innerWidth &&
+            [...elements].every(element => {
+              const rect = element.getBoundingClientRect();
+              return rect.left >= panel.left && rect.right <= panel.right;
+            });
+        })).toBe(true);
+      }
+      await themedPage.setViewportSize({ width: 1440, height: 900 });
+      await filters.locator('summary').click();
+      await expect(filters).not.toHaveAttribute('open', '');
+      await expect(themedPage.getByLabel('Search', { exact: true })).toBeHidden();
+      await filters.locator('summary').click();
+      await expect(themedPage.getByLabel('Search', { exact: true })).toBeVisible();
+      await themedPage.getByRole('button', { name: 'Collapse navigation' }).click();
+      await themedPage.goto('/');
       await themedPage.getByRole('button', { name: 'Switch to light theme' }).click();
       await themedPage.reload();
       await expect(themedPage.locator('html')).toHaveAttribute('data-theme', 'light');
@@ -142,6 +204,23 @@ test('first login forces password setup before protected dashboard and works on 
       expect(await themedPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     } finally {
       await themed.close();
+    }
+
+    const blockedStorage = await browser.newContext({ baseURL });
+    try {
+      await blockedStorage.addCookies(await context.cookies());
+      await blockedStorage.addInitScript(() => {
+        Object.defineProperty(window, 'localStorage', {
+          get() { throw new DOMException('Storage blocked', 'SecurityError'); },
+        });
+      });
+      const blockedPage = await blockedStorage.newPage();
+      await blockedPage.goto('/projects');
+      await expect(blockedPage.getByText('Navigation preference could not be saved in this browser.')).toBeVisible();
+      await blockedPage.getByRole('button', { name: 'Expand navigation' }).click();
+      await expect(blockedPage.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+    } finally {
+      await blockedStorage.close();
     }
 
     const touch = await browser.newContext({
@@ -159,6 +238,22 @@ test('first login forces password setup before protected dashboard and works on 
       await touchPage.getByRole('button', { name: 'Scan for projects' }).tap();
       await expect(touchPage.getByRole('status')).toContainText('Scan complete');
       await expect(touchPage.getByText('Available · Active')).toBeVisible();
+      await touchPage.getByRole('link', { name: 'Compose projects', exact: true }).tap();
+      await touchPage.getByRole('link', { name: 'Filters & sort' }).tap();
+      await touchPage.getByText('Collapse filters', { exact: true }).tap();
+      await expect(touchPage.getByLabel('Search', { exact: true })).toBeHidden();
+      await touchPage.getByRole('link', { name: 'Filters & sort' }).tap();
+      await expect(touchPage.getByLabel('Search', { exact: true })).toBeVisible();
+      await touchPage.getByLabel('Search', { exact: true }).fill('no-such-project');
+      await touchPage.getByRole('button', { name: 'Apply filters' }).tap();
+      await expect(touchPage.getByText('No projects match these filters.')).toBeVisible();
+      await touchPage.getByRole('link', { name: 'Clear filters' }).tap();
+      const touchRow = touchPage.locator('.inventory-item').filter({ hasText: project });
+      await touchRow.locator('summary').tap();
+      await expect(touchRow).toHaveAttribute('open', '');
+      expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await touchPage.getByRole('link', { name: 'Containers', exact: true }).tap();
+      await expect(touchPage.locator('.list-empty')).toContainText('Docker status unavailable');
       expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     } finally {
       await touch.close();
@@ -179,6 +274,14 @@ test('first login forces password setup before protected dashboard and works on 
       await expect(mobilePage.getByText('Available · Active')).toBeVisible();
       await expect(mobilePage.getByLabel('Discovery root (application-visible path)')).toBeVisible();
       await expect(mobilePage.locator('[data-theme-toggle]')).toBeHidden();
+      await mobilePage.getByText('Collapse host panel', { exact: true }).tap();
+      await expect(mobilePage.getByLabel('Discovery root (application-visible path)')).toBeHidden();
+      await mobilePage.getByText('Expand host panel', { exact: true }).tap();
+      await mobilePage.getByRole('link', { name: 'Compose projects', exact: true }).tap();
+      await mobilePage.getByText('Collapse filters', { exact: true }).tap();
+      await expect(mobilePage.getByLabel('Search', { exact: true })).toBeHidden();
+      await mobilePage.getByText('Expand filters', { exact: true }).tap();
+      await expect(mobilePage.getByLabel('Search', { exact: true })).toBeVisible();
       expect(await mobilePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await mobilePage.screenshot({ path: 'test-results/auth-dashboard-mobile.png', fullPage: true });
     } finally {

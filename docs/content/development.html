@@ -78,8 +78,11 @@ provides a scoped select-all checkbox, count and a bubbling
 the selected values. Disabled rows are excluded. Selection is ephemeral and
 does not authorize or perform any operation. After htmx swaps, controls are
 reinitialized from the new DOM; consumers own persistence, data refresh and
-action policy. Filter-group styles supply a compact fieldset, not filtering
-behavior. With no JavaScript the individual native checkboxes remain usable.</p>
+action policy. Inventory filters and ordering are server-rendered GET forms;
+applying them requests a fresh snapshot and uses counts before filtering.
+View navigation uses ordinary links and disabled buttons rather than an ARIA
+tab widget; add real destinations only when their behavior is implemented.
+With no JavaScript the individual native checkboxes remain usable.</p>
 <p>Run <code>npx playwright test tests/e2e/components.spec.js --project=chromium</code>
 to render the actual templates in a test-only page, with populated, empty,
 invalid and selectable examples. Browser screenshots are local test artifacts;

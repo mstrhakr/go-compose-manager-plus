@@ -15,9 +15,16 @@ import (
 const maxResponseBytes = 16 << 20
 
 type Container struct {
+	ID      string
 	Name    string
+	Project string
 	Service string
 	State   string
+}
+
+type Snapshot struct {
+	Containers []Container
+	ByProject  map[string][]Container
 }
 
 type Client struct {
@@ -41,7 +48,7 @@ func NewClient(socket string) *Client {
 }
 
 // Snapshot uses only the Docker Engine container-list endpoint.
-func (c *Client) Snapshot(ctx context.Context) (map[string][]Container, error) {
+func (c *Client) Snapshot(ctx context.Context) (*Snapshot, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://docker/v1.40/containers/json?all=1", nil)
 	if err != nil {
 		return nil, fmt.Errorf("create Docker request: %w", err)
@@ -62,6 +69,7 @@ func (c *Client) Snapshot(ctx context.Context) (map[string][]Container, error) {
 		return nil, errors.New("Docker container list exceeds size limit")
 	}
 	var containers []struct {
+		ID     string            `json:"Id"`
 		Names  []string          `json:"Names"`
 		State  string            `json:"State"`
 		Labels map[string]string `json:"Labels"`
@@ -72,12 +80,9 @@ func (c *Client) Snapshot(ctx context.Context) (map[string][]Container, error) {
 	if containers == nil {
 		return nil, errors.New("Docker container list is not an array")
 	}
-	result := make(map[string][]Container)
+	result := &Snapshot{ByProject: make(map[string][]Container)}
 	for _, container := range containers {
 		project := container.Labels["com.docker.compose.project"]
-		if project == "" {
-			continue
-		}
 		name := ""
 		if len(container.Names) > 0 {
 			name = strings.TrimPrefix(container.Names[0], "/")
@@ -86,9 +91,11 @@ func (c *Client) Snapshot(ctx context.Context) (map[string][]Container, error) {
 		if state == "" {
 			state = "unknown"
 		}
-		result[project] = append(result[project], Container{
-			Name: name, Service: container.Labels["com.docker.compose.service"], State: state,
-		})
+		entry := Container{ID: container.ID, Name: name, Project: project, Service: container.Labels["com.docker.compose.service"], State: state}
+		result.Containers = append(result.Containers, entry)
+		if project != "" {
+			result.ByProject[project] = append(result.ByProject[project], entry)
+		}
 	}
 	return result, nil
 }

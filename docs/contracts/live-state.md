@@ -62,10 +62,27 @@ snapshot changes no containers or project files and does not authorize actions.
 Continuous updates, metrics, identity adoption and lifecycle targeting remain
 separate decisions.
 
+Opening the distinct containers page requests a read-only snapshot of all
+containers returned by the daemon, including stopped containers and those
+without a Compose project label. Opening the distinct projects page requests
+the same kind of snapshot and shows discovered folders with expandable
+project details. Both show snapshot freshness and distinguish a failed or
+unconfigured daemon from an empty result. The overview retains its explicit
+refresh behavior; these pages introduce no background collection or operations.
+The inventory sidebar offers search, name ordering and facets based on the
+displayed discovery or snapshot attributes. Applying or clearing filters
+requests a fresh snapshot; facet counts are calculated before filtering.
+The owner approved an initial navigation shell with separate Overview, Projects
+and Containers entries and disabled future Resources, Activity and Settings
+entries. Contextual subview navigation is present even with one available view;
+future subviews are disabled and do not authorize their capabilities.
+
 **Approval:** Owner approved the bounded read-only status slice and clarified
 on 2026-11-22 that same-name copies should use the Compose runtime name without
 special adoption handling for this view. Activation remains a separate
 management permission, not evidence of filesystem ownership.
+The owner subsequently requested distinct all-container and expandable project
+views as a reusable UI foundation; this does not approve lifecycle actions.
 
 **Source provenance:** Compose Specification `02-model.md` at `3a4a699`
 defines project-name resource grouping and its label. Source STK-ID distinguishes
