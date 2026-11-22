@@ -38,6 +38,10 @@ The owner selected a roughly 90% metrics-storage usage target with 10%
 headroom, intending downsampling to precede removal and incompatible
 configurations to be prevented. Exceptional exhaustion behavior remains open;
 the target is not a guaranteed disk-space limit.
+The owner selected an initial single-resolution one-hour history for each
+preset: Low targets 15-second samples, Medium 5-second samples and High
+1-second samples. Longer-term tiering and retention remain separate decisions;
+the selected intervals are targets, not measured freshness guarantees.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

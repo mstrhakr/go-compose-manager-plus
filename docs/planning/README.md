@@ -238,7 +238,9 @@ low-power-friendly presets and a custom setup wizard as a goal. Collection scope
 is configurable in Settings between all running containers and containers
 associated with activated stacks: Low and Medium select activated stacks and
 High all running containers, while editing an individual setting selects Custom.
-Other preset details are undecided. Scope edge cases, retention,
+The initial single-resolution window is one hour, with target sample intervals
+of 15 seconds for Low, 5 seconds for Medium and 1 second for High. Longer-term
+tiers and other preset details are undecided. Scope edge cases, retention,
 resource limits and presentation details remain to be decided and
 verified; see [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views).
 

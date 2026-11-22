@@ -108,14 +108,17 @@ association ambiguity and scope-change behavior remain open.
 The owner wants an opt-in setup wizard with Low, Medium, High and Custom
 profiles, with the underlying collection and retention options available in
 Settings. Low and Medium select containers associated with activated stacks;
-High selects all running containers. Changing an individual preset option
-switches the profile to Custom. Exact settings, any automatic tuning, preset defaults, confirmation
-and data-retention effects when changing settings remain to be decided.
+High selects all running containers. For the initial single-resolution history,
+Low targets one sample every 15 seconds, Medium every 5 seconds and High every
+1 second, with a one-hour history window for each. These are targets, not a
+guarantee that Docker supplies samples on schedule. Changing an individual
+preset option switches the profile to Custom. Automatic tuning, preset defaults,
+confirmation and data-retention effects when changing settings remain open.
 
 The selected storage direction is tstorage for metrics while SQLite remains
 the application-state store. Netdata-style historical retention and a
-UniFi-inspired display are design goals, not approval of a particular retention
-duration, aggregation, disk limit or visual implementation. The owner wants
+UniFi-inspired display are design goals, not approval of a longer-term
+retention duration, aggregation, disk limit or visual implementation. The owner wants
 the storage budget managed toward approximately 90% usage, reserving roughly
 10% as working headroom. Downsampling should happen before eligible raw data is
 removed; configurations known to prevent that should be rejected. This is a
@@ -125,10 +128,10 @@ A reusable column
 customizer is also requested for inventory views. These directions do not
 authorize Compose mutations or imply that unavailable metrics are zero.
 
-**Approval:** Owner selected the opt-in collection boundary and the above
-product and storage directions on 2026-11-22. Sampling, supported metrics,
-collection edge cases, remaining preset behavior,
-retention/downsampling, resource budgets,
+**Approval:** Owner selected the opt-in collection boundary, initial preset
+sampling targets and the above product and storage directions on 2026-11-22.
+Supported metrics, collection edge cases, remaining preset behavior,
+longer-term retention/downsampling, resource budgets,
 recovery and presentation details remain unresolved. The storage dependency's
 fitness and operational characteristics still need evaluation.
 
