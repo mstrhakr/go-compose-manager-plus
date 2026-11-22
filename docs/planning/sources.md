@@ -26,7 +26,8 @@ the owner selected retaining its listing and activation state as unavailable;
 scan failure is not proof of removal. See
 [PROJ-010](../contracts/project-membership.md#proj-010-retain-previously-discovered-projects-that-disappear).
 The owner also selected one saved discovery root initially, with existing entries
-not removed merely by changing that setting; see
+not removed merely by changing that setting, entered as an application-visible
+path in the authenticated UI. Container mounts are configured separately; see
 [PROJ-011](../contracts/project-membership.md#proj-011-one-saved-discovery-root-initially).
 Removal and other lifecycle details remain open.
 

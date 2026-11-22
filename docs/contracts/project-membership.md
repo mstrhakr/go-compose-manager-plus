@@ -258,11 +258,14 @@ removal or deletion semantics.
 ### PROJ-011: One Saved Discovery Root Initially
 
 The initial persistent discovery implementation supports one saved discovery
-root. Changing that setting does not itself remove existing project entries.
-Multiple roots, duplicate paths, root-change reconciliation and the mechanism
-for selecting and accessing the root remain separate decisions.
+root, entered as an application-visible path in the authenticated UI. For a
+container deployment, the administrator configures a read-only bind mount
+separately. Changing the setting does not itself remove existing project entries.
+Multiple roots, duplicate paths, root-change reconciliation and detailed
+path-access policy remain separate decisions.
 
-**Approval:** Owner selected one saved root for the prototype on 2026-11-21.
+**Approval:** Owner selected one saved root for the prototype and authenticated
+UI path entry on 2026-11-21.
 
 **Source provenance:** Direct standalone owner decision, not an adoption of
 plugin storage or path policy.
@@ -339,6 +342,8 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   with activation state preserved. A failed scan is not evidence of removal.
 - PROJ-011: The initial discovery root is saved, and changing it does not itself
   remove previously listed project entries.
+- PROJ-011: An authenticated user can enter the application-visible root path;
+  for a container, access depends on an independently configured bind mount.
 
 ## Decisions
 
@@ -382,7 +387,9 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
   as unavailable with its activation state intact (PROJ-010). Other state and
   path rules remain to be decided before implementation.
 - 2026-11-21: Owner selected one saved discovery root initially (PROJ-011);
-  changing the setting does not itself remove existing project entries.
+  changing the setting does not itself remove existing project entries. The
+  root is entered in the authenticated UI using its application-visible path;
+  an administrator separately configures any container bind mount.
 - Open: Root-change reconciliation, candidate-path suggestions, running-container evidence,
   remaining discovery eligibility, other symlinks, filesystem/path permissions
   and scan error/results presentation. Runtime refresh is a separate boundary.
