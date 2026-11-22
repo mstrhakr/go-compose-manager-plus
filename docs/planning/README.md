@@ -89,6 +89,8 @@ requested direct-child scans, persistent listings, resolution errors and
 permission-only activation. This does not authorize Docker socket access,
 Compose operations or project-file writes. The model loader is not an
 orchestration integration; no project action or job runner is included.
+On 2026-11-22 the owner separately approved an on-demand read-only Docker
+status snapshot under LIVE-002. This does not authorize Compose operations.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,
@@ -221,7 +223,8 @@ actions remain unimplemented.
 The [first auth/persistence implementation brief](auth-implementation.md)
 records the foundation delivered in the local-auth slice. The owner separately
 approved persistent read-only discovery and activation after the fixture work;
-Docker integration and management actions require further bounded decisions.
+the later LIVE-002 approval is limited to on-demand status. Management actions
+require further bounded decisions.
 This work does not require completing Git, metrics history or every queue variant.
 
 Before exposing admin operations, close the relevant action, identity/input,

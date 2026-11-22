@@ -10,10 +10,12 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/justinas/nosurf"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 )
 
 const maxFormBytes = 8192
@@ -25,6 +27,7 @@ type authServer struct {
 	publicURL      *url.URL
 	trustedProxies []netip.Prefix
 	logger         *slog.Logger
+	docker         *runtime.Client
 }
 
 func (server *authServer) registerRoutes(mux *http.ServeMux) {
@@ -163,9 +166,48 @@ func (server *authServer) dashboard(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Unable to read discovered projects", http.StatusInternalServerError)
 		return
 	}
+	views := make([]projectView, 0, len(projects))
+	for _, project := range projects {
+		views = append(views, projectView{Project: project})
+	}
+	requested := r.URL.Query().Get("runtime") == "1"
+	runtimeMessage := "Docker integration pending. Container status, logs, and operations are not connected."
+	runtimeState := "Not configured"
+	if server.docker != nil {
+		runtimeMessage = "Docker status not requested."
+		runtimeState = "Not requested"
+	}
+	if requested && server.docker == nil {
+		runtimeMessage = "Docker status unavailable: no socket configured."
+		runtimeState = "Unavailable"
+	} else if requested {
+		snapshot, snapshotErr := server.docker.Snapshot(r.Context())
+		if snapshotErr != nil {
+			server.logger.WarnContext(r.Context(), "Docker status snapshot failed", "reason", scanFailureReason(snapshotErr))
+			runtimeMessage = "Docker status unavailable. Check socket permissions and daemon compatibility."
+			runtimeState = "Unavailable"
+		} else {
+			runtimeMessage = "Docker snapshot taken " + time.Now().UTC().Format("2006-01-02 15:04:05 UTC") + "."
+			runtimeState = "Snapshot"
+			for i := range views {
+				project := &views[i]
+				if !project.Available {
+					project.RuntimeError = "Runtime status unknown: project unavailable at last scan."
+					continue
+				}
+				name, resolveErr := discovery.ResolveProjectName(r.Context(), project.Root, project.Path)
+				if resolveErr != nil {
+					project.RuntimeError = "Runtime status unknown: unable to resolve Compose inputs."
+					continue
+				}
+				project.RuntimeName = name
+				project.Containers = snapshot[name]
+			}
+		}
+	}
 	server.render(w, pageData{Title: "Overview", View: "dashboard", Username: user.Username, Initial: initial,
-		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: projects,
-		Activity: chartPanel{ID: "activity-title", Title: "Container activity", Status: "Unavailable", EmptyTitle: "Runtime metrics unavailable", EmptyDetail: "Docker is not connected. No live activity is being collected."},
+		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: views, RuntimeMessage: runtimeMessage, RuntimeState: runtimeState,
+		Activity: chartPanel{ID: "activity-title", Title: "Container activity", Status: "Unavailable", EmptyTitle: "Runtime metrics unavailable", EmptyDetail: "No live activity is being collected."},
 		Metrics: []metricPanel{
 			{ID: "restart-title", Title: "Container restart & OOM rate", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
 			{ID: "health-title", Title: "Stack health & readiness", Status: "Unavailable", Value: "--", Detail: "No runtime data"},

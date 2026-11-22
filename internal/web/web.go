@@ -13,26 +13,36 @@ import (
 	"github.com/justinas/nosurf"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 )
 
 //go:embed templates static
 var content embed.FS
 
 type pageData struct {
-	Title     string
-	View      string
-	Username  string
-	Initial   string
-	Error     string
-	CSRFToken string
-	Root      string
-	Projects  []discovery.Project
-	Notice    string
-	Activity  chartPanel
-	Metrics   []metricPanel
+	Title          string
+	View           string
+	Username       string
+	Initial        string
+	Error          string
+	CSRFToken      string
+	Root           string
+	Projects       []projectView
+	RuntimeMessage string
+	RuntimeState   string
+	Notice         string
+	Activity       chartPanel
+	Metrics        []metricPanel
 }
 
-func Handler(manager *auth.Manager, store *discovery.Store, publicURL *url.URL, trustedProxies []netip.Prefix, logger *slog.Logger) http.Handler {
+type projectView struct {
+	discovery.Project
+	RuntimeName  string
+	RuntimeError string
+	Containers   []runtime.Container
+}
+
+func Handler(manager *auth.Manager, store *discovery.Store, publicURL *url.URL, trustedProxies []netip.Prefix, logger *slog.Logger, docker *runtime.Client) http.Handler {
 	pages := template.Must(template.ParseFS(content, "templates/*.html", "templates/partials/*.html"))
 	assets, err := fs.Sub(content, "static")
 	if err != nil {
@@ -42,7 +52,7 @@ func Handler(manager *auth.Manager, store *discovery.Store, publicURL *url.URL, 
 		panic("authenticated web handler requires auth manager and public origin")
 	}
 	mux := http.NewServeMux()
-	server := &authServer{manager: manager, discovery: store, pages: pages, publicURL: publicURL, trustedProxies: trustedProxies, logger: logger}
+	server := &authServer{manager: manager, discovery: store, pages: pages, publicURL: publicURL, trustedProxies: trustedProxies, logger: logger, docker: docker}
 	server.registerRoutes(mux)
 	static := http.StripPrefix("/static/", http.FileServerFS(assets))
 	mux.Handle("GET /static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

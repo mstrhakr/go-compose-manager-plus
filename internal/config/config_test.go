@@ -2,6 +2,7 @@ package config
 
 import (
 	"log/slog"
+	"path/filepath"
 	"testing"
 )
 
@@ -33,6 +34,7 @@ func TestLoad(t *testing.T) {
 			t.Setenv("APP_ADDR", tt.addr)
 			t.Setenv("APP_LOG_LEVEL", tt.level)
 			t.Setenv("APP_DATA_DIR", tt.dataDir)
+			t.Setenv("APP_DOCKER_SOCKET", "")
 			t.Setenv("APP_PUBLIC_URL", tt.publicURL)
 			t.Setenv("APP_TRUSTED_PROXIES", tt.trustedProxies)
 			t.Setenv("APP_BOOTSTRAP_USERNAME", "")
@@ -41,9 +43,28 @@ func TestLoad(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Load() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
 			if !tt.wantErr && (got.Addr != tt.wantAddr || got.LogLevel != tt.wantLevel || got.DataDir != tt.wantDataDir || got.PublicURL == nil || got.PublicURL.String() != tt.wantPublicURL) {
 				t.Fatalf("Load() = %+v", got)
 			}
+
 		})
+	}
+}
+
+func TestDockerSocketConfiguration(t *testing.T) {
+	t.Setenv("APP_ADDR", "")
+	t.Setenv("APP_PUBLIC_URL", "")
+	t.Setenv("APP_LOG_LEVEL", "")
+	t.Setenv("APP_TRUSTED_PROXIES", "")
+	t.Setenv("APP_DOCKER_SOCKET", "relative.sock")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected relative socket path to be rejected")
+	}
+	socket := filepath.Join(t.TempDir(), "docker.sock")
+	t.Setenv("APP_DOCKER_SOCKET", socket)
+	got, err := Load()
+	if err != nil || got.DockerSocket != socket {
+		t.Fatalf("Load socket = %q, error = %v", got.DockerSocket, err)
 	}
 }

@@ -19,21 +19,27 @@ type ScanResult struct {
 
 // ValidateProject checks a single discovered path without registering other projects.
 func ValidateProject(ctx context.Context, root, path string) error {
+	_, err := ResolveProjectName(ctx, root, path)
+	return err
+}
+
+// ResolveProjectName resolves the native Compose name for a registered path.
+func ResolveProjectName(ctx context.Context, root, path string) (string, error) {
 	if root == "" || filepath.Dir(path) != root || filepath.Clean(path) != path {
-		return errors.New("project is outside the saved discovery root")
+		return "", errors.New("project is outside the saved discovery root")
 	}
 	info, err := os.Lstat(path)
 	if err != nil || !info.IsDir() {
-		return errors.New("project directory is unavailable or is a symlink; scan again")
+		return "", errors.New("project directory is unavailable or is a symlink; scan again")
 	}
 	recognized, err := recognizedProject(path)
 	if err != nil {
-		return errors.New("project directory cannot be inspected")
+		return "", errors.New("project directory cannot be inspected")
 	}
 	if !recognized {
-		return errors.New("project Compose file is unavailable; scan again")
+		return "", errors.New("project Compose file is unavailable; scan again")
 	}
-	return resolve(ctx, path)
+	return resolveName(ctx, path)
 }
 
 var errUnsupportedComposeFile = errors.New("COMPOSE_FILE selection is not yet supported during discovery")
@@ -92,20 +98,25 @@ func recognizedProject(path string) (bool, error) {
 }
 
 func resolve(ctx context.Context, path string) error {
+	_, err := resolveName(ctx, path)
+	return err
+}
+
+func resolveName(ctx context.Context, path string) (string, error) {
 	var missingVariables bool
 	environment := make(map[string]string)
 	envPath := filepath.Join(path, ".env")
 	info, err := os.Stat(envPath)
 	if err == nil {
 		if !info.Mode().IsRegular() {
-			return errors.New("project .env is not a regular file")
+			return "", errors.New("project .env is not a regular file")
 		}
 		environment, missingVariables, err = readLocalEnv(envPath)
 		if err != nil {
-			return errors.New("unable to read project interpolation environment")
+			return "", errors.New("unable to read project interpolation environment")
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return errors.New("project .env cannot be accessed")
+		return "", errors.New("project .env cannot be accessed")
 	}
 	options, err := cli.NewProjectOptions(nil,
 		cli.WithWorkingDirectory(path),
@@ -133,18 +144,19 @@ func resolve(ctx context.Context, path string) error {
 	)
 	if err != nil {
 		if errors.Is(err, errUnsupportedComposeFile) {
-			return err
+			return "", err
 		}
-		return errors.New("unable to read project interpolation environment")
+		return "", errors.New("unable to read project interpolation environment")
 	}
 	if len(options.ConfigPaths) == 0 || filepath.Dir(options.ConfigPaths[0]) != path {
-		return errors.New("project Compose file is unavailable")
+		return "", errors.New("project Compose file is unavailable")
 	}
-	if _, err := options.LoadProject(ctx); err != nil {
-		return errors.New("unable to resolve Compose inputs; check the project files, permissions and interpolation")
+	project, err := options.LoadProject(ctx)
+	if err != nil {
+		return "", errors.New("unable to resolve Compose inputs; check the project files, permissions and interpolation")
 	}
 	if missingVariables {
-		return errors.New("project interpolation refers to unset variables; manager environment is not inherited")
+		return "", errors.New("project interpolation refers to unset variables; manager environment is not inherited")
 	}
-	return nil
+	return project.Name, nil
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/config"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/web"
 )
 
@@ -68,9 +69,13 @@ func run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if err := authManager.Bootstrap(ctx, cfg.BootstrapUsername, cfg.BootstrapPassword); err != nil {
 		return fmt.Errorf("initialize administrator: %w", err)
 	}
+	var docker *runtime.Client
+	if cfg.DockerSocket != "" {
+		docker = runtime.NewClient(cfg.DockerSocket)
+	}
 	server := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           web.Handler(authManager, discovery.NewStore(database.SQL), cfg.PublicURL, cfg.TrustedProxyRanges, logger),
+		Handler:           web.Handler(authManager, discovery.NewStore(database.SQL), cfg.PublicURL, cfg.TrustedProxyRanges, logger, docker),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -15,6 +16,7 @@ type Config struct {
 	Addr               string
 	LogLevel           slog.Level
 	DataDir            string
+	DockerSocket       string
 	PublicURL          *url.URL
 	TrustedProxyRanges []netip.Prefix
 	BootstrapUsername  string
@@ -41,6 +43,12 @@ func Load() (Config, error) {
 	}
 	if value := os.Getenv("APP_DATA_DIR"); value != "" {
 		cfg.DataDir = value
+	}
+	if value := os.Getenv("APP_DOCKER_SOCKET"); value != "" {
+		if !filepath.IsAbs(value) {
+			return Config{}, fmt.Errorf("APP_DOCKER_SOCKET must be an absolute filesystem path")
+		}
+		cfg.DockerSocket = filepath.Clean(value)
 	}
 	publicURL := os.Getenv("APP_PUBLIC_URL")
 	if publicURL == "" {

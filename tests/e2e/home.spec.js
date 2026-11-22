@@ -103,6 +103,9 @@ test('first login forces password setup before protected dashboard and works on 
     await page.getByRole('button', { name: 'Activate' }).click();
     await expect(page.getByText('Available · Active')).toBeVisible();
     await expect(page.getByRole('status')).toContainText('No Compose operation was performed');
+    await page.getByRole('button', { name: 'Refresh Docker status' }).click();
+    await expect(page.getByText('Docker status unavailable: no socket configured.')).toBeVisible();
+    await page.goto('/');
     await page.screenshot({ path: 'test-results/auth-dashboard-desktop.png', fullPage: true });
 
     const themed = await browser.newContext({ baseURL, colorScheme: 'dark', viewport: { width: 1440, height: 900 } });

@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"mime"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/netip"
@@ -14,11 +15,14 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	goruntime "runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 )
 
 const testOrigin = "http://127.0.0.1:8080"
@@ -195,6 +199,85 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	}
 }
 
+func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
+	if goruntime.GOOS == "windows" {
+		t.Skip("Unix socket integration is exercised on Unix")
+	}
+	socket := filepath.Join(t.TempDir(), "docker.sock")
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var calls atomic.Int32
+	var failure atomic.Bool
+	dockerServer := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if r.Method != http.MethodGet || r.URL.Path != "/v1.40/containers/json" || r.URL.Query().Get("all") != "1" {
+			t.Errorf("unexpected Docker request %s %s", r.Method, r.URL)
+			http.Error(w, "unexpected", http.StatusBadRequest)
+			return
+		}
+		if failure.Load() {
+			http.Error(w, "unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = io.WriteString(w, `[{"Names":["/<script>"],"State":"running","Labels":{"com.docker.compose.project":"shared","com.docker.compose.service":"app"}}]`)
+	}))
+	_ = dockerServer.Listener.Close()
+	dockerServer.Listener = listener
+	dockerServer.Start()
+	t.Cleanup(dockerServer.Close)
+	handler := testHandlerWithDocker(t, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), runtime.NewClient(socket))
+	root := t.TempDir()
+	for folder, projectName := range map[string]string{"one": "shared", "two": "shared", "empty": "empty", "broken": "broken"} {
+		dir := filepath.Join(root, folder)
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "compose.yaml"), []byte("name: "+projectName+"\nservices:\n  app:\n    image: example\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cookies := make(map[string]*http.Cookie)
+	perform(handler, http.MethodGet, "/?runtime=1", nil, cookies, "")
+	if calls.Load() != 0 {
+		t.Fatal("anonymous request reached Docker")
+	}
+	response := perform(handler, http.MethodGet, "/login", nil, cookies, "")
+	token := tokenFromBody(t, response.Body.String())
+	perform(handler, http.MethodPost, "/login", url.Values{"username": {"operator"}, "password": {"bootstrap-password-123"}}, cookies, token)
+	response = perform(handler, http.MethodGet, "/setup/password", nil, cookies, "")
+	token = tokenFromBody(t, response.Body.String())
+	perform(handler, http.MethodPost, "/setup/password", url.Values{"password": {"new-local-password-456"}, "confirm_password": {"new-local-password-456"}}, cookies, token)
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	token = tokenFromBody(t, response.Body.String())
+	perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {root}}, cookies, token)
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	token = tokenFromBody(t, response.Body.String())
+	perform(handler, http.MethodPost, "/discovery/scan", url.Values{}, cookies, token)
+	if err := os.WriteFile(filepath.Join(root, "broken", "compose.yaml"), []byte("services: [\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	perform(handler, http.MethodGet, "/", nil, cookies, "")
+	if calls.Load() != 0 {
+		t.Fatal("normal dashboard or discovery reached Docker")
+	}
+	response = perform(handler, http.MethodGet, "/?runtime=1", nil, cookies, "")
+	body := response.Body.String()
+	if response.Code != http.StatusOK || strings.Count(body, "Docker project: shared") != 2 ||
+		strings.Count(body, "&lt;script&gt;: running") != 2 ||
+		strings.Count(body, "No matching containers in this snapshot.") != 1 ||
+		strings.Count(body, "Runtime status unknown: unable to resolve Compose inputs.") != 1 || calls.Load() != 1 {
+		t.Fatalf("snapshot: code=%d calls=%d body=%s", response.Code, calls.Load(), body)
+	}
+	failure.Store(true)
+	response = perform(handler, http.MethodGet, "/?runtime=1", nil, cookies, "")
+	body = response.Body.String()
+	if !strings.Contains(body, "Docker status unavailable") || strings.Contains(body, "No matching containers") {
+		t.Fatalf("failed snapshot displayed as empty: %s", body)
+	}
+}
+
 func TestOversizedAuthenticationFormsAreRejected(t *testing.T) {
 	handler := testHandler(t, nil)
 	cookies := make(map[string]*http.Cookie)
@@ -295,7 +378,7 @@ func TestTrustedProxyLoginRequiresHTTPSOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := Handler(manager, discovery.NewStore(database.SQL), publicURL, proxies, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	handler := Handler(manager, discovery.NewStore(database.SQL), publicURL, proxies, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
 	page := httptest.NewRequest(http.MethodGet, "/login", nil)
 	page.Host = "backend:8080"
 	page.RemoteAddr = "192.0.2.10:12345"
@@ -339,6 +422,10 @@ func testHandler(t *testing.T, trustedProxies []netip.Prefix) http.Handler {
 }
 
 func testHandlerWithLogger(t *testing.T, trustedProxies []netip.Prefix, logger *slog.Logger) http.Handler {
+	return testHandlerWithDocker(t, trustedProxies, logger, nil)
+}
+
+func testHandlerWithDocker(t *testing.T, trustedProxies []netip.Prefix, logger *slog.Logger, docker *runtime.Client) http.Handler {
 	t.Helper()
 	ctx := context.Background()
 	database, err := auth.OpenDatabase(ctx, filepath.Join(t.TempDir(), "state"))
@@ -357,7 +444,7 @@ func testHandlerWithLogger(t *testing.T, trustedProxies []netip.Prefix, logger *
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Handler(manager, discovery.NewStore(database.SQL), publicURL, trustedProxies, logger)
+	return Handler(manager, discovery.NewStore(database.SQL), publicURL, trustedProxies, logger, docker)
 }
 
 func perform(handler http.Handler, method, path string, values url.Values, cookies map[string]*http.Cookie, csrfToken string) *httptest.ResponseRecorder {

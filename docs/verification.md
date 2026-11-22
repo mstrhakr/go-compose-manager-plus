@@ -289,3 +289,35 @@ forward selectors and report failures. `make -s pr-checks PR=9` successfully
 read completed PR checks. `make check-workflows`, `make check-security`, and
 the Hugo 0.169.0 Go-runner docs build passed. An actual failing GitHub run and
 native non-Linux Make environments were not exercised.
+
+## On-Demand Docker Snapshot
+
+2026-11-22, Linux development container, branch `feat/read-only-runtime-status`
+based on `cafa352`: the app reads Docker Engine API v1.40 only on explicit
+dashboard refresh. It groups container summaries by Compose project name; this
+is not filesystem ownership evidence or authorization for actions.
+
+- `CMP_LIVE_DOCKER=1 CMP_LIVE_ACK=/var/run/docker.sock make test-live-docker
+  QUIET=1` passed against Docker Engine 29.5.3. It created a uniquely named
+  Compose fixture container, verified its `created` state and service label
+  through the snapshot, removed its verified container ID and checked removal.
+  No image pull, build, published ports, host bind mounts or global cleanup was
+  used. The fixture did not exercise a running or exited container.
+- `PLAYWRIGHT_PORT=18198 make check QUIET=1` passed Go vet, race tests and
+  build, Node, HTTP and browser tests, asset verification and contract checks.
+- A temporary, isolated app instance using the current binary, separate
+  ephemeral state, a read-only playground mount and the host socket was
+  exercised in Chromium. It scanned 27 playground projects, displayed a
+  successful Docker snapshot and resolved names for all 27. Desktop and mobile
+  viewport checks reported no horizontal overflow. It was stopped and removed.
+- `make check-security` passed npm audit and govulncheck. `make docs` could not
+  run because Hugo was not installed; the pinned `go run
+  github.com/gohugoio/hugo@v0.169.0 --source docs --minify --panicOnWarning`
+  build passed.
+- `make check-container` built the Linux amd64 image and scanned it with Trivy;
+  no vulnerabilities were reported. The local build image and scanner image
+  remain available in Docker's image store.
+
+The shared daemon is not isolated by a read-only socket bind mount. No project
+lifecycle action, running-state fixture, automatic refresh, events, metrics,
+remote-administration certification or full Docker compatibility is claimed.

@@ -65,12 +65,11 @@
     </nav>
     <aside class="host-sidebar" aria-labelledby="host-context-title">
       <div class="host-title"><span class="host-icon" aria-hidden="true"><i></i><i></i><b></b></span><h2 id="host-context-title">Local instance</h2></div>
-      <div class="topology" aria-label="Discovery summary"><span><b>&#9636;</b> {{len .Projects}} {{if eq (len .Projects) 1}}project{{else}}projects{{end}}</span><span> / </span><span>Docker unavailable</span></div>
+      <div class="topology" aria-label="Discovery summary"><span><b>&#9636;</b> {{len .Projects}} {{if eq (len .Projects) 1}}project{{else}}projects{{end}}</span><span> / </span><span>Docker: {{.RuntimeState}}</span></div>
       <dl class="detail-list">
         <div><dt>Discovery</dt><dd>On demand</dd></div>
         <div><dt>Projects</dt><dd>{{len .Projects}}</dd></div>
-        <div><dt>Docker engine</dt><dd>Not connected</dd></div>
-        <div><dt>Runtime status</dt><dd>Unavailable</dd></div>
+        <div><dt>Runtime status</dt><dd>{{.RuntimeState}}</dd></div>
       </dl>
       <section class="host-section">
         <h3>Project discovery</h3>
@@ -95,7 +94,11 @@
       </section>
       <section class="host-section">
         <h3>Engine integration</h3>
-        <p>Docker integration pending. Container status, logs, and operations are not connected.</p>
+        <p>{{.RuntimeMessage}}</p>
+        <form action="/#workspace-title" method="get">
+          <button class="quiet-button" name="runtime" value="1" type="submit">Refresh Docker status</button>
+        </form>
+        <p>Snapshots are read-only. Logs, metrics and operations are not connected.</p>
       </section>
     </aside>
     <main class="console-main">
@@ -133,6 +136,12 @@
               <p>{{if not .Available}}Unavailable{{else if .ResolutionError}}Inputs need attention{{else}}Available{{end}} &middot; {{if .Active}}Active{{else}}Inactive{{end}}</p>
               {{if ne .Root $.Root}}<p>Outside the current discovery root; save its root to activate.</p>{{end}}
               {{if .ResolutionError}}<p class="project-error">{{.ResolutionError}}</p>{{end}}
+              {{if .RuntimeError}}<p>{{.RuntimeError}}</p>{{end}}
+              {{if .RuntimeName}}
+              <p>Docker project: {{.RuntimeName}}</p>
+              {{if .Containers}}<ul>{{range .Containers}}<li>{{if .Name}}{{.Name}}{{else}}{{.Service}}{{end}}: {{.State}}</li>{{end}}</ul>
+              {{else}}<p>No matching containers in this snapshot.</p>{{end}}
+              {{end}}
             </div>
             {{if not .Active}}<form action="/discovery/activate" method="post">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">

@@ -72,7 +72,8 @@ defines project-name resource grouping and its label. Source STK-ID distinguishe
 runtime names and evidence, but its saved-pin and migration policies are not
 adopted. See [RES-001](project-resolution.md#res-001-accepted-runtime-identity-is-not-a-display-name).
 
-**Enforcement:** Not yet implemented or verified.
+**Enforcement:** The opt-in snapshot is implemented with explicit refresh;
+verification and environment limits are recorded separately.
 
 ## Dependencies
 
