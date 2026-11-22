@@ -170,7 +170,9 @@ entries are skipped and reported. Some `.env` expressions referencing unset
 variables, including defaults, may be conservatively flagged. Compose inputs can
 reference paths outside the project folder that the app can read; a read-only
 mount prevents writes but is not a read-access sandbox. Other environment,
-path and activation edge cases remain under review.
+path and activation edge cases remain under review. The initial `.env` reader
+limits files to 1 MiB and 4,096 lines, with individual statements limited to
+128 KiB and 256 lines.
 
 ## Documentation
 

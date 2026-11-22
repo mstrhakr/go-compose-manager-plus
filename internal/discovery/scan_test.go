@@ -84,7 +84,11 @@ func TestScanReportsUnsupportedAndMissingInterpolation(t *testing.T) {
 		want    string
 	}{
 		{"nested missing", "services:\n  web:\n    image: 'example:${FIRST:-${SECOND}}'\n", "", "unset"},
+		{"adjacent defaults", "services:\n  web:\n    image: '${REPO:-example}:${TAG:-latest}'\n", "", ""},
+		{"nested defaults", "services:\n  web:\n    image: '${FIRST:-${SECOND:-fallback}}'\n", "", ""},
 		{"dotenv missing", "services:\n  web:\n    image: 'example:${TAG}'\n", "TAG=${OUTSIDE}\n", "unset"},
+		{"dotenv forward reference", "services:\n  web:\n    image: 'example${PREFIX}'\n", "PREFIX=${BASE}\nBASE=local\n", "unset"},
+		{"dotenv previous reference", "services:\n  web:\n    image: '${TAG}'\n", "BASE=example\nTAG=${BASE}\n", ""},
 		{"compose file", "services:\n  web:\n    image: example\n", "COMPOSE_FILE=compose.yaml\n", "COMPOSE_FILE"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -95,7 +99,7 @@ func TestScanReportsUnsupportedAndMissingInterpolation(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := Scan(context.Background(), root)
-			if err != nil || len(result.Projects) != 1 || !strings.Contains(result.Projects[0].ResolutionError, test.want) {
+			if err != nil || len(result.Projects) != 1 || (test.want == "" && result.Projects[0].ResolutionError != "") || (test.want != "" && !strings.Contains(result.Projects[0].ResolutionError, test.want)) {
 				t.Fatalf("scan = %+v, error %v; want %q", result, err, test.want)
 			}
 		})

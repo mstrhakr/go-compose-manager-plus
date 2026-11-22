@@ -197,7 +197,8 @@ after validation, and activation is not a guarantee of safe targeting by future
 actions. Path restoration is not identity proof. Availability is last-scan state,
 not live status. `COMPOSE_FILE` selection is explicitly unsupported during this
 slice, and `.env` defaults referring to missing variables can be conservatively
-flagged. Compose input references may read outside the project folder if
+flagged. The bounded `.env` reader checks references in file order and limits
+file and statement sizes. Compose input references may read outside the project folder if
 accessible to the process; a read-only mount prevents writes but is not a read
 sandbox. No native-host, Docker operations, full Compose compatibility or
 comprehensive contract compliance is claimed.

@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/compose-spec/compose-go/v2/cli"
-	"github.com/compose-spec/compose-go/v2/dotenv"
 	"github.com/compose-spec/compose-go/v2/loader"
 	"github.com/compose-spec/compose-go/v2/template"
 )
@@ -38,7 +36,6 @@ func ValidateProject(ctx context.Context, root, path string) error {
 	return resolve(ctx, path)
 }
 
-var interpolationName = regexp.MustCompile(`^\$\{?([a-zA-Z_][a-zA-Z0-9_]*)`)
 var errUnsupportedComposeFile = errors.New("COMPOSE_FILE selection is not yet supported during discovery")
 
 func Scan(ctx context.Context, root string) (ScanResult, error) {
@@ -103,18 +100,9 @@ func resolve(ctx context.Context, path string) error {
 		if !info.Mode().IsRegular() {
 			return errors.New("project .env is not a regular file")
 		}
-		var lookedUp []string
-		environment, err = dotenv.ReadWithLookup(func(name string) (string, bool) {
-			lookedUp = append(lookedUp, name)
-			return "", false
-		}, envPath)
+		environment, missingVariables, err = readLocalEnv(envPath)
 		if err != nil {
 			return errors.New("unable to read project interpolation environment")
-		}
-		for _, name := range lookedUp {
-			if _, found := environment[name]; !found {
-				missingVariables = true
-			}
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return errors.New("project .env cannot be accessed")
@@ -138,25 +126,8 @@ func resolve(ctx context.Context, path string) error {
 				return
 			}
 			options.Interpolate.Substitute = func(input string, mapping template.Mapping) (string, error) {
-				return template.SubstituteWithOptions(input, mapping, template.WithoutLogging,
-					template.WithReplacementFunction(func(substring string, mapping template.Mapping, config *template.Config) (string, error) {
-						var missing []string
-						value, applied, err := template.DefaultReplacementAppliedFunc(substring, func(name string) (string, bool) {
-							value, ok := mapping(name)
-							if !ok {
-								missing = append(missing, name)
-							}
-							return value, ok
-						}, config)
-						if err == nil && len(missing) > 0 {
-							// A missing outer variable with an applied fallback is expected.
-							match := interpolationName.FindStringSubmatch(substring)
-							if !applied || len(missing) != 1 || len(match) != 2 || missing[0] != match[1] {
-								missingVariables = true
-							}
-						}
-						return value, err
-					}))
+				missingVariables = missingVariables || missingInterpolation(input, mapping)
+				return template.SubstituteWithOptions(input, mapping, template.WithoutLogging)
 			}
 		}),
 	)
