@@ -24,7 +24,7 @@ test('Make watch targets forward arguments and preserve failures', () => {
     writeFileSync(gh, '#!/usr/bin/env bash\nprintf "<%s>\\n" "$@"\nexit "${FAKE_GH_STATUS:-0}"\n');
     chmodSync(gh, 0o755);
     const env = { ...process.env, PATH: `${dir}${delimiter}${process.env.PATH}`, FAKE_GH_STATUS: '0' };
-    const invoke = (...args) => spawnSync('make', ['-s', ...args], { encoding: 'utf8', env });
+    const invoke = (...args) => spawnSync('make', ['-s', 'PR=', 'RUN=', ...args], { encoding: 'utf8', env });
     assert.match(invoke('pr-checks').stdout, /<pr>\n<checks>\n<--watch>/);
     assert.match(invoke('pr-checks', 'PR=9').stdout, /<checks>\n<9>\n<--watch>/);
     assert.match(invoke('run-watch', 'RUN=123').stdout, /<watch>\n<123>\n<--compact>\n<--exit-status>/);
