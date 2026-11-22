@@ -4,6 +4,7 @@ import (
 	"embed"
 	"html/template"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"net/netip"
 	"net/url"
@@ -31,17 +32,17 @@ type pageData struct {
 	Metrics   []metricPanel
 }
 
-func Handler(manager *auth.Manager, store *discovery.Store, publicURL *url.URL, trustedProxies []netip.Prefix) http.Handler {
+func Handler(manager *auth.Manager, store *discovery.Store, publicURL *url.URL, trustedProxies []netip.Prefix, logger *slog.Logger) http.Handler {
 	pages := template.Must(template.ParseFS(content, "templates/*.html", "templates/partials/*.html"))
 	assets, err := fs.Sub(content, "static")
 	if err != nil {
 		panic(err)
 	}
-	if manager == nil || store == nil || publicURL == nil {
+	if manager == nil || store == nil || publicURL == nil || logger == nil {
 		panic("authenticated web handler requires auth manager and public origin")
 	}
 	mux := http.NewServeMux()
-	server := &authServer{manager: manager, discovery: store, pages: pages, publicURL: publicURL, trustedProxies: trustedProxies}
+	server := &authServer{manager: manager, discovery: store, pages: pages, publicURL: publicURL, trustedProxies: trustedProxies, logger: logger}
 	server.registerRoutes(mux)
 	static := http.StripPrefix("/static/", http.FileServerFS(assets))
 	mux.Handle("GET /static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

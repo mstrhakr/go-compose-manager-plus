@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"html/template"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/netip"
@@ -23,6 +24,7 @@ type authServer struct {
 	pages          *template.Template
 	publicURL      *url.URL
 	trustedProxies []netip.Prefix
+	logger         *slog.Logger
 }
 
 func (server *authServer) registerRoutes(mux *http.ServeMux) {
