@@ -9,6 +9,7 @@ import (
 )
 
 var ErrStaleScan = errors.New("discovery settings or results changed; scan again")
+var ErrInvalidRoot = errors.New("discovery root must be an absolute path")
 
 type Settings struct {
 	Root     string
@@ -45,7 +46,7 @@ func (s *Store) Settings(ctx context.Context) (Settings, error) {
 
 func (s *Store) SetRoot(ctx context.Context, root string) error {
 	if root == "" || !filepath.IsAbs(root) {
-		return errors.New("discovery root must be an absolute path")
+		return ErrInvalidRoot
 	}
 	root = filepath.Clean(root)
 	_, err := s.db.ExecContext(ctx, `
@@ -122,8 +123,12 @@ func (s *Store) ApplyScan(ctx context.Context, settings Settings, projects []Pro
 	return nil
 }
 
-func (s *Store) Activate(ctx context.Context, path string) error {
-	result, err := s.db.ExecContext(ctx, `UPDATE discovered_projects SET active = 1 WHERE path = ? AND available = 1 AND resolution_error = ''`, path)
+func (s *Store) Activate(ctx context.Context, settings Settings, path string) error {
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE discovered_projects SET active = 1
+		WHERE path = ? AND root = ? AND available = 1 AND resolution_error = ''
+		AND EXISTS (SELECT 1 FROM discovery_settings WHERE id = 1 AND root = ? AND revision = ?)
+	`, path, settings.Root, settings.Root, settings.Revision)
 	if err != nil {
 		return fmt.Errorf("activate discovered project: %w", err)
 	}

@@ -29,7 +29,11 @@ func TestStorePreservesStateAcrossScansAndRestart(t *testing.T) {
 	if err := store.ApplyScan(ctx, settings, []Project{{Path: path, Root: root}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Activate(ctx, path); err != nil {
+	settings, err = store.Settings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Activate(ctx, settings, path); err != nil {
 		t.Fatal(err)
 	}
 	settings, err = store.Settings(ctx)
@@ -93,7 +97,11 @@ func TestStoreRejectsStaleScansAndInvalidActivation(t *testing.T) {
 	if err := store.ApplyScan(ctx, settings, []Project{{Path: path, Root: root, ResolutionError: "invalid input"}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Activate(ctx, path); err == nil {
+	current, err := store.Settings(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Activate(ctx, current, path); err == nil {
 		t.Fatal("invalid project was activated")
 	}
 	if err := store.ApplyScan(ctx, settings, nil); !errors.Is(err, ErrStaleScan) {
@@ -105,6 +113,9 @@ func TestStoreRejectsStaleScansAndInvalidActivation(t *testing.T) {
 	}
 	if err := store.SetRoot(ctx, root); err != nil {
 		t.Fatal(err)
+	}
+	if err := store.Activate(ctx, current, path); err == nil {
+		t.Fatal("activation with stale scan revision succeeded")
 	}
 	if err := store.ApplyScan(ctx, settings, nil); !errors.Is(err, ErrStaleScan) {
 		t.Fatalf("stale scan after root update = %v", err)

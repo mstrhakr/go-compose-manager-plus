@@ -15,6 +15,7 @@ import (
 
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/config"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/web"
 )
 
@@ -69,7 +70,7 @@ func run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	server := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           web.Handler(authManager, cfg.PublicURL, cfg.TrustedProxyRanges),
+		Handler:           web.Handler(authManager, discovery.NewStore(database.SQL), cfg.PublicURL, cfg.TrustedProxyRanges),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

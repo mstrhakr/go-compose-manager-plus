@@ -8,12 +8,14 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
 )
 
 const testOrigin = "http://127.0.0.1:8080"
@@ -79,6 +81,101 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
 	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/login" {
 		t.Fatalf("dashboard after logout = %d, location %q", response.Code, response.Header().Get("Location"))
+	}
+}
+
+func TestDiscoveryAuthenticatedFlow(t *testing.T) {
+	handler := testHandler(t, nil)
+	root := t.TempDir()
+	project := filepath.Join(root, "example")
+	if err := os.Mkdir(project, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	compose := filepath.Join(project, "compose.yaml")
+	if err := os.WriteFile(compose, []byte("services:\n  web:\n    image: example\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cookies := make(map[string]*http.Cookie)
+	response := perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {root}}, cookies, "")
+	if response.Code != http.StatusForbidden {
+		t.Fatalf("anonymous root POST without token = %d", response.Code)
+	}
+	response = perform(handler, http.MethodGet, "/login", nil, cookies, "")
+	token := tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/login", url.Values{"username": {"operator"}, "password": {"bootstrap-password-123"}}, cookies, token)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("login = %d", response.Code)
+	}
+	response = perform(handler, http.MethodGet, "/setup/password", nil, cookies, "")
+	token = tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/setup/password", url.Values{"password": {"new-local-password-456"}, "confirm_password": {"new-local-password-456"}}, cookies, token)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("setup = %d", response.Code)
+	}
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	token = tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {root}}, cookies, token)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("save root = %d", response.Code)
+	}
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	token = tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/discovery/scan", url.Values{}, cookies, token)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("scan = %d", response.Code)
+	}
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	if !strings.Contains(response.Body.String(), "Inactive") || !strings.Contains(response.Body.String(), html.EscapeString(project)) {
+		t.Fatalf("discovered project missing: %s", response.Body.String())
+	}
+	later := filepath.Join(root, "later")
+	if err := os.Mkdir(later, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(later, "compose.yaml"), []byte("services:\n  web:\n    image: example\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	token = tokenFromBody(t, response.Body.String())
+	response = perform(handler, http.MethodPost, "/discovery/activate", url.Values{"path": {project}}, cookies, token)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("activation = %d", response.Code)
+	}
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	if !strings.Contains(response.Body.String(), "Active") || !strings.Contains(response.Body.String(), "No Compose operation was performed") {
+		t.Fatalf("activation not reflected: %s", response.Body.String())
+	}
+	if strings.Contains(response.Body.String(), html.EscapeString(later)) {
+		t.Fatal("activation unexpectedly discovered another project")
+	}
+	if err := os.Rename(root, root+"-temporarily-unavailable"); err != nil {
+		t.Fatal(err)
+	}
+	token = tokenFromBody(t, response.Body.String())
+	perform(handler, http.MethodPost, "/discovery/scan", url.Values{}, cookies, token)
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	if !strings.Contains(response.Body.String(), "unable to scan") || !strings.Contains(response.Body.String(), "Available") || !strings.Contains(response.Body.String(), "Active") {
+		t.Fatalf("failed scan did not preserve state: %s", response.Body.String())
+	}
+	if err := os.Rename(root+"-temporarily-unavailable", root); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(compose); err != nil {
+		t.Fatal(err)
+	}
+	token = tokenFromBody(t, response.Body.String())
+	perform(handler, http.MethodPost, "/discovery/scan", url.Values{}, cookies, token)
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	if !strings.Contains(response.Body.String(), "Unavailable") || !strings.Contains(response.Body.String(), "Active") {
+		t.Fatalf("missing project not retained: %s", response.Body.String())
+	}
+	if err := os.WriteFile(compose, []byte("services:\n  web:\n    image: example\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	token = tokenFromBody(t, response.Body.String())
+	perform(handler, http.MethodPost, "/discovery/scan", url.Values{}, cookies, token)
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	if !strings.Contains(response.Body.String(), "Available") || !strings.Contains(response.Body.String(), "Active") {
+		t.Fatalf("restored project not active: %s", response.Body.String())
 	}
 }
 
@@ -182,7 +279,7 @@ func TestTrustedProxyLoginRequiresHTTPSOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := Handler(manager, publicURL, proxies)
+	handler := Handler(manager, discovery.NewStore(database.SQL), publicURL, proxies)
 	page := httptest.NewRequest(http.MethodGet, "/login", nil)
 	page.Host = "backend:8080"
 	page.RemoteAddr = "192.0.2.10:12345"
@@ -240,7 +337,7 @@ func testHandler(t *testing.T, trustedProxies []netip.Prefix) http.Handler {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Handler(manager, publicURL, trustedProxies)
+	return Handler(manager, discovery.NewStore(database.SQL), publicURL, trustedProxies)
 }
 
 func perform(handler http.Handler, method, path string, values url.Values, cookies map[string]*http.Cookie, csrfToken string) *httptest.ResponseRecorder {

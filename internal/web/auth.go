@@ -12,12 +12,14 @@ import (
 
 	"github.com/justinas/nosurf"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
 )
 
 const maxFormBytes = 8192
 
 type authServer struct {
 	manager        *auth.Manager
+	discovery      *discovery.Store
 	pages          *template.Template
 	publicURL      *url.URL
 	trustedProxies []netip.Prefix
@@ -30,6 +32,9 @@ func (server *authServer) registerRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /setup/password", server.requireUser(true, http.HandlerFunc(server.changePassword)))
 	mux.Handle("POST /logout", server.requireUser(true, http.HandlerFunc(server.logout)))
 	mux.Handle("GET /{$}", server.requireUser(false, http.HandlerFunc(server.dashboard)))
+	mux.Handle("POST /discovery/root", server.requireUser(false, http.HandlerFunc(server.saveRoot)))
+	mux.Handle("POST /discovery/scan", server.requireUser(false, http.HandlerFunc(server.scanProjects)))
+	mux.Handle("POST /discovery/activate", server.requireUser(false, http.HandlerFunc(server.activateProject)))
 }
 
 func (server *authServer) loginPage(w http.ResponseWriter, r *http.Request) {
@@ -146,7 +151,20 @@ func (server *authServer) dashboard(w http.ResponseWriter, r *http.Request) {
 	if len(runes) > 0 {
 		initial = strings.ToUpper(string(runes[0]))
 	}
-	server.render(w, pageData{Title: "Overview", View: "dashboard", Username: user.Username, Initial: initial, CSRFToken: nosurf.Token(r)})
+	settings, err := server.discovery.Settings(r.Context())
+	if err != nil {
+		http.Error(w, "Unable to read discovery settings", http.StatusInternalServerError)
+		return
+	}
+	projects, err := server.discovery.Projects(r.Context())
+	if err != nil {
+		http.Error(w, "Unable to read discovered projects", http.StatusInternalServerError)
+		return
+	}
+	server.render(w, pageData{Title: "Overview", View: "dashboard", Username: user.Username, Initial: initial,
+		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: projects,
+		Error:  server.manager.SessionManager().PopString(r.Context(), "discovery_error"),
+		Notice: server.manager.SessionManager().PopString(r.Context(), "discovery_notice")})
 }
 
 func (server *authServer) requireUser(allowPasswordChange bool, next http.Handler) http.Handler {

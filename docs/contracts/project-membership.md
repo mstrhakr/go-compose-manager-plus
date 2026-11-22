@@ -60,7 +60,8 @@ membership. The standalone owner selected automatic inclusion after discussing
 a setup-selected root, rather than the earlier explicit-registration proposal.
 See the [reuse map](../planning/contract-reuse.md).
 
-**Enforcement:** Not implemented. No discovery, registry or activation store exists.
+**Enforcement:** Bounded persistent root discovery is implemented; wider
+membership and lifecycle behavior remains unverified.
 
 ### PROJ-002: Activation Before Managing A Discovery-Added Stack
 
@@ -84,8 +85,9 @@ not explicit manual additions or creation of new Git stacks.
 **Source provenance:** Standalone owner review recorded in the
 [source register](../planning/sources.md#standalone-owner-refinement).
 
-**Enforcement:** Not implemented. Runtime identity, action authorization and
-coordination dependencies remain unresolved and separately required.
+**Enforcement:** Discovery entries start inactive. No project-changing actions
+exist yet; runtime identity, action authorization and coordination remain
+unresolved and separately required.
 
 ### PROJ-003: Activation Grants Permission Without Applying Changes
 
@@ -109,8 +111,8 @@ previously active project's saved state is retained under PROJ-010.
 **Source provenance:** Standalone owner review recorded in the
 [source register](../planning/sources.md#standalone-owner-refinement).
 
-**Enforcement:** Not implemented. Other activation validation, persistence and failure
-reporting remain to be defined and verified.
+**Enforcement:** Bounded activation state is persisted; other activation
+validation and failure reporting remain to be defined and verified.
 
 ### PROJ-004: Direct-Child Project Discovery
 
@@ -134,8 +136,8 @@ directories for the first scan.
 the standalone owner independently approved the bounded depth choice. See the
 [source register](../planning/sources.md#standalone-owner-refinement).
 
-**Enforcement:** Not implemented. Detailed eligibility and traversal/path safety remain
-unresolved; this approval does not establish a safe filesystem scanning algorithm.
+**Enforcement:** Bounded scans use direct children and report skipped symlink
+entries. Other traversal/path safety remains unresolved.
 
 ### PROJ-005: Discover Compose Projects Rather Than Every Directory
 
@@ -160,7 +162,8 @@ absent previously discovered project.
 source STK-LIFE-01/18's directory-based plugin membership. See the
 [source register](../planning/sources.md#standalone-owner-refinement).
 
-**Enforcement:** Not implemented; input recognition and validation need refinement.
+**Enforcement:** Bounded filename recognition and loader errors are implemented;
+environment and other input arrangements remain limited.
 
 ### PROJ-006: Discovery Is Requested, Not Continuous
 
@@ -179,7 +182,8 @@ listing rule and does not activate its results.
 **Source provenance:** Direct standalone owner refinement; not adopted from
 plugin refresh/scanner behavior.
 
-**Enforcement:** Not implemented. Scan error handling and interaction remain open.
+**Enforcement:** Bounded authenticated on-demand scanning is implemented; other
+scan error handling and interaction remain open.
 
 ### PROJ-007: Individual Folder Selection Without A Discovery Scan
 
@@ -239,7 +243,8 @@ option after activation.
 **Source provenance:** Direct standalone owner clarification, replacing the
 previous open question about a possible deactivation workflow.
 
-**Enforcement:** Not implemented. No activation/deactivation controls exist.
+**Enforcement:** The discovery UI offers activation, not deactivation. Other
+entry paths and removal behavior remain unimplemented.
 
 ### PROJ-010: Retain Previously Discovered Projects That Disappear
 
@@ -262,7 +267,8 @@ and other validation remain open.
 **Source provenance:** Direct standalone owner decision, not adoption of plugin
 removal or deletion semantics.
 
-**Enforcement:** Not implemented or verified.
+**Enforcement:** Bounded discovery persistence implements these transitions;
+see verification for executed tests and limitations.
 
 ### PROJ-011: One Saved Discovery Root Initially
 
@@ -279,7 +285,8 @@ UI path entry on 2026-11-21.
 **Source provenance:** Direct standalone owner decision, not an adoption of
 plugin storage or path policy.
 
-**Enforcement:** Not implemented or verified.
+**Enforcement:** A single root can be saved through the authenticated UI;
+root-change reconciliation beyond retention remains open.
 
 ## Dependencies
 
@@ -423,7 +430,8 @@ These are agreed-outcome scenarios, not tests already implemented or executed.
 
 ## Verification
 
-No management behavior or SDK integration exists; no behavioral acceptance tests,
-native-host measurements or plugin tests were run for this decision record.
-Document checks can validate structure, IDs and links, not enforcement or approval.
+The bounded discovery and activation implementation and executed checks are
+recorded in [verification](../verification.md). No Docker management behavior,
+native-host measurements or plugin tests are implied. Document checks validate
+structure, IDs and links, not enforcement or approval.
 The whole draft remains unapproved despite its eleven individually approved entries.

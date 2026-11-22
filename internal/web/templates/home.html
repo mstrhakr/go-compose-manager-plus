@@ -45,7 +45,7 @@
     <p class="nav-caption">WORKSPACE</p>
     <nav aria-label="Main navigation">
       <a class="nav-item active" href="/" aria-current="page"><span class="nav-glyph" aria-hidden="true">&#9638;</span>Overview</a>
-      <a class="nav-item disabled" aria-disabled="true"><span class="nav-glyph" aria-hidden="true">&#9636;</span>Stacks <span class="nav-count">0</span></a>
+      <a class="nav-item" href="#workspace-title"><span class="nav-glyph" aria-hidden="true">&#9636;</span>Stacks <span class="nav-count">{{len .Projects}}</span></a>
       <a class="nav-item disabled" aria-disabled="true"><span class="nav-glyph" aria-hidden="true">&#9678;</span>Networks</a>
       <a class="nav-item disabled" aria-disabled="true"><span class="nav-glyph" aria-hidden="true">&#9633;</span>Volumes</a>
     </nav>
@@ -58,14 +58,44 @@
     </header>
     <section class="page-heading"><div><p class="eyebrow">OVERVIEW</p><h1>System status</h1><p class="lede">Your Compose workspace at a glance.</p></div><button class="quiet-button" type="button" disabled>Refresh</button></section>
     <section class="status-grid" aria-label="System summary">
-      <article class="status-card"><div class="card-label">STACKS <span aria-hidden="true">&#9636;</span></div><strong>--</strong><p>Not connected</p></article>
+      <article class="status-card"><div class="card-label">STACKS <span aria-hidden="true">&#9636;</span></div><strong>{{len .Projects}}</strong><p>Discovered projects</p></article>
       <article class="status-card"><div class="card-label">CONTAINERS <span aria-hidden="true">&#9638;</span></div><strong>--</strong><p>Docker integration pending</p></article>
       <article class="status-card"><div class="card-label">CPU USAGE <span aria-hidden="true">&#10038;</span></div><strong>--</strong><p>Live metrics pending</p></article>
       <article class="status-card"><div class="card-label">MEMORY <span aria-hidden="true">&#9641;</span></div><strong>--</strong><p>Live metrics pending</p></article>
     </section>
     <section class="workspace-panel" aria-labelledby="workspace-title">
-      <div class="panel-heading"><div><h2 id="workspace-title">Compose projects</h2><p>No projects are connected to this dashboard yet.</p></div><span class="panel-count">0 PROJECTS</span></div>
-      <div class="empty-state"><span class="empty-glyph" aria-hidden="true">&#9636;</span><h3>Workspace ready</h3><p>Project discovery and folder selection will appear here.</p></div>
+      <div class="panel-heading"><div><h2 id="workspace-title">Compose projects</h2><p>Availability reflects the last successful scan for each root, not live status. Docker actions are not connected.</p></div><span class="panel-count">{{len .Projects}} PROJECTS</span></div>
+      <div class="discovery-content">
+        {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+        {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
+        <form action="/discovery/root" method="post" class="discovery-root-form">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <label for="discovery-root">Discovery root (application-visible path)</label>
+          <div class="discovery-controls"><input id="discovery-root" name="root" value="{{.Root}}" placeholder="/projects" required><button class="quiet-button" type="submit">Save root</button></div>
+          <p>For containers, mount your projects directory read-only before scanning. Resolution uses the project-local .env, not the manager's environment; it may differ from an external Compose invocation.</p>
+        </form>
+        <form action="/discovery/scan" method="post">
+          <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <button class="quiet-button" type="submit" {{if not .Root}}disabled{{end}}>Scan for projects</button>
+        </form>
+        {{if .Projects}}
+        <ul class="project-list">
+          {{range .Projects}}
+          <li class="project-row">
+            <div class="project-details"><strong>{{.Path}}</strong>
+              <p>{{if not .Available}}Unavailable{{else if .ResolutionError}}Inputs need attention{{else}}Available{{end}} &middot; {{if .Active}}Active{{else}}Inactive{{end}}</p>
+              {{if .ResolutionError}}<p class="project-error">{{.ResolutionError}}</p>{{end}}
+            </div>
+            {{if not .Active}}<form action="/discovery/activate" method="post">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <input type="hidden" name="path" value="{{.Path}}">
+              <button class="quiet-button" type="submit" {{if or (not .Available) .ResolutionError}}disabled{{end}}>Activate</button>
+            </form>{{end}}
+          </li>
+          {{end}}
+        </ul>
+        {{else}}<div class="empty-state"><span class="empty-glyph" aria-hidden="true">&#9636;</span><h3>No projects discovered</h3><p>Save a root and request a scan to list projects.</p></div>{{end}}
+      </div>
     </section>
     <footer class="dashboard-footer"><span><span class="connection-dot"></span> Application online</span><a href="/healthz">Health</a></footer>
   </main>

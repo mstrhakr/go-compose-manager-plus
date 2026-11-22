@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+import { mkdtemp, mkdir, writeFile, unlink, rmdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 test('unauthenticated home opens the login view without horizontal overflow', async ({ page }) => {
   await page.goto('/');
@@ -23,6 +26,11 @@ test('keyboard can reach username, password, and sign in controls', async ({ pag
 
 test('first login forces password setup before protected dashboard and works on mobile', async ({ browser, baseURL }, testInfo) => {
   test.skip(testInfo.project.name !== 'chromium', 'Single bootstrap account is exercised once to avoid parallel setup races.');
+  const root = await mkdtemp(join(tmpdir(), 'compose-manager-discovery-'));
+  const project = join(root, 'sample');
+  const compose = join(project, 'compose.yaml');
+  await mkdir(project);
+  await writeFile(compose, 'services:\n  web:\n    image: example\n');
   const context = await browser.newContext({ javaScriptEnabled: false, baseURL, viewport: { width: 1440, height: 900 } });
   try {
     const page = await context.newPage();
@@ -48,6 +56,13 @@ test('first login forces password setup before protected dashboard and works on 
     await expect(page.getByRole('heading', { name: 'System status' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Compose projects' })).toBeVisible();
     await expect(page.getByText('Docker integration pending')).toBeVisible();
+    await page.getByLabel('Discovery root (application-visible path)').fill(root);
+    await page.getByRole('button', { name: 'Save root' }).click();
+    await page.getByRole('button', { name: 'Scan for projects' }).click();
+    await expect(page.getByText('Available · Inactive')).toBeVisible();
+    await page.getByRole('button', { name: 'Activate' }).click();
+    await expect(page.getByText('Available · Active')).toBeVisible();
+    await expect(page.getByRole('status')).toContainText('No Compose operation was performed');
     await page.screenshot({ path: 'test-results/auth-dashboard-desktop.png', fullPage: true });
 
     const mobile = await browser.newContext({
@@ -62,6 +77,8 @@ test('first login forces password setup before protected dashboard and works on 
       const mobilePage = await mobile.newPage();
       await mobilePage.goto('/');
       await expect(mobilePage.getByRole('heading', { name: 'System status' })).toBeVisible();
+      await expect(mobilePage.getByText('Available · Active')).toBeVisible();
+      await expect(mobilePage.getByLabel('Discovery root (application-visible path)')).toBeVisible();
       expect(await mobilePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await mobilePage.screenshot({ path: 'test-results/auth-dashboard-mobile.png', fullPage: true });
     } finally {
@@ -69,5 +86,8 @@ test('first login forces password setup before protected dashboard and works on 
     }
   } finally {
     await context.close();
+    await unlink(compose);
+    await rmdir(project);
+    await rmdir(root);
   }
 });
