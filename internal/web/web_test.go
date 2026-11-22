@@ -177,6 +177,12 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	if !strings.Contains(response.Body.String(), "Available") || !strings.Contains(response.Body.String(), "Active") {
 		t.Fatalf("restored project not active: %s", response.Body.String())
 	}
+	laterToken := tokenFromBody(t, response.Body.String())
+	perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {t.TempDir()}}, cookies, laterToken)
+	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	if !strings.Contains(response.Body.String(), "Outside the current discovery root") || !strings.Contains(response.Body.String(), `disabled>Activate</button>`) {
+		t.Fatalf("previous-root activation should be disabled: %s", response.Body.String())
+	}
 }
 
 func TestOversizedAuthenticationFormsAreRejected(t *testing.T) {

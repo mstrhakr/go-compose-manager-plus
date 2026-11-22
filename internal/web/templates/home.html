@@ -84,12 +84,13 @@
           <li class="project-row">
             <div class="project-details"><strong>{{.Path}}</strong>
               <p>{{if not .Available}}Unavailable{{else if .ResolutionError}}Inputs need attention{{else}}Available{{end}} &middot; {{if .Active}}Active{{else}}Inactive{{end}}</p>
+              {{if ne .Root $.Root}}<p>Outside the current discovery root; save its root to activate.</p>{{end}}
               {{if .ResolutionError}}<p class="project-error">{{.ResolutionError}}</p>{{end}}
             </div>
             {{if not .Active}}<form action="/discovery/activate" method="post">
               <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
               <input type="hidden" name="path" value="{{.Path}}">
-              <button class="quiet-button" type="submit" {{if or (not .Available) .ResolutionError}}disabled{{end}}>Activate</button>
+              <button class="quiet-button" type="submit" {{if or (not .Available) .ResolutionError (ne .Root $.Root)}}disabled{{end}}>Activate</button>
             </form>{{end}}
           </li>
           {{end}}
