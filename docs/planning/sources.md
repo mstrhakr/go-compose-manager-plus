@@ -20,6 +20,17 @@ bootstrap publishes their branches or modifies their worktrees.
 
 ## Standalone Owner Refinement
 
+2026-11-22: the owner selected opt-in per-container metrics collection and
+history, tstorage for metrics with SQLite retained for other application state,
+and a low-power-friendly settings approach to be refined. Docker socket
+configuration alone does not opt in. The owner also requested real overview
+charts, a summary-focused dashboard, and a reusable column customizer. See
+[LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
+sampling, retention tiers, limits, and tstorage fitness remain unverified.
+The owner subsequently requested a Settings page with collection scope selectable
+between all running containers and containers associated with activated stacks,
+because collection affects disk use; the default and edge cases remain open.
+
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose
 project name, even for copies resolving to the same name. This is runtime
