@@ -170,9 +170,9 @@ only, and does not require the Docker socket.
 If scanning fails, confirm that the bind mount exists in the running container
 and that the configured user can read and traverse the host directory. Scan
 failures are logged with a stage and a reason such as `not_found` or
-`permission_denied`; they do not include paths or file contents. A missing entry
-can be the root or a project entry that disappeared during the scan. A failed
-scan leaves the previous listing unchanged.
+`permission_denied`; they do not include paths or file contents. A
+`scan_filesystem` / `not_found` failure means the discovery root could not be
+found. A failed scan leaves the previous listing unchanged.
 
 Newly discovered projects start inactive; activation changes manager permission
 only and does not start, stop or alter them. Missing entries remain saved, and a
