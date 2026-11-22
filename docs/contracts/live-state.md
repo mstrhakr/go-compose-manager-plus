@@ -111,7 +111,11 @@ Settings. Low and Medium select containers associated with activated stacks;
 High selects all running containers. For the initial single-resolution history,
 Low targets one sample every 15 seconds, Medium every 5 seconds and High every
 1 second, with a one-hour history window for each. These are targets, not a
-guarantee that Docker supplies samples on schedule. Changing an individual
+guarantee that Docker supplies samples on schedule. In this initial
+single-resolution version, samples older than one hour may expire without being
+downsampled; the UI must clearly describe the one-hour history limit. This
+exception does not approve discarding raw data before scheduled downsampling
+once longer-term tiers are implemented. Changing an individual
 preset option switches the profile to Custom. Automatic tuning, preset defaults,
 confirmation and data-retention effects when changing settings remain open.
 
@@ -120,8 +124,9 @@ the application-state store. Netdata-style historical retention and a
 UniFi-inspired display are design goals, not approval of a longer-term
 retention duration, aggregation, disk limit or visual implementation. The owner wants
 the storage budget managed toward approximately 90% usage, reserving roughly
-10% as working headroom. Downsampling should happen before eligible raw data is
-removed; configurations known to prevent that should be rejected. This is a
+10% as working headroom. For later tiered retention, downsampling should happen
+before eligible raw data is removed; configurations known to prevent that
+should be rejected. This is a
 target rather than a guarantee against storage exhaustion. Exact accounting,
 compatibility validation and exceptional exhaustion behavior remain open.
 A reusable column

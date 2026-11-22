@@ -42,6 +42,9 @@ The owner selected an initial single-resolution one-hour history for each
 preset: Low targets 15-second samples, Medium 5-second samples and High
 1-second samples. Longer-term tiering and retention remain separate decisions;
 the selected intervals are targets, not measured freshness guarantees.
+The owner approved expiry without downsampling after one hour for this initial
+single-resolution version, provided the UI explains its history limit. This
+does not supersede the later tiered-retention downsampling direction.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose
