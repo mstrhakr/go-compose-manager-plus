@@ -278,3 +278,14 @@ failed-scan retention policy under PROJ-006, PROJ-010 and PROJ-011.
 The reported user's container and host filesystem were not accessed; the
 previously shared Compose configuration had no projects bind mount. The exact
 cause of that deployment's failure remains unverified until tested there.
+
+## Compact Development Checks
+
+Environment: Linux development container. `PLAYWRIGHT_PORT=18193 make check
+QUIET=1` passed with per-phase progress; `PLAYWRIGHT_PORT=18194 make check`
+passed with default output. Node tests verify the quiet runner prints complete
+failure output and retains its exit status, and that GitHub watch targets
+forward selectors and report failures. `make -s pr-checks PR=9` successfully
+read completed PR checks. `make check-workflows`, `make check-security`, and
+the Hugo 0.169.0 Go-runner docs build passed. An actual failing GitHub run and
+native non-Linux Make environments were not exercised.
