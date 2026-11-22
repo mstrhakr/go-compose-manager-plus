@@ -1,0 +1,13 @@
+{{define "fixture"}}<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Component test fixture</title><link rel="stylesheet" href="/static/foundation.css"><script src="/static/components.js" defer></script></head>
+<body><main class="console console-main fixture">
+  <h1>Component test fixture</h1><p>Sample data for automated tests only.</p>
+  <div class="health-grid">{{template "metric-panel" .Metric}}{{template "chart-panel" .Empty}}</div>
+  {{template "chart-panel" .Chart}}
+  {{template "chart-panel" .Bad}}
+  <div class="health-grid">{{template "list-panel" .List}}{{template "list-panel" .Other}}</div>
+  <fieldset class="filter-group"><legend>Groups</legend><div class="filter-options">
+    <label><input type="checkbox"> Active</label><label><input type="checkbox"> Inactive</label>
+  </div></fieldset>
+</main></body></html>{{end}}

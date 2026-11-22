@@ -227,3 +227,29 @@ only project workflows in this slice.
 
 Runtime telemetry, Docker integration and management actions remain unimplemented.
 The supplied reference was inspected as text, not executed or included in the app.
+
+## Reusable UI Components
+
+Environment: Linux development container. Scope: server-rendered metric, chart
+and selectable list panels, compact filter styling, and a test-only component
+fixture. The production dashboard continues to show unavailable runtime data;
+the fixture is not an application route and its data is synthetic.
+
+- `PLAYWRIGHT_PORT=18187 make check`: passed Go vet, race tests and build,
+  14 Node tests, 7 HTTP tests, 37 browser tests with 3 intentional skips,
+  embedded-asset and contract-structure checks.
+- Browser coverage exercises chart ranges, missing samples, accessible data,
+  empty and invalid states, independent multi-selection, disabled entries,
+  keyboard operation, htmx reinitialization, no-JavaScript behavior, themes
+  and responsive overflow in Chromium, Firefox, WebKit and mobile Chromium.
+  Desktop and mobile dark/light fixture screenshots were inspected locally.
+- `PLAYWRIGHT_PORT=18188 npx playwright test tests/e2e/components.spec.js
+  --project=chromium --project=mobile-chromium`: passed 10 tests after adding
+  touch-selection and chart-data removal checks.
+- `make check-security`: npm audit and govulncheck reported no vulnerabilities.
+- Hugo 0.169.0 documentation build through its Go runner passed. A standalone
+  Hugo executable is not installed.
+
+These are component-level results, not evidence of live Docker metrics,
+filtering, bulk operations, real-device testing or production accessibility
+certification.

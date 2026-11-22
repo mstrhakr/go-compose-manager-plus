@@ -27,6 +27,8 @@ type pageData struct {
 	Root      string
 	Projects  []discovery.Project
 	Notice    string
+	Activity  chartPanel
+	Metrics   []metricPanel
 }
 
 func Handler(manager *auth.Manager, store *discovery.Store, publicURL *url.URL, trustedProxies []netip.Prefix) http.Handler {

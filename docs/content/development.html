@@ -31,6 +31,41 @@ Node unit tests use the built-in runner; HTTP and browser tests use Playwright.<
 <p>Go tests use the standard testing and httptest packages. Add table-driven
 configuration tests and handler tests near the implementation. For an individual
 package, run <code>go test -race ./internal/web</code>.</p>
+<h2>UI components</h2>
+<p>Reusable server-rendered metric, chart and list panels are defined in
+<code>internal/web/templates/partials/components.html</code>, with their Go
+view types in <code>internal/web/components.go</code> and shared styles in
+<code>internal/web/static/foundation.css</code>. Use unique, stable heading IDs
+for each panel. Prefer the existing panels over copying page-specific markup.
+The dashboard uses unavailable states until real data is available; sample data
+exists only in <code>tests/ui-fixture/</code>, not an application route.</p>
+<p>The chart's optional <code>Series</code> is a JSON string supplied by the
+server, automatically escaped by the template. Serialize it with
+<code>encoding/json</code> rather than concatenating input. Its object has finite numeric
+<code>min</code> and <code>max</code> values, optional text <code>xLabel</code>
+and <code>yLabel</code>, and a nonempty <code>series</code> array. Each series
+has a label, a color from <code>blue</code>, <code>amber</code>,
+<code>purple</code>, <code>green</code>, or <code>red</code>, and points with
+strictly increasing numeric <code>x</code> and numeric or null <code>y</code>.
+Values must lie within the shared range; null separates lines. Callers must
+choose consistent units, meaningful labels, and an appropriate range. The
+component does not fetch, aggregate, timestamp, or interpret data; chart
+freshness and authority remain the caller's responsibility. The chart includes
+a keyboard-accessible data table, an empty state and an explicit invalid-data
+error. With JavaScript disabled it reports that chart data cannot be displayed.</p>
+<p>List panels render semantic tables and optional native checkboxes; enable
+<code>Selectable</code> only when a consumer needs selection. Local enhancement
+provides a scoped select-all checkbox, count and a bubbling
+<code>selectionchange</code> event whose <code>detail.selected</code> contains
+the selected values. Disabled rows are excluded. Selection is ephemeral and
+does not authorize or perform any operation. After htmx swaps, controls are
+reinitialized from the new DOM; consumers own persistence, data refresh and
+action policy. Filter-group styles supply a compact fieldset, not filtering
+behavior. With no JavaScript the individual native checkboxes remain usable.</p>
+<p>Run <code>npx playwright test tests/e2e/components.spec.js --project=chromium</code>
+to render the actual templates in a test-only page, with populated, empty,
+invalid and selectable examples. Browser screenshots are local test artifacts;
+the fixture is not served by the application.</p>
 <h2>Dependencies and updates</h2>
 <p>The auth slice uses third-party Go modules for SQLite, password hashing,
 server-side sessions and CSRF protection. Use <code>go get module@version</code>

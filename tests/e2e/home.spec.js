@@ -120,7 +120,7 @@ test('first login forces password setup before protected dashboard and works on 
           header: bounds('.console-header').height,
           rail: bounds('.console-rail').width,
           sidebar: bounds('.host-sidebar').width,
-          chart: bounds('.telemetry-empty').height,
+          chart: bounds('.chart').height,
           sidebarRight: bounds('.host-sidebar').right,
           mainLeft: bounds('.console-main').left,
         };

@@ -103,11 +103,10 @@
         <div><h1>System status</h1><p>Local instance / Overview</p></div>
         <span class="toolbar-pill">Cluster metrics <span>Unavailable</span></span>
       </div>
-      <section class="telemetry-section" aria-labelledby="activity-title">
-        <div class="section-heading"><h2 id="activity-title">Container activity</h2><div class="legend"><span><i class="legend-cpu"></i> CPU usage</span><span><i class="legend-memory"></i> Memory</span><span><i class="legend-restarts"></i> Restarts</span></div></div>
-        <div class="telemetry-empty"><div><strong>Runtime metrics unavailable</strong><p>Docker is not connected. No live activity is being collected.</p></div></div>
+      <div class="telemetry-section">
+        {{template "chart-panel" .Activity}}
         <div class="timeline"><span>Activity history unavailable</span><span>Now</span></div>
-      </section>
+      </div>
       <div class="resource-grid">
         <section class="resource-section"><div class="section-heading"><h2>Discovered stacks</h2><span>{{len .Projects}} discovered</span></div>
           {{if .Projects}}<div class="stack-grid">{{range .Projects}}<a class="stack-tile" href="#workspace-title" title="{{.Path}}"><span class="resource-icon" aria-hidden="true">&#9636;</span><span>{{.Path}}</span></a>{{end}}</div>
@@ -121,8 +120,7 @@
         <div class="resource-placeholder resource-wide"><span class="resource-icon">&#9635;</span><span>Image inventory is not connected</span></div>
       </section>
       <div class="health-grid">
-        <section><div class="section-heading"><h2>Container restart &amp; OOM rate</h2><span>Unavailable</span></div><div class="empty-bar"></div><p>No runtime data</p></section>
-        <section><div class="section-heading"><h2>Stack health &amp; readiness</h2><span>Unavailable</span></div><div class="empty-bar"></div><p>No runtime data</p></section>
+        {{range .Metrics}}{{template "metric-panel" .}}{{end}}
       </div>
       <section class="workspace-panel" aria-labelledby="workspace-title">
         <div class="panel-heading"><div><h2 id="workspace-title">Compose projects</h2><p>Availability reflects the last successful scan for each root, not live status. Docker actions are not connected.</p></div><span class="panel-count">{{len .Projects}} PROJECTS</span></div>
