@@ -186,14 +186,30 @@ authorize Compose mutations or imply that unavailable metrics are zero.
 sampling targets, first collection scope and the above product and storage
 directions on 2026-11-22. Other metrics, collection edge cases, remaining preset behavior,
 longer-term retention/downsampling, resource budgets,
-recovery and presentation details remain unresolved. The storage dependency's
-fitness and operational characteristics still need evaluation.
+recovery and other presentation details remain unresolved outside the bounded
+Settings/chart refinement below. The storage dependency's fitness and
+operational characteristics still need evaluation.
+
+On 2026-11-23 the owner approved a bounded Settings and dashboard presentation
+refinement: settings-category navigation is distinct from the main application
+navigation; Low, Medium and High hide Custom-only scope and interval controls,
+while Custom reveals them; and the storage target remains available with B, KB,
+MB and GB input units. These units use decimal multiples (1 KB = 1,000 bytes)
+and persist as an exact whole-byte limit. For charts with many series, retain
+all series and keep the chart layout bounded, with individually switchable
+series. These presentation and input-format decisions do not change collection,
+retention or storage-pressure behavior.
 
 **Enforcement:** The reusable column customizer is implemented for the Projects
 and Containers inventory views; preferences are browser-local and the
 identifying column remains visible. An authenticated Settings page persists
 Low, Medium, High and Custom preferences, an explicit storage target and a
-default-off collection opt-in. The application collector opens the separate
+default-off collection opt-in. Settings presents category navigation separately
+from the content panel; scope and interval controls are visible only for Custom,
+while the editable storage target accepts exact decimal B/KB/MB/GB values.
+The dashboard's series selector is collapsed and bounded, preserves access to
+all lines, and allows individual lines to be hidden without changing chart
+geometry. The application collector opens the separate
 SQLite store and contacts Docker only while opted in. It samples selected
 containers read-only, persists discrete state and metric records, and captures
 observed lifecycle/health events. Activated scope uses resolved Compose project
@@ -249,7 +265,18 @@ does not implement these behaviors.
 
 ## Acceptance Cases
 
-Proposed cases requiring review and eventual execution-based checks:
+### Approved Presentation Cases
+
+- Settings navigation is separate from the selected category's content and
+  remains usable on desktop, narrow screens, keyboard and touch.
+- Preset profiles hide Custom-only scope and interval controls; selecting
+  Custom reveals them. Editing an individual setting selects Custom.
+- Storage targets accept B, KB, MB and GB, convert using decimal units to exact
+  whole bytes, and reject invalid or overflowing amounts without saving.
+- Large chart legends stay bounded; every series remains discoverable and can
+  be toggled individually without changing the plot's layout.
+
+### Proposed Cases Requiring Review And Eventual Execution-Based Checks
 
 - External lifecycle changes reconcile dashboard status independently of metrics.
 - Missing metrics do not mean stopped containers or completed operations.
@@ -259,7 +286,8 @@ Proposed cases requiring review and eventual execution-based checks:
 - Multiple tabs do not cause duplicate complete collector sets; connection
   recovery, hidden views and subscription cleanup respect measured resource bounds.
 - Desktop/mobile and keyboard/touch retain readable status, usable actions and
-  recoverable connection feedback. No exact widget/layout is approved yet.
+  recoverable connection feedback. No exact widget/layout is approved for the
+  remaining live-state actions yet.
 
 ## Decisions
 
@@ -283,6 +311,15 @@ Proposed cases requiring review and eventual execution-based checks:
 
 ## Verification
 
-Bounded source-plan/producer inspection and Engine API documentation research
-only. No live stream, resource-overhead, browser recovery or tracing behavior was
-implemented or tested. See the [source register](../planning/sources.md).
+The approved Settings/chart presentation refinement was exercised on Linux on
+2026-11-23. `make check QUIET=1`, `make docs && make check-docs`, and
+`make check-security` passed; browser checks cover desktop and mobile layouts,
+40-series chart selection, profile transitions, unit conversion display,
+keyboard/touch interaction and the no-JavaScript form fallback. See the
+[verification record](../verification.md#metrics-settings-and-large-chart-usability)
+for exact scope and remaining limits.
+
+These checks do not establish the whole LIVE-003 contract. Live Docker
+collection, physical disk-full recovery, platform-specific behavior, measured
+resource costs, timeline behavior, event markers and historical logs remain
+unverified or unimplemented. See the [source register](../planning/sources.md).

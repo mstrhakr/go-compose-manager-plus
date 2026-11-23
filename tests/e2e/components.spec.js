@@ -14,6 +14,8 @@ test('renders chart series, gaps, data table and explicit empty/error states', a
   const chart = page.locator('.chart-panel').filter({ has: page.getByRole('heading', { name: 'Activity', exact: true }) });
   await expect(chart.locator('polyline')).toHaveCount(2);
   await expect(chart.locator('circle')).toHaveCount(1);
+  await expect(chart.locator('.chart-series-details summary')).toHaveText('2 of 2 series');
+  await chart.locator('.chart-series-details summary').click();
   await expect(chart.locator('.chart-key').filter({ hasText: 'CPU' })).toBeVisible();
   await chart.getByText('View chart data').click();
   await expect(chart.getByRole('cell', { name: '100', exact: true })).toBeVisible();
@@ -22,6 +24,42 @@ test('renders chart series, gaps, data table and explicit empty/error states', a
   await expect(page.getByRole('alert')).toHaveText('Chart data could not be displayed.');
   await expect(page.getByText('42%')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
+test('keeps large chart legends bounded and lets viewers isolate series', async ({ page }, testInfo) => {
+  const chart = page.locator('.chart-panel').filter({ has: page.getByRole('heading', { name: 'Activity', exact: true }) });
+  await chart.locator('[data-chart]').evaluate(element => {
+    element.dataset.chartSeries = JSON.stringify({
+      min: 0, max: 100,
+      series: Array.from({ length: 40 }, (_, index) => ({
+        label: `Container ${index}`,
+        color: ['blue', 'amber', 'purple', 'green', 'red'][index % 5],
+        points: [{ x: 1, y: index }, { x: 2, y: index + 1 }],
+      })),
+    });
+    element.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
+  });
+  const details = chart.locator('.chart-series-details');
+  await expect(details.locator('summary')).toHaveText('40 of 40 series');
+  const chartHeight = await chart.locator('[data-chart]').evaluate(element => element.getBoundingClientRect().height);
+  await details.locator('summary').click();
+  const list = chart.locator('.chart-series-list');
+  await expect(list.getByRole('button', { name: 'Container 0' })).toBeVisible();
+  expect(await list.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true);
+  expect(await chart.locator('[data-chart]').evaluate(element => element.getBoundingClientRect().height)).toBe(chartHeight);
+  await list.getByRole('button', { name: 'Container 0' }).click();
+  await expect(details.locator('summary')).toHaveText('39 of 40 series');
+  await expect(chart.locator('polyline[data-series-index="0"]')).toHaveCSS('display', 'none');
+  await details.locator('summary').click();
+  if (testInfo.project.name === 'mobile-chromium') {
+    await chart.locator('svg').tap({ position: { x: 300, y: 40 } });
+  } else {
+    await chart.locator('svg').hover({ position: { x: 300, y: 40 } });
+  }
+  await expect(chart.locator('.chart-tooltip')).not.toContainText('Container 0:');
+  await expect(chart.locator('.chart-tooltip')).toContainText('Container 1:');
+  await page.getByRole('heading', { name: 'Component test fixture' }).click();
+  await expect(chart.locator('.chart-tooltip')).toBeHidden();
 });
 
 test('charts expose hover values and synchronize pointer and keyboard time selection', async ({ page }, testInfo) => {

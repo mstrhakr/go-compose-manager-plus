@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -66,11 +67,12 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 		t.Fatalf("password change = %d", response.Code)
 	}
 	response = perform(handler, http.MethodGet, "/settings", nil, cookies, "")
-	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Disabled; no background metrics collection") {
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Disabled; no background metrics collection") ||
+		!strings.Contains(response.Body.String(), `aria-label="Settings categories"`) {
 		t.Fatalf("settings page = %d %q", response.Code, response.Body.String())
 	}
 	token = tokenFromBody(t, response.Body.String())
-	values := url.Values{"profile": {"high"}, "storage_limit": {"10485760"}, "revision": {"0"}}
+	values := url.Values{"profile": {"high"}, "scope": {"activated"}, "interval": {"15s"}, "storage_limit": {"10.48576"}, "storage_unit": {"MB"}, "revision": {"0"}}
 	response = perform(handler, http.MethodPost, "/settings/metrics", values, cookies, "bad-token")
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("CSRF failure = %d", response.Code)
@@ -80,10 +82,10 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 		t.Fatalf("save = %d %q", response.Code, response.Body.String())
 	}
 	saved, err := store.Load(ctx)
-	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileHigh || saved.Scope != metrics.ScopeAll || saved.Interval != time.Second || saved.StorageLimit != 10485760 || saved.Revision != 1 {
+	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileCustom || saved.Scope != metrics.ScopeActivated || saved.Interval != 15*time.Second || saved.StorageLimit != 10485760 || saved.Revision != 1 {
 		t.Fatalf("saved = %#v, %v", saved, err)
 	}
-	enable := url.Values{"profile": {"high"}, "storage_limit": {"10485760"}, "revision": {"1"}, "enabled": {"true"}}
+	enable := url.Values{"profile": {"custom"}, "scope": {"activated"}, "interval": {"15s"}, "storage_limit": {"10.48576"}, "storage_unit": {"MB"}, "revision": {"1"}, "enabled": {"true"}}
 	response = perform(handler, http.MethodPost, "/settings/metrics", enable, cookies, token)
 	if !strings.Contains(response.Body.String(), "Configure a Docker socket") {
 		t.Fatalf("enable without Docker = %d %q", response.Code, response.Body.String())
@@ -95,12 +97,12 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 	if !strings.Contains(response.Body.String(), "Settings changed in another session") {
 		t.Fatalf("stale save = %d %q", response.Code, response.Body.String())
 	}
-	invalid := url.Values{"profile": {"custom"}, "scope": {"all"}, "interval": {"-3s"}, "storage_limit": {"1"}, "revision": {"1"}}
+	invalid := url.Values{"profile": {"custom"}, "scope": {"all"}, "interval": {"-3s"}, "storage_limit": {"1"}, "storage_unit": {"B"}, "revision": {"1"}}
 	response = perform(handler, http.MethodPost, "/settings/metrics", invalid, cookies, token)
 	if !strings.Contains(response.Body.String(), "positive duration") {
 		t.Fatalf("invalid interval = %d %q", response.Code, response.Body.String())
 	}
-	custom := url.Values{"profile": {"custom"}, "scope": {"activated"}, "interval": {"250ms"}, "storage_limit": {"20971520"}, "revision": {"1"}}
+	custom := url.Values{"profile": {"custom"}, "scope": {"activated"}, "interval": {"250ms"}, "storage_limit": {"20"}, "storage_unit": {"MB"}, "revision": {"1"}}
 	response = perform(handler, http.MethodPost, "/settings/metrics", custom, cookies, token)
 	if response.Code != http.StatusSeeOther {
 		t.Fatalf("custom save = %d %q", response.Code, response.Body.String())
@@ -110,8 +112,27 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 		t.Fatalf("custom settings = %#v, %v", saved, err)
 	}
 	response = perform(handler, http.MethodGet, "/settings", nil, cookies, "")
-	if !strings.Contains(response.Body.String(), `value="250ms"`) || !strings.Contains(response.Body.String(), `value="2"`) {
+	if !strings.Contains(response.Body.String(), `value="250ms"`) || !strings.Contains(response.Body.String(), `value="20"`) ||
+		!strings.Contains(response.Body.String(), `value="MB" selected`) || !strings.Contains(response.Body.String(), `value="2"`) {
 		t.Fatalf("settings reload = %d %q", response.Code, response.Body.String())
+	}
+	legacy := url.Values{"profile": {"custom"}, "scope": {"activated"}, "interval": {"250ms"}, "storage_limit": {"500000"}, "revision": {"2"}}
+	response = perform(handler, http.MethodPost, "/settings/metrics", legacy, cookies, token)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("legacy byte-based save = %d %q", response.Code, response.Body.String())
+	}
+	saved, err = store.Load(ctx)
+	if err != nil || saved.Profile != metrics.ProfileCustom || saved.StorageLimit != 500000 || saved.Revision != 3 {
+		t.Fatalf("legacy byte-based settings = %#v, %v", saved, err)
+	}
+	preset := url.Values{"profile": {"high"}, "storage_limit": {"500000"}, "revision": {"3"}}
+	response = perform(handler, http.MethodPost, "/settings/metrics", preset, cookies, token)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("unchanged storage preset save = %d %q", response.Code, response.Body.String())
+	}
+	saved, err = store.Load(ctx)
+	if err != nil || saved.Profile != metrics.ProfileHigh || saved.Scope != metrics.ScopeAll || saved.Interval != time.Second || saved.StorageLimit != 500000 || saved.Revision != 4 {
+		t.Fatalf("preset settings = %#v, %v", saved, err)
 	}
 	if err := db.SQL.Close(); err != nil {
 		t.Fatal(err)
@@ -122,8 +143,50 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 	}
 	defer func() { _ = reopened.SQL.Close() }()
 	saved, err = metrics.NewSettingsStore(reopened.SQL).Load(ctx)
-	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileCustom || saved.Interval != 250*time.Millisecond || saved.Revision != 2 {
+	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileHigh || saved.Scope != metrics.ScopeAll || saved.StorageLimit != 500000 || saved.Interval != time.Second || saved.Revision != 4 {
 		t.Fatalf("reopened settings = %#v, %v", saved, err)
+	}
+}
+
+func TestMetricsStorageLimitUnits(t *testing.T) {
+	tests := []struct {
+		value string
+		unit  string
+		want  int64
+		valid bool
+	}{
+		{"500000", "B", 500000, true},
+		{"500", "KB", 500000, true},
+		{"10.48576", "MB", 10485760, true},
+		{"1.5", "GB", 1500000000, true},
+		{"0.001", "KB", 1, true},
+		{"0.0001", "KB", 0, false},
+		{"1/2", "MB", 0, false},
+		{"0", "MB", 0, false},
+		{"-1", "GB", 0, false},
+		{"1", "TB", 0, false},
+		{"9223372037", "GB", 0, false},
+	}
+	for _, test := range tests {
+		t.Run(test.value+" "+test.unit, func(t *testing.T) {
+			got, err := parseStorageLimit(test.value, test.unit)
+			if test.valid && (err != nil || got != test.want) {
+				t.Fatalf("parseStorageLimit(%q, %q) = %d, %v; want %d", test.value, test.unit, got, err, test.want)
+			}
+			if !test.valid && err == nil {
+				t.Fatalf("parseStorageLimit(%q, %q) = %d, nil; want error", test.value, test.unit, got)
+			}
+		})
+	}
+}
+
+func TestFormatStorageLimitRoundTrips(t *testing.T) {
+	for _, want := range []int64{1, 999, 500000, 10485760, 50000000, 1234567890, math.MaxInt64} {
+		value, unit := formatStorageLimit(want)
+		got, err := parseStorageLimit(value, unit)
+		if err != nil || got != want {
+			t.Fatalf("formatStorageLimit(%d) = %q %s; round trip = %d, %v", want, value, unit, got, err)
+		}
 	}
 }
 

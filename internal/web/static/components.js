@@ -3,6 +3,7 @@
   const colors = new Set(['blue', 'amber', 'purple', 'green', 'red']);
   const columnStates = new WeakMap();
   const chartSelections = new WeakMap();
+  const chartTooltips = new WeakMap();
 
   function formatChartTime(value) {
     if (Math.abs(value) < 100000000000) return String(value);
@@ -19,6 +20,7 @@
     if (!message || !errorMessage || !plot || !data) return;
 
     if (!raw) {
+      chartTooltips.delete(chart);
       plot.replaceChildren();
       data.replaceChildren();
       plot.hidden = true;
@@ -60,6 +62,7 @@
         }
       }
       if (!samples.length) {
+        chartTooltips.delete(chart);
         plot.replaceChildren();
         data.replaceChildren();
         plot.hidden = true;
@@ -90,7 +93,30 @@
       interactionSurface.setAttribute('aria-hidden', 'true');
       svg.append(interactionSurface);
       const legend = document.createElement('div');
-      legend.className = 'chart-legend';
+      legend.className = 'chart-series-list';
+      legend.setAttribute('role', 'group');
+      legend.setAttribute('aria-label', 'Toggle chart series');
+      const seriesDetails = document.createElement('details');
+      seriesDetails.className = 'chart-series-details';
+      const seriesSummary = document.createElement('summary');
+      const visibleSeries = new Set(input.series.map((_, index) => index));
+      const seriesElements = new Map();
+      seriesSummary.textContent = `${visibleSeries.size} of ${input.series.length} series`;
+      seriesDetails.append(seriesSummary, legend);
+      seriesDetails.addEventListener('click', event => {
+        if (!(event.target instanceof Element)) return;
+        const button = event.target.closest('button[data-series-index]');
+        if (!button || !legend.contains(button)) return;
+        const index = Number(button.dataset.seriesIndex);
+        const visible = visibleSeries.has(index);
+        if (visible) visibleSeries.delete(index);
+        else visibleSeries.add(index);
+        button.setAttribute('aria-pressed', String(!visible));
+        for (const element of seriesElements.get(index) || []) {
+          element.style.display = visible ? 'none' : '';
+        }
+        seriesSummary.textContent = `${visibleSeries.size} of ${input.series.length} series`;
+      });
       const axis = document.createElement('div');
       axis.className = 'chart-axis';
       const yAxis = document.createElement('span');
@@ -112,9 +138,14 @@
         head.append(th);
       }
       const body = table.createTBody();
-      for (const series of input.series) {
-        const label = document.createElement('span');
+      for (let seriesIndex = 0; seriesIndex < input.series.length; seriesIndex++) {
+        const series = input.series[seriesIndex];
+        const label = document.createElement('button');
+        label.type = 'button';
         label.className = `chart-key chart-${series.color}`;
+        label.dataset.seriesIndex = String(seriesIndex);
+        label.setAttribute('aria-pressed', 'true');
+        label.title = series.label;
         label.textContent = series.label;
         legend.append(label);
         let segment = [];
@@ -122,6 +153,7 @@
           if (!segment.length) return;
           const element = document.createElementNS(svgNS, segment.length === 1 ? 'circle' : 'polyline');
           element.setAttribute('class', `chart-line chart-${series.color}`);
+          element.setAttribute('data-series-index', String(seriesIndex));
           if (segment.length === 1) {
             element.setAttribute('cx', segment[0][0]);
             element.setAttribute('cy', segment[0][1]);
@@ -130,6 +162,9 @@
             element.setAttribute('points', segment.map(point => point.join(',')).join(' '));
           }
           svg.append(element);
+          const elements = seriesElements.get(seriesIndex) || [];
+          elements.push(element);
+          seriesElements.set(seriesIndex, elements);
           segment = [];
         };
         for (const point of series.points) {
@@ -157,12 +192,14 @@
       tooltip.className = 'chart-tooltip';
       tooltip.setAttribute('role', 'status');
       tooltip.hidden = true;
+      chartTooltips.set(chart, () => { tooltip.hidden = true; });
       const tableScroll = document.createElement('div');
       tableScroll.className = 'chart-table-scroll';
       tableScroll.append(table);
       details.append(tableScroll);
       plot.replaceChildren(svg, tooltip);
-      data.replaceChildren(axis, legend, details);
+      details.className = 'chart-data-details';
+      data.replaceChildren(axis, seriesDetails, details);
       plot.hidden = points.length === 0;
       data.hidden = false;
       message.hidden = points.length > 0;
@@ -196,13 +233,14 @@
         const when = document.createElement('strong');
         when.textContent = formatChartTime(time);
         const entries = [when];
-        const nearest = input.series.map(series => {
+        const nearest = input.series.map((series, index) => {
+          if (!visibleSeries.has(index)) return null;
           let selected = series.points[0];
           for (const point of series.points) {
             if (Math.abs(point.x - time) < Math.abs(selected.x - time)) selected = point;
           }
           return { series, point: selected };
-        });
+        }).filter(Boolean);
         for (const { series, point } of nearest.slice(0, 10)) {
           const entry = document.createElement('span');
           entry.className = `chart-tooltip-entry chart-${series.color}`;
@@ -227,11 +265,16 @@
         drawCursor(time);
         showTooltip(time, event);
       });
-      svg.addEventListener('pointerleave', () => {
+      svg.addEventListener('pointerleave', event => {
+        if (event.pointerType === 'touch') return;
         drawCursor(selectedTime);
         tooltip.hidden = true;
       });
-      svg.addEventListener('click', event => announce(timeAtPointer(event)));
+      svg.addEventListener('click', event => {
+        const time = timeAtPointer(event);
+        announce(time);
+        showTooltip(time, event);
+      });
       svg.addEventListener('keydown', event => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
         event.preventDefault();
@@ -256,6 +299,7 @@
         showTooltip(times[index]);
       });
     } catch (error) {
+      chartTooltips.delete(chart);
       plot.replaceChildren();
       data.replaceChildren();
       plot.hidden = true;
@@ -393,6 +437,12 @@
     if (!Number.isFinite(time)) return;
     for (const chart of document.querySelectorAll('[data-chart]')) {
       chartSelections.get(chart)?.(time);
+    }
+  });
+  document.addEventListener('pointerdown', event => {
+    if (!(event.target instanceof Node)) return;
+    for (const chart of document.querySelectorAll('[data-chart]')) {
+      if (!chart.querySelector('svg')?.contains(event.target)) chartTooltips.get(chart)?.();
     }
   });
   document.addEventListener('DOMContentLoaded', () => initialize(document));
