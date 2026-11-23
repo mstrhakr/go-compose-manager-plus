@@ -62,6 +62,10 @@ feature, including a storage limit adjustable in the wizard, and individual
 changes select Custom. Suggested limits should be informed by measurement;
 their values are not yet selected. The preset/custom settings UI should be
 reusable for other large features, without presuming their specific settings.
+For activated-stack metrics when multiple discovered folders resolve to the
+same Compose project name, the owner chose to collect the corresponding
+Docker project's containers if any matching folder is activated, while making
+the shared identity clear. The association does not establish ownership.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

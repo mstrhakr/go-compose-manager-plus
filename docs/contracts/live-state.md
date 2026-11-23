@@ -103,7 +103,12 @@ socket configuration alone must not enable background metrics collection. The
 owner wants a Settings page that lets the user choose whether to collect for
 all running containers or only containers associated with activated stacks.
 Collection scope is separate from view filters and has disk-use consequences;
-association ambiguity and scope-change behavior remain open.
+scope-change behavior remains open. For activated-stack collection, associate
+containers by resolved Compose project name and Docker project label, as in
+LIVE-002. If multiple discovered folders resolve to the same project name,
+collect that Docker project's containers when at least one matching folder is
+activated. Make the shared identity clear; this association is not evidence that
+an activated folder owns the containers.
 
 The owner wants an opt-in setup wizard with Low, Medium, High and Custom
 profiles, with the underlying collection and retention options available in
