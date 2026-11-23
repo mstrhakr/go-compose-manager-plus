@@ -133,7 +133,11 @@ confirmation and data-retention effects when changing settings remain open.
 
 The initial observability view defaults to the last hour, with a timeline whose
 selected time is reflected across the charts, inspired by the owner's reference
-view. Chart rendering may reduce displayed points independently of retained raw
+view. The owner also wants historical logs alongside relevant usage and other
+context at the selected time, so an incident can be investigated in one view.
+Log sources, retention, access, synchronization and unavailable states remain
+to be defined; this direction does not imply logs are collected or retained.
+Chart rendering may reduce displayed points independently of retained raw
 resolution. Longer ranges and custom timeframes are future advanced options;
 their retention, zoom resolution and display behavior remain to be designed.
 Use a reusable preset-selection and customization UI structure suitable for

@@ -52,6 +52,9 @@ lightweight. The initial observability view should default to the last hour and
 use a timeline synchronized with the charts; longer ranges and custom
 timeframes are future advanced options. Display aggregation is distinct from
 the retained sampling resolution.
+The owner also requested historical logs correlated with usage and relevant
+context in the same observability timeline for incident investigation. Log
+sources, retention, synchronization and access remain to be refined.
 For the initial single-resolution version, the owner chose early removal of
 the oldest metrics with a clear warning when the metrics store reaches its
 limit before normal expiry, rather than stopping collection as the first
