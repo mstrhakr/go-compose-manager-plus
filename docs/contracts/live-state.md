@@ -107,8 +107,12 @@ association ambiguity and scope-change behavior remain open.
 
 The owner wants an opt-in setup wizard with Low, Medium, High and Custom
 profiles, with the underlying collection and retention options available in
-Settings. These are performance-oriented modes, not a claim that every mode is
-lightweight. Low and Medium select containers associated with activated stacks;
+Settings. Each preset configures the whole metrics feature, including its
+storage limit; the setup wizard shows an adjustable limit, with suggested
+defaults informed by measurement. Individual changes select Custom. Preset
+values and sizing measurements are not yet established. These are
+performance-oriented modes, not a claim that every mode is lightweight.
+Low and Medium select containers associated with activated stacks;
 High selects all running containers. For the initial single-resolution history,
 Low targets one sample every 15 seconds, Medium every 5 seconds and High every
 1 second, with a one-hour history window for each. These are targets, not a
@@ -117,8 +121,7 @@ not yet measured. In this initial
 single-resolution version, samples older than one hour may expire without being
 downsampled; the UI must clearly describe the one-hour history limit. This
 exception does not approve discarding raw data before scheduled downsampling
-once longer-term tiers are implemented. Changing an individual
-preset option switches the profile to Custom. Automatic tuning, preset defaults,
+once longer-term tiers are implemented. Automatic tuning, preset defaults,
 confirmation and data-retention effects when changing settings remain open.
 
 The initial observability view defaults to the last hour, with a timeline whose
@@ -126,6 +129,9 @@ selected time is reflected across the charts, inspired by the owner's reference
 view. Chart rendering may reduce displayed points independently of retained raw
 resolution. Longer ranges and custom timeframes are future advanced options;
 their retention, zoom resolution and display behavior remain to be designed.
+Use a reusable preset-selection and customization UI structure suitable for
+other feature settings, rather than duplicating an observability-specific
+pattern. Future features' actual options and behavior require their own decisions.
 
 The selected storage direction is tstorage for metrics while SQLite remains
 the application-state store. Netdata-style historical retention and a

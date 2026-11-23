@@ -57,6 +57,11 @@ the oldest metrics with a clear warning when the metrics store reaches its
 limit before normal expiry, rather than stopping collection as the first
 response. How to account for and enforce the limit and what happens if space
 cannot be recovered remain open.
+The owner clarified that Low, Medium and High configure the entire metrics
+feature, including a storage limit adjustable in the wizard, and individual
+changes select Custom. Suggested limits should be informed by measurement;
+their values are not yet selected. The preset/custom settings UI should be
+reusable for other large features, without presuming their specific settings.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

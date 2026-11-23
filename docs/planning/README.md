@@ -237,7 +237,10 @@ tstorage for metric history while retaining SQLite for application state, with
 low-power-friendly presets and a custom setup wizard as a goal. Collection scope
 is configurable in Settings between all running containers and containers
 associated with activated stacks: Low and Medium select activated stacks and
-High all running containers, while editing an individual setting selects Custom.
+High all running containers. Each preset configures the full metrics feature,
+including an adjustable storage limit; editing an individual setting selects
+Custom. Suggested limits need measurement. Use a reusable preset/custom settings
+UI structure suitable for other features.
 The initial single-resolution window is one hour, with target sample intervals
 of 15 seconds for Low, 5 seconds for Medium and 1 second for High. Longer-term
 tiers and other preset details are undecided. For this initial version, samples
