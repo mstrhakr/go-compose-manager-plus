@@ -66,6 +66,9 @@ For activated-stack metrics when multiple discovered folders resolve to the
 same Compose project name, the owner chose to collect the corresponding
 Docker project's containers if any matching folder is activated, while making
 the shared identity clear. The association does not establish ownership.
+When a container leaves collection scope through deactivation or a settings
+change, the owner chose to stop new collection while retaining existing
+samples until normal expiry or storage pressure removes them.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

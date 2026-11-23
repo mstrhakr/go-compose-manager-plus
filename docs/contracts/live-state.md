@@ -102,8 +102,10 @@ list, which belongs on the Projects page. Metrics collection is opt-in: a Docker
 socket configuration alone must not enable background metrics collection. The
 owner wants a Settings page that lets the user choose whether to collect for
 all running containers or only containers associated with activated stacks.
-Collection scope is separate from view filters and has disk-use consequences;
-scope-change behavior remains open. For activated-stack collection, associate
+Collection scope is separate from view filters and has disk-use consequences.
+When a container leaves collection scope because of deactivation or a settings
+change, stop collecting new samples for it but retain existing samples until
+normal expiry or storage pressure removes them. For activated-stack collection, associate
 containers by resolved Compose project name and Docker project label, as in
 LIVE-002. If multiple discovered folders resolve to the same project name,
 collect that Docker project's containers when at least one matching folder is
