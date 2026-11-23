@@ -31,7 +31,8 @@ func TestManagedCommitFailureReportsUnknownOutcome(t *testing.T) {
 		}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			m, err := OpenManaged(ctx, t.TempDir(), 10<<20)
+			dir := t.TempDir()
+			m, err := OpenManaged(ctx, dir, 10<<20)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -61,6 +62,13 @@ func TestManagedCommitFailureReportsUnknownOutcome(t *testing.T) {
 			if _, err := m.store.db.ExecContext(ctx, `DROP TRIGGER fail_commit`); err != nil {
 				t.Fatal(err)
 			}
+			if err := m.Close(); err != nil {
+				t.Fatal(err)
+			}
+			m, err = OpenManaged(ctx, dir, 10<<20)
+			if err != nil {
+				t.Fatal(err)
+			}
 			if err := m.Maintain(ctx, now); !errors.Is(err, ErrReconcileWrite) {
 				t.Fatalf("uncertain write did not block maintenance: %v", err)
 			}
@@ -68,7 +76,7 @@ func TestManagedCommitFailureReportsUnknownOutcome(t *testing.T) {
 				t.Fatalf("uncertain write did not block new write: %v", err)
 			}
 			status, err = m.Status(ctx)
-			if err != nil || status.UncertainWrite == nil {
+			if err != nil || status.UncertainWrite == nil || status.PendingWrite == nil || status.PendingWrite.Kind != tt.name {
 				t.Fatalf("uncertainty not reported: %#v %v", status, err)
 			}
 			if err := m.AcknowledgeReconciledWrite(ctx); err != nil {

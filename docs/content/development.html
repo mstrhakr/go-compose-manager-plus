@@ -111,10 +111,13 @@ or schedule retries itself. A write can succeed before subsequent maintenance
 fails; callers must distinguish <code>ErrWriteCommitted</code> and not retry
 that committed batch. A failed commit returns
 <code>ErrWriteOutcomeUnknown</code>; reconcile the batch before retrying it.
-While the store remains open, this uncertainty pauses subsequent maintenance and
-writes until the caller explicitly acknowledges reconciliation. This latch is
-not durable across a restart; the collector must not rely on it for crash
-recovery.
+The managed store records a durable pending-write marker before each batch and
+marks it committed in the same transaction as the data. A surviving marker
+pauses maintenance and writes across reopening until the caller explicitly
+acknowledges reconciliation. It records the batch kind and start time, not
+the payload or a replay identity. It does not by itself deduplicate replayed
+Docker events or resolve a crash after the marker was cleared; the collector
+must separately handle those boundaries and report gaps.
 The implementation checkpoints frequently and its cost
 at target sampling rates is unmeasured.</p>
 <p>This is not a hard disk quota: SQLite deletion does not itself shrink the

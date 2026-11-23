@@ -669,8 +669,8 @@ retry; it is not a physical filesystem-full test.
 Deferred-constraint failures test the unknown-outcome error and subsequent
 maintenance for sample, event and state commits. An in-process latch now keeps
 maintenance and subsequent writes paused until the caller acknowledges that
-the uncertain batch was reconciled. The latch is not persisted across restart;
-crash-safe reconciliation is not implemented.
+the uncertain batch was reconciled. At that revision the latch was not persisted
+across restart.
 `go test -race -count=1 ./internal/metrics ./internal/runtime`,
 `PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
 passed.
@@ -727,6 +727,29 @@ state and samples. It does not implement scope selection, event-stream
 reconciliation, app startup, settings UI, collector freshness or user warnings.
 No live Docker test or throughput measurement was performed.
 `go test -race -count=1 ./internal/runtime ./internal/metrics`,
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
+passed.
+
+### Durable Managed Write Guard
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`c4d92e4` with changes uncommitted during these checks. Schema version 6 adds
+a pending-write marker. The managed store records the batch kind and start
+time before each write, and marks the pending write committed atomically with
+its samples, events or states. A surviving marker pauses maintenance and writes
+after reopening until explicitly acknowledged. Tests cover a prepared marker,
+a committed marker, real deferred-constraint commit failures for all three
+batch kinds, a committed event followed by failed marker cleanup, and the
+version-five migration. These use close and reopen and injected SQLite failures,
+not power-loss testing or a physical full filesystem.
+
+The marker is not a batch payload or replay identity. It cannot alone recover
+events, deduplicate a replay, or identify an interrupted batch after the marker
+has already been cleared. The collector, event continuity and recovery policy
+remain unimplemented. This adds extra SQLite transactions; throughput at the
+target sampling rates has not been measured. Collection remains off.
+
+`go test -race -count=1 ./internal/metrics ./internal/runtime`,
 `PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
 passed.
 

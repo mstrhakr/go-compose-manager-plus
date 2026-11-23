@@ -89,6 +89,10 @@ func validateState(state State) (int64, error) {
 // InsertEvents records only events observed by a caller; it does not fill gaps
 // or deduplicate reconnect replays.
 func (s *Store) InsertEvents(ctx context.Context, events []Event) error {
+	return s.insertEvents(ctx, events, false)
+}
+
+func (s *Store) insertEvents(ctx context.Context, events []Event, pending bool) error {
 	if len(events) == 0 {
 		return errors.New("no events provided")
 	}
@@ -114,6 +118,11 @@ func (s *Store) InsertEvents(ctx context.Context, events []Event) error {
 			return fmt.Errorf("insert event %d: %w", i, err)
 		}
 	}
+	if pending {
+		if err := markPendingCommitted(ctx, tx); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("%w: commit events: %w", ErrWriteOutcomeUnknown, err)
 	}
@@ -122,6 +131,10 @@ func (s *Store) InsertEvents(ctx context.Context, events []Event) error {
 
 // InsertStates records discrete snapshots. No state is inferred between them.
 func (s *Store) InsertStates(ctx context.Context, states []State) error {
+	return s.insertStates(ctx, states, false)
+}
+
+func (s *Store) insertStates(ctx context.Context, states []State, pending bool) error {
 	if len(states) == 0 {
 		return errors.New("no states provided")
 	}
@@ -145,6 +158,11 @@ func (s *Store) InsertStates(ctx context.Context, states []State) error {
 	for i, state := range states {
 		if _, err := stmt.ExecContext(ctx, state.ContainerID, times[i], state.State, state.Health); err != nil {
 			return fmt.Errorf("insert state %d: %w", i, err)
+		}
+	}
+	if pending {
+		if err := markPendingCommitted(ctx, tx); err != nil {
+			return err
 		}
 	}
 	if err := tx.Commit(); err != nil {

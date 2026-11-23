@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 5
+const schemaVersion = 6
 
 // ErrWriteOutcomeUnknown means a database commit failed and its outcome must
 // be reconciled before retrying the same batch.
@@ -225,6 +225,22 @@ func initialize(ctx context.Context, db *sql.DB) error {
 				return fmt.Errorf("migrate metrics schema to version 5: %w", err)
 			}
 		}
+		version = 5
+	}
+	if version == 5 {
+		for _, statement := range []string{
+			`CREATE TABLE pending_write (
+				id INTEGER PRIMARY KEY CHECK (id = 1),
+				kind TEXT NOT NULL CHECK (kind IN ('samples', 'events', 'states')),
+				created_ns INTEGER NOT NULL,
+				committed INTEGER NOT NULL CHECK (committed IN (0, 1))
+			)`,
+			`PRAGMA user_version = 6`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 6: %w", err)
+			}
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit metrics migration: %w", err)
@@ -287,6 +303,10 @@ func parseUint(value sql.NullString) (*uint64, error) {
 // Insert atomically writes a batch. Duplicate container/timestamp pairs fail
 // rather than silently replacing previously observed values.
 func (s *Store) Insert(ctx context.Context, samples []Sample) error {
+	return s.insert(ctx, samples, false)
+}
+
+func (s *Store) insert(ctx context.Context, samples []Sample, pending bool) error {
 	if len(samples) == 0 {
 		return errors.New("no metric samples provided")
 	}
@@ -312,6 +332,11 @@ func (s *Store) Insert(ctx context.Context, samples []Sample) error {
 		if _, err := stmt.ExecContext(ctx, sample.ContainerID, times[i], o.CPUPercent, sqliteUint(o.MemoryUsageBytes), sqliteUint(o.MemoryLimitBytes),
 			o.NetworkRxBytesPerSec, o.NetworkTxBytesPerSec, o.BlockReadBytesPerSec, o.BlockWriteBytesPerSec); err != nil {
 			return fmt.Errorf("insert metric sample %d: %w", i, err)
+		}
+	}
+	if pending {
+		if err := markPendingCommitted(ctx, tx); err != nil {
+			return err
 		}
 	}
 	if err := tx.Commit(); err != nil {

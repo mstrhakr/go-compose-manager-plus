@@ -196,7 +196,9 @@ and history are not implemented. Unwired SQLite sample, event and state
 persistence provides transactional cutoff deletion, file-length and reusable-page
 accounting, and a persistent summary of sample evictions. An unwired managed
 store serializes writes and maintenance, attempts one-hour expiry and bounded
-pressure eviction, and reports paused state. An unwired scheduler retries idle
+pressure eviction, and reports paused state. A durable pending-write marker
+blocks automatic writes after an interrupted batch until reconciliation; it
+does not identify the full batch or deduplicate event replays. An unwired scheduler retries idle
 maintenance, and persisted opt-in settings support the approved preset scopes
 and intervals with an explicit storage limit. Neither is connected to app startup
 or a settings UI; there is no user-facing warning or hard filesystem quota.

@@ -39,6 +39,14 @@ type ManagedStatus struct {
 	Files          FileUsage
 	Pages          PageUsage
 	Evictions      EvictedSamples
+	PendingWrite   *PendingWrite
+}
+
+// PendingWrite identifies an interrupted managed write, not its complete payload.
+type PendingWrite struct {
+	Kind      string
+	CreatedAt time.Time
+	Committed bool
 }
 
 // OpenManaged reserves the database using SQLite exclusive locking. The caller
@@ -53,8 +61,45 @@ func OpenManaged(ctx context.Context, dataDir string, limit int64) (*ManagedStor
 		return nil, err
 	}
 	m := &ManagedStore{store: store, limit: limit, paused: errors.New("metrics maintenance has not run"), lock: make(chan struct{}, 1)}
+	pending, err := m.pendingWrite(ctx)
+	if err != nil {
+		return nil, errors.Join(err, store.Close())
+	}
+	if pending != nil {
+		m.uncertain = fmt.Errorf("interrupted %s write started at %s (committed: %t)", pending.Kind, pending.CreatedAt.Format(time.RFC3339Nano), pending.Committed)
+		m.paused = fmt.Errorf("%w: %w", ErrReconcileWrite, m.uncertain)
+	}
 	m.lock <- struct{}{}
 	return m, nil
+}
+
+func (m *ManagedStore) pendingWrite(ctx context.Context) (*PendingWrite, error) {
+	var pending PendingWrite
+	var created int64
+	err := m.store.db.QueryRowContext(ctx, `SELECT kind, created_ns, committed FROM pending_write WHERE id = 1`).Scan(&pending.Kind, &created, &pending.Committed)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read pending metrics write: %w", err)
+	}
+	pending.CreatedAt = time.Unix(0, created).UTC()
+	return &pending, nil
+}
+
+func markPendingCommitted(ctx context.Context, tx *sql.Tx) error {
+	result, err := tx.ExecContext(ctx, `UPDATE pending_write SET committed = 1 WHERE id = 1 AND committed = 0`)
+	if err != nil {
+		return fmt.Errorf("mark metrics write committed: %w", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("check pending metrics write: %w", err)
+	}
+	if count != 1 {
+		return errors.New("pending metrics write is missing or already committed")
+	}
+	return nil
 }
 
 func (m *ManagedStore) acquire(ctx context.Context) error {
@@ -213,11 +258,15 @@ func (m *ManagedStore) Status(ctx context.Context) (ManagedStatus, error) {
 	if err != nil {
 		return ManagedStatus{}, fmt.Errorf("read metrics status: %w", err)
 	}
-	return ManagedStatus{Paused: m.paused != nil, Problem: m.paused, UncertainWrite: m.uncertain, Files: files, Pages: pages, Evictions: evictions}, nil
+	pending, err := m.pendingWrite(ctx)
+	if err != nil {
+		return ManagedStatus{}, err
+	}
+	return ManagedStatus{Paused: m.paused != nil, Problem: m.paused, UncertainWrite: m.uncertain, Files: files, Pages: pages, Evictions: evictions, PendingWrite: pending}, nil
 }
 
-// AcknowledgeReconciledWrite clears the in-process uncertainty latch only
-// after the caller has reconciled the failed commit. It does not retry the write.
+// AcknowledgeReconciledWrite clears the durable and in-process guards only
+// after the caller has reconciled the interrupted write. It does not retry it.
 func (m *ManagedStore) AcknowledgeReconciledWrite(ctx context.Context) error {
 	if err := m.acquire(ctx); err != nil {
 		return err
@@ -229,11 +278,14 @@ func (m *ManagedStore) AcknowledgeReconciledWrite(ctx context.Context) error {
 	if m.uncertain == nil {
 		return errors.New("no uncertain metrics write to acknowledge")
 	}
+	if _, err := m.store.db.ExecContext(ctx, `DELETE FROM pending_write WHERE id = 1`); err != nil {
+		return fmt.Errorf("acknowledge pending metrics write: %w", err)
+	}
 	m.uncertain = nil
 	return nil
 }
 
-func (m *ManagedStore) write(ctx context.Context, now time.Time, insert func() error) error {
+func (m *ManagedStore) write(ctx context.Context, now time.Time, kind string, insert func() error) error {
 	if err := m.acquire(ctx); err != nil {
 		return err
 	}
@@ -241,11 +293,30 @@ func (m *ManagedStore) write(ctx context.Context, now time.Time, insert func() e
 	if err := m.maintain(ctx, now); err != nil {
 		return err
 	}
+	if _, err := m.store.db.ExecContext(ctx, `INSERT INTO pending_write(id, kind, created_ns, committed) VALUES (1, ?, ?, 0)`, kind, now.UnixNano()); err != nil {
+		m.uncertain = fmt.Errorf("prepare metrics write: %w", err)
+		return m.pause(m.uncertain)
+	}
 	if err := insert(); err != nil {
 		if errors.Is(err, ErrWriteOutcomeUnknown) {
 			m.uncertain = err
+		} else if _, cleanupErr := m.store.db.ExecContext(ctx, `DELETE FROM pending_write WHERE id = 1`); cleanupErr != nil {
+			m.uncertain = errors.Join(err, fmt.Errorf("clear failed metrics write: %w", cleanupErr))
+			err = m.uncertain
 		}
 		return m.pause(err)
+	}
+	result, err := m.store.db.ExecContext(ctx, `DELETE FROM pending_write WHERE id = 1 AND committed = 1`)
+	if err == nil {
+		var count int64
+		count, err = result.RowsAffected()
+		if err == nil && count != 1 {
+			err = errors.New("committed metrics write marker is missing")
+		}
+	}
+	if err != nil {
+		m.uncertain = fmt.Errorf("clear committed metrics write: %w", err)
+		return fmt.Errorf("%w: %w", ErrWriteCommitted, m.pause(m.uncertain))
 	}
 	if err := m.maintain(ctx, now); err != nil {
 		return fmt.Errorf("%w: %w", ErrWriteCommitted, err)
@@ -265,7 +336,7 @@ func (m *ManagedStore) Insert(ctx context.Context, now time.Time, samples []Samp
 			return fmt.Errorf("invalid sample %d: %w", i, err)
 		}
 	}
-	return m.write(ctx, now, func() error { return m.store.Insert(ctx, samples) })
+	return m.write(ctx, now, "samples", func() error { return m.store.insert(ctx, samples, true) })
 }
 
 func (m *ManagedStore) InsertEvents(ctx context.Context, now time.Time, events []Event) error {
@@ -280,7 +351,7 @@ func (m *ManagedStore) InsertEvents(ctx context.Context, now time.Time, events [
 			return fmt.Errorf("invalid event %d: %w", i, err)
 		}
 	}
-	return m.write(ctx, now, func() error { return m.store.InsertEvents(ctx, events) })
+	return m.write(ctx, now, "events", func() error { return m.store.insertEvents(ctx, events, true) })
 }
 
 func (m *ManagedStore) InsertStates(ctx context.Context, now time.Time, states []State) error {
@@ -295,7 +366,7 @@ func (m *ManagedStore) InsertStates(ctx context.Context, now time.Time, states [
 			return fmt.Errorf("invalid state %d: %w", i, err)
 		}
 	}
-	return m.write(ctx, now, func() error { return m.store.InsertStates(ctx, states) })
+	return m.write(ctx, now, "states", func() error { return m.store.insertStates(ctx, states, true) })
 }
 
 func withinHistory(now, at time.Time) error {
