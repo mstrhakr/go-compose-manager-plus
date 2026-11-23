@@ -92,8 +92,10 @@ bounds; the bounds do not imply a continuous gap, and evictions made before
 schema version 4 cannot be reconstructed. This record is not a user-facing
 warning and does not report event or state loss.</p>
 <p>An unwired <code>ManagedStore</code> serializes reads, writes and maintenance
-under an exclusive SQLite lock. Its caller supplies a byte limit and schedules
-maintenance, including when collection is idle. Maintenance expires records
+under an exclusive SQLite lock. Its caller supplies a byte limit. An unwired
+<code>RunMaintenance</code> loop performs an immediate attempt and retries at a
+caller-supplied interval even when collection is idle; its caller owns shutdown
+and reports failures. Maintenance expires records
 older than one hour and attempts bounded oldest-sample eviction at a 90% active
 logical-usage target. Its durable pressure gate prevents repeated eviction
 when no measurable progress is made, including after reopening. It reports
@@ -111,6 +113,12 @@ unverified. If file length itself reaches the limit, maintenance pauses rather
 than assuming row deletion will reclaim filesystem space. An eviction that
 does not reduce active usage also pauses until accounting conditions change or
 the configured limit increases. No application collector uses this path yet.</p>
+<p>Metrics settings can be persisted separately in application state. An
+unconfigured installation is disabled, and the storage limit must be explicitly
+provided; no preset storage defaults are assumed. The low, medium and high
+profile scopes and intervals are validated. Settings use revision checks to
+reject stale updates, but are not yet exposed in the UI or connected to a
+collector. Saving settings alone does not start Docker access or delete history.</p>
 <p>To measure one synthetic hour of SQLite samples for 1, 5, 25 and 50
 containers without Docker, run:</p>
 <pre><code>CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 \

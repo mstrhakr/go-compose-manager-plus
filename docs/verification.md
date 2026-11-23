@@ -681,6 +681,28 @@ expiry and transactions can temporarily grow the WAL beyond the limit. The
 underlying raw store remains an unwired primitive, not a bypass for a future
 collector. LIVE-003 remains partially implemented and unverified.
 
+### Metrics Settings And Maintenance Scheduling
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`64580e4` with changes uncommitted during these checks. Application schema
+version 4 adds an initially empty metrics-settings table; its absence of a row
+means disabled and unconfigured. Settings enforce the approved preset scopes
+and intervals, require an explicit storage budget, and reject stale updates.
+Saving settings does not start collection or alter metrics history. Tests cover
+version-3 migration, preservation of discovery data, default-off, reopen,
+concurrent update rejection and validation.
+
+An unwired maintenance loop immediately runs the managed store's maintenance,
+reports every attempt, and retries on a caller-supplied interval until
+cancellation. A SQLite integration test verifies idle one-hour expiry; a
+deterministic test exercises a failed attempt, recovery and shutdown. It does
+not start automatically and is not the Docker collector. The settings UI,
+app lifecycle integration, freshness and gap reporting remain unimplemented.
+`go test -race -count=1 -run
+'TestMaintenance|TestScheduledMaintenance|TestSettings|TestConcurrentSettings|TestOpenDatabaseMigrates'
+./internal/metrics ./internal/auth`, `PLAYWRIGHT_PORT=18334 make check QUIET=1`,
+`make docs` and `make check-docs` passed.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,

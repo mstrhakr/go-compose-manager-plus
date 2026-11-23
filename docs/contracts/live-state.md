@@ -196,8 +196,10 @@ and history are not implemented. Unwired SQLite sample, event and state
 persistence provides transactional cutoff deletion, file-length and reusable-page
 accounting, and a persistent summary of sample evictions. An unwired managed
 store serializes writes and maintenance, attempts one-hour expiry and bounded
-pressure eviction, and reports paused state; it needs a scheduler and caller,
-and does not provide a user-facing warning or a hard filesystem quota.
+pressure eviction, and reports paused state. An unwired scheduler retries idle
+maintenance, and persisted opt-in settings support the approved preset scopes
+and intervals with an explicit storage limit. Neither is connected to app startup
+or a settings UI; there is no user-facing warning or hard filesystem quota.
 Read-only Docker stats and event-stream foundations exist but are not connected
 to a collector or UI. A
 test-only, single-container Docker stats/tstorage feasibility spike is recorded

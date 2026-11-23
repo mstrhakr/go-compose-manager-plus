@@ -122,7 +122,7 @@ func TestOpenDatabaseMigratesV1Sessions(t *testing.T) {
 	if deadline != 43300 || revoked != 0 {
 		t.Fatalf("migrated session deadline=%d revoked=%d", deadline, revoked)
 	}
-	if err := database.SQL.QueryRowContext(ctx, `SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil || version != 3 {
+	if err := database.SQL.QueryRowContext(ctx, `SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil || version != schemaVersion {
 		t.Fatalf("migration version=%d err=%v", version, err)
 	}
 }
@@ -176,7 +176,7 @@ func TestOpenDatabaseMigratesV2WithoutChangingAuth(t *testing.T) {
 	if err := database.SQL.QueryRowContext(ctx, `SELECT deadline_unix FROM sessions WHERE token = 'token'`).Scan(&deadline); err != nil || deadline != 300 {
 		t.Fatalf("migrated session deadline=%d error=%v", deadline, err)
 	}
-	if err := database.SQL.QueryRowContext(ctx, `SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil || version != 3 {
+	if err := database.SQL.QueryRowContext(ctx, `SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil || version != schemaVersion {
 		t.Fatalf("migration version=%d error=%v", version, err)
 	}
 }
