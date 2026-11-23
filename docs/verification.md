@@ -410,3 +410,13 @@ size and Go allocations are observations for this run, not preset budgets.
 tstorage's retention is partition-based, and its own shutdown requires callers
 to stop writers before close. Compatibility, recovery and retention need
 additional investigation before the dependency is used by the running app.
+
+Subsequent static inspection of tstorage v0.3.6 found that its public storage
+interface exposes insert, select and close, but no oldest-first eviction or
+storage-budget API. Its retention check runs hourly and applies to disk
+partitions based on partition creation time; the two writable memory
+partitions and WAL also need accounting. Its asynchronous partition flush
+errors are logged rather than returned by the insert that triggered the flush.
+These observations do not establish that the approved early-eviction, one-hour
+history, warning or recovery behaviors can be enforced. A safe design and
+targeted tests are needed before enabling collection.
