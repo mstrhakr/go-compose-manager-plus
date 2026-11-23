@@ -85,6 +85,14 @@ The foundation does not start collection, enforce one-hour expiry or a storage
 budget, or implement migration to TimescaleDB. Deleting SQLite rows does
 not by itself guarantee disk space is returned; the database's WAL and other
 files must be considered in a future storage-pressure design.</p>
+<p>To measure one synthetic hour of SQLite samples for 1, 5, 25 and 50
+containers without Docker, run:</p>
+<pre><code>CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 \
+  -run '^TestSyntheticHourSQLiteCapacity$' -v ./internal/metrics</code></pre>
+<p>The test batches a minute of generated observations per transaction, checks
+every observation after reopening, and reports file lengths at the end of
+ingestion and after closing. These are not peak sizes or a realtime benchmark;
+they do not establish storage limits or disk-full recovery.</p>
 <h2>UI components</h2>
 <p>Reusable server-rendered metric, chart and list panels are defined in
 <code>internal/web/templates/partials/components.html</code>, with their Go

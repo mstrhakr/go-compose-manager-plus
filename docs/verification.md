@@ -530,6 +530,31 @@ An initial full check encountered two Firefox fixture setup timeouts; the
 focused Firefox component suite subsequently passed, followed by
 `PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs`, and `make check-docs`.
 
+### Synthetic SQLite One-Hour Measurement
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`aed51d0`, with the measurement test uncommitted. The command
+`CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 -run '^TestSyntheticHourSQLiteCapacity$' -v ./internal/metrics`
+passed. It writes one-hour synthetic observations containing seven numeric
+values per container, batching each simulated minute into one SQLite
+transaction, and checks every observation after close and reopen. No Docker
+daemon was accessed.
+
+| Containers | Observations | File lengths at end of ingestion | Database file length after close |
+| ---: | ---: | ---: | ---: |
+| 1 | 3,600 | 3,382,336 bytes | 954,368 bytes |
+| 5 | 18,000 | 7,565,560 bytes | 4,542,464 bytes |
+| 25 | 90,000 | 26,628,256 bytes | 22,814,720 bytes |
+| 50 | 180,000 | 49,698,184 bytes | 45,305,856 bytes |
+
+The ingestion column sums database, WAL and shared-memory file lengths; neither
+it nor the after-close size represents peak or allocated disk usage. Generated
+values and minute-sized transactions do not model real workloads, one-second
+commits or a collector's CPU, memory, daemon or filesystem overhead. This
+measurement does not test eviction, physical disk exhaustion, crash recovery or
+set preset budgets. Two earlier attempts were interrupted because they were
+too slow; their temporary test data was inspected and removed.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,
