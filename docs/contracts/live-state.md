@@ -169,7 +169,10 @@ longer-term retention/downsampling, resource budgets,
 recovery and presentation details remain unresolved. The storage dependency's
 fitness and operational characteristics still need evaluation.
 
-**Enforcement:** Application collection and history are not implemented. A
+**Enforcement:** The reusable column customizer is implemented for the Projects
+and Containers inventory views; preferences are browser-local and the
+identifying column remains visible. Application collection, historical logs
+and history are not implemented. A
 test-only, single-container Docker stats/tstorage feasibility spike is recorded
 in [verification](../verification.md#docker-metrics-storage-proof-of-concept);
 it does not implement settings, retention tiers or this requirement.

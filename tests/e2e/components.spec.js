@@ -50,6 +50,52 @@ test('selection is scoped, keyboard operable and handles disabled rows', async (
   }
 });
 
+test('column preferences apply to headings and cells, persist and restore', async ({ page }, testInfo) => {
+  const list = page.locator('[data-column-manager="projects-title"]');
+  const editor = list.locator('[data-column-controls]');
+  await editor.locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(editor.getByLabel('Name', { exact: true })).toBeDisabled();
+  if (testInfo.project.name === 'mobile-chromium') {
+    await editor.getByLabel('Status', { exact: true }).tap();
+  } else {
+    await editor.getByLabel('Status', { exact: true }).uncheck();
+  }
+  await expect(list.locator('[data-column="Status"]')).toHaveCount(4);
+  for (const cell of await list.locator('[data-column="Status"]').all()) await expect(cell).toBeHidden();
+  await expect(page.locator('[data-column-manager="other-title"]').getByRole('columnheader', { name: 'Status' })).toBeVisible();
+  await expect(list.getByLabel('Select Alpha')).toBeVisible();
+  await page.reload();
+  await expect(list.locator('[data-column="Status"]').first()).toBeHidden();
+  await list.locator('tbody').evaluate(element => {
+    const row = element.firstElementChild.cloneNode(true);
+    row.querySelector('[data-column="Status"]').hidden = false;
+    element.append(row);
+    element.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
+  });
+  await expect(list.locator('[data-column="Status"]').last()).toBeHidden();
+  await editor.locator('summary').click();
+  await editor.getByRole('button', { name: 'Restore defaults' }).click();
+  await expect(list.getByRole('columnheader', { name: 'Status' })).toBeVisible();
+  await page.reload();
+  await expect(list.getByRole('columnheader', { name: 'Status' })).toBeVisible();
+});
+
+test('column controls report blocked browser storage but remain usable', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'localStorage', {
+      get() { throw new DOMException('Storage blocked', 'SecurityError'); },
+    });
+  });
+  await page.reload();
+  const list = page.locator('[data-column-manager="projects-title"]');
+  await list.locator('[data-column-controls] summary').click();
+  await expect(list.getByRole('status')).toContainText('Column preferences could not be loaded');
+  await list.getByLabel('Status', { exact: true }).uncheck();
+  await expect(list.locator('[data-column="Status"]').first()).toBeHidden();
+  await expect(list.getByRole('status')).toContainText('Column preferences could not be saved');
+});
+
 test('reinitializes swapped components and handles zero selectable entries', async ({ page }) => {
   const list = page.locator('[data-select-list]').first();
   await list.evaluate(element => {
@@ -125,6 +171,7 @@ test('native item checkboxes remain usable without JavaScript', async ({ browser
     await page.getByLabel('Select Alpha').check();
     await expect(page.getByLabel('Select Alpha')).toBeChecked();
     await expect(page.getByLabel('Select all Projects')).toBeHidden();
+    for (const control of await page.locator('[data-column-controls]').all()) await expect(control).toBeHidden();
     await expect(page.getByText('No observations.').first()).toBeVisible();
     await expect(page.locator('noscript > .chart-message').first()).toBeVisible();
   } finally {

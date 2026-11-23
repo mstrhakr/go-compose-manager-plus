@@ -186,7 +186,7 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 		views = append(views, projectView{Project: project, DisplayName: filepath.Base(project.Path)})
 	}
 	requested := r.URL.Query().Get("runtime") == "1" || view == "projects" || view == "containers"
-	containerList := listPanel{ID: "containers-title", Title: "Containers", Columns: []string{"Name", "State", "Compose project", "Service"}, Empty: "No containers found in this snapshot."}
+	containerList := listPanel{ID: "containers-title", Title: "Containers", Customize: true, Columns: []string{"Name", "State", "Compose project", "Service"}, Empty: "No containers found in this snapshot."}
 	var containers []runtime.Container
 	runtimeMessage := "Docker integration pending. Container status, logs, and operations are not connected."
 	runtimeState := "Not configured"
@@ -274,7 +274,7 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 			{Label: "Observability"},
 		}}
 	}
-	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, Filters: filters, SubviewNav: subviews,
+	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, ProjectColumns: listPanel{ID: "projects-title", Title: "Projects", Columns: []string{"Project", "Discovery", "Activation", "Containers"}}, Filters: filters, SubviewNav: subviews,
 		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: views, RuntimeMessage: runtimeMessage, RuntimeState: runtimeState,
 		Activity: chartPanel{ID: "activity-title", Title: "Container activity", Status: "Unavailable", EmptyTitle: "Runtime metrics unavailable", EmptyDetail: "No live activity is being collected."},
 		Metrics: []metricPanel{

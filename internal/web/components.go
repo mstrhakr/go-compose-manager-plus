@@ -42,6 +42,7 @@ type listPanel struct {
 	Status     string
 	Empty      string
 	Selectable bool
+	Customize  bool
 	Columns    []string
 	Rows       []listRow
 }

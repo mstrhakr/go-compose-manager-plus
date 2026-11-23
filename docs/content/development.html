@@ -94,6 +94,11 @@ applying them requests a fresh snapshot and uses counts before filtering.
 View navigation uses ordinary links and disabled buttons rather than an ARIA
 tab widget; add real destinations only when their behavior is implemented.
 With no JavaScript the individual native checkboxes remain usable.</p>
+<p>Inventory column preferences use the reusable column customizer and are
+stored independently per view in the browser. The first identifying column
+stays visible. If browser storage is unavailable, the current page can still
+change columns and reports that preferences could not be saved. Without
+JavaScript, all columns remain visible and the customizer is hidden.</p>
 <p>Run <code>npx playwright test tests/e2e/components.spec.js --project=chromium</code>
 to render the actual templates in a test-only page, with populated, empty,
 invalid and selectable examples. Browser screenshots are local test artifacts;

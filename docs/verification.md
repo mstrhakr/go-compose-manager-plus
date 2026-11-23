@@ -420,3 +420,25 @@ errors are logged rather than returned by the insert that triggered the flush.
 These observations do not establish that the approved early-eviction, one-hour
 history, warning or recovery behaviors can be enforced. A safe design and
 targeted tests are needed before enabling collection.
+
+## Inventory Column Customizer
+
+2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,
+based on `2480184` with the column customizer changes uncommitted during these
+checks. The Projects view and the shared Containers list panel expose the same
+browser-local column controls. The identifying column stays visible; without
+JavaScript, all columns remain visible. This does not implement metrics or logs.
+
+- `go test -race ./internal/web ./tests/ui-fixture`: passed.
+- `PLAYWRIGHT_PORT=18334 npx playwright test tests/e2e/components.spec.js tests/e2e/home.spec.js --project=chromium --project=mobile-chromium`:
+  passed 23 tests with one intentional bootstrap skip before the final test
+  additions.
+- `PLAYWRIGHT_PORT=18334 make check QUIET=1`: passed Go race tests, vet and
+  build, Node, HTTP and desktop/mobile browser tests, asset verification and
+  contract structure checks. Browser tests exercise the populated shared list
+  fixture, real project rows, keyboard, simulated touch, reload, restore,
+  blocked browser storage, htmx reinitialization and no-JavaScript behavior.
+- `make docs`, `make check-docs` and `git diff --check`: passed.
+
+Real container rows were not exercised against a Docker daemon for this UI
+change; the populated shared list fixture covers the same table component.

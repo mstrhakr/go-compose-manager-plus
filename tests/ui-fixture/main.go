@@ -22,6 +22,7 @@ type row struct {
 type list struct {
 	ID, Title, Status, Empty string
 	Selectable               bool
+	Customize                bool
 	Columns                  []string
 	Rows                     []row
 }
@@ -38,13 +39,13 @@ func main() {
 			`{"min":0,"max":100,"series":[{"label":"CPU","color":"blue","points":[{"x":1,"y":0},{"x":2,"y":50},{"x":3,"y":null},{"x":4,"y":100}]},{"label":"Memory","color":"amber","points":[{"x":1,"y":25},{"x":4,"y":75}]}]}`},
 		Empty: chart{"empty-title", "Empty chart", "Unavailable", "No data", "No observations.", ""},
 		Bad:   chart{"bad-title", "Invalid chart", "Error", "No data", "No observations.", `{"min":0,"max":100,"series":[{"label":"Bad","color":"blue","points":[{"x":1,"y":101}]}]}`},
-		List: list{"projects-title", "Projects", "Fixture", "", true, []string{"Name", "Status"}, []row{
+		List: list{"projects-title", "Projects", "Fixture", "", true, true, []string{"Name", "Status"}, []row{
 			{"alpha", "Alpha", []string{"Alpha", "Available"}, false, ""},
 			{"beta", "Beta", []string{"Beta", "Unavailable"}, false, ""},
 			{"locked", "Locked", []string{"Locked", "Unavailable"}, true, ""},
 		}},
-		Other: list{"other-title", "Other resources", "Fixture", "", true, []string{"Name"}, []row{
-			{"other", "Other", []string{"Other"}, false, ""},
+		Other: list{"other-title", "Other resources", "Fixture", "", true, true, []string{"Name", "Status"}, []row{
+			{"other", "Other", []string{"Other", "Available"}, false, ""},
 		}},
 	}
 	if err := t.ExecuteTemplate(os.Stdout, "fixture", data); err != nil {

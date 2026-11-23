@@ -165,6 +165,63 @@
     }
   }
 
+  function initializeColumns(manager) {
+    const controls = manager.querySelector('[data-column-controls]');
+    const options = [...manager.querySelectorAll('[data-column-option]')];
+    const notice = manager.querySelector('[data-column-notice]');
+    if (!controls || !notice || !options.length) return;
+    const key = `compose-manager-columns:${manager.dataset.columnManager}`;
+    function reportFailure(action) {
+      notice.hidden = false;
+      notice.textContent = `Column preferences could not be ${action} in this browser.`;
+    }
+    function apply() {
+      const visible = new Set(options.filter(option => option.checked).map(option => option.value));
+      for (const cell of manager.querySelectorAll('[data-column]')) {
+        cell.hidden = !visible.has(cell.dataset.column);
+      }
+    }
+    if (controls.dataset.initialized) {
+      apply();
+      return;
+    }
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved !== null) {
+        const hidden = JSON.parse(saved);
+        if (!Array.isArray(hidden) || !hidden.every(value => typeof value === 'string')) {
+          throw new Error('Invalid column preferences');
+        }
+        for (const option of options) {
+          option.checked = option.disabled || !hidden.includes(option.value);
+        }
+      }
+    } catch (error) {
+      reportFailure('loaded');
+      console.error('Unable to load column preferences:', error);
+    }
+    apply();
+    controls.hidden = false;
+    controls.dataset.initialized = 'true';
+    function save() {
+      apply();
+      try {
+        localStorage.setItem(key, JSON.stringify(options.filter(option => !option.checked).map(option => option.value)));
+        notice.hidden = true;
+      } catch (error) {
+        reportFailure('saved');
+        console.error('Unable to save column preferences:', error);
+      }
+    }
+    controls.addEventListener('change', event => {
+      if (event.target.matches('[data-column-option]')) save();
+    });
+    controls.querySelector('[data-column-restore]').addEventListener('click', () => {
+      for (const option of options) option.checked = true;
+      save();
+    });
+  }
+
   function initialize(root) {
     const charts = [...root.querySelectorAll('[data-chart]')];
     if (root.matches?.('[data-chart]')) charts.unshift(root);
@@ -176,6 +233,11 @@
     const parentList = root.closest?.('[data-select-list]');
     if (parentList && !lists.includes(parentList)) lists.push(parentList);
     for (const list of lists) updateList(list);
+    const managers = [...root.querySelectorAll('[data-column-manager]')];
+    if (root.matches?.('[data-column-manager]')) managers.unshift(root);
+    const parentManager = root.closest?.('[data-column-manager]');
+    if (parentManager && !managers.includes(parentManager)) managers.push(parentManager);
+    for (const manager of managers) initializeColumns(manager);
   }
 
   document.addEventListener('change', event => {

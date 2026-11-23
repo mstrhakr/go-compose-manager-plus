@@ -176,6 +176,16 @@ test('first login forces password setup before protected dashboard and works on 
       await expect(themedPage.getByRole('button', { name: 'Collapse navigation' })).toHaveAttribute('aria-expanded', 'true');
       await themedPage.getByRole('link', { name: 'Compose projects', exact: true }).click();
       await expect(themedPage.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+      const projectColumns = themedPage.locator('[data-column-manager="projects-title"]');
+      await projectColumns.locator('[data-column-controls] summary').click();
+      await projectColumns.getByLabel('Activation', { exact: true }).uncheck();
+      await expect(projectColumns.locator('.inventory-item summary > [data-column="Activation"]')).toBeHidden();
+      await themedPage.reload();
+      await expect(projectColumns.locator('.inventory-item summary > [data-column="Activation"]')).toBeHidden();
+      await projectColumns.locator('[data-column-controls] summary').click();
+      await projectColumns.getByRole('button', { name: 'Restore defaults' }).click();
+      await expect(projectColumns.locator('.inventory-item summary > [data-column="Activation"]')).toBeVisible();
+      await projectColumns.locator('[data-column-controls] summary').click();
       const filters = themedPage.locator('.inventory-filter-disclosure');
       for (const width of [1024, 901, 621]) {
         await themedPage.setViewportSize({ width, height: 900 });

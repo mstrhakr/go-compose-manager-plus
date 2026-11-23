@@ -34,6 +34,7 @@ type pageData struct {
 	Activity       chartPanel
 	Metrics        []metricPanel
 	Containers     listPanel
+	ProjectColumns listPanel
 	Filters        inventoryFilters
 	SubviewNav     viewNavigation
 }
