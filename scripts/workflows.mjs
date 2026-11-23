@@ -20,6 +20,7 @@ export function workflowErrors(workflow, filename = '') {
         !sourceCondition.includes('github.event.workflow_run.head_repository.full_name == github.repository')) {
       errors.push('automatic documentation publication must be opt-in, successful, push-only and same-repository');
     }
+    if (sourceCondition.includes('github.event.workflow_run.path')) errors.push('CI workflow selection must use the workflow_run name filter, not path equality');
     const sourceScript = source?.steps?.find(step => step.id === 'source')?.run ?? '';
     if (!sourceScript.includes('classify(paths)') || !sourceScript.includes('changes.docs') || !sourceScript.includes('sha!==current')) {
       errors.push('automatic documentation publication must require documentation changes at the current revision');

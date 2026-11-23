@@ -94,6 +94,8 @@ test('documentation publication waits for successful main CI and requires docs c
   unsafe.jobs.source.steps.find(step => step.id === 'source').run = 'echo publish';
   assert.ok(workflowErrors(unsafe, 'pages.yml').some(error => error.includes('completed CI')));
   assert.ok(workflowErrors(unsafe, 'pages.yml').some(error => error.includes('require documentation changes')));
+  unsafe.jobs.source.if += " && github.event.workflow_run.path == '.github/workflows/ci.yml'";
+  assert.ok(workflowErrors(unsafe, 'pages.yml').some(error => error.includes('workflow_run name filter')));
 });
 
 test('repository setup preserves existing template status', () => {
