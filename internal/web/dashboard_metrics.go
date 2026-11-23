@@ -43,9 +43,15 @@ type dashboardDataPoint struct {
 	Y *float64 `json:"y"`
 }
 
+type dashboardAggregateMetric struct {
+	Label string
+	Color string
+	Value func(metrics.ChartPoint) *float64
+}
+
 func (server *authServer) dashboardCharts(ctx context.Context) ([]chartPanel, string) {
 	start, end := dashboardTimeRange()
-	return server.dashboardChartsForRange(ctx, start, end)
+	return server.dashboardChartsForRange(ctx, start, end, true)
 }
 
 func dashboardTimeRange() (time.Time, time.Time) {
@@ -54,12 +60,12 @@ func dashboardTimeRange() (time.Time, time.Time) {
 	return start, end
 }
 
-func (server *authServer) dashboardChartsForRange(ctx context.Context, start, end time.Time) ([]chartPanel, string) {
-	panels := emptyDashboardCharts("Collection disabled", "No metrics are being collected. Enable opt-in collection in Settings to populate these charts.")
+func (server *authServer) dashboardChartsForRange(ctx context.Context, start, end time.Time, aggregate bool) ([]chartPanel, string) {
+	panels := emptyDashboardCharts("Collection disabled", "No metrics are being collected. Enable opt-in collection in Settings to populate these charts.", aggregate)
 	settings, err := server.metricsSettings.Load(ctx)
 	if err != nil {
 		server.logger.ErrorContext(ctx, "load dashboard metrics settings", "error", err)
-		return emptyDashboardCharts("Unavailable", "Metrics settings could not be loaded."), "Unavailable"
+		return emptyDashboardCharts("Unavailable", "Metrics settings could not be loaded.", aggregate), "Unavailable"
 	}
 	if !settings.Enabled {
 		return panels, "Disabled"
@@ -68,70 +74,102 @@ func (server *authServer) dashboardChartsForRange(ctx context.Context, start, en
 	series, err := server.collector.SelectChartSeries(ctx, start, end, chartBucket)
 	if err != nil {
 		server.logger.ErrorContext(ctx, "read dashboard metrics", "error", err)
-		return emptyDashboardCharts("Unavailable", "Stored metrics could not be loaded."), "Unavailable"
+		return emptyDashboardCharts("Unavailable", "Stored metrics could not be loaded.", aggregate), "Unavailable"
 	}
 	if len(series) == 0 {
 		if status.Problem != "" {
-			return emptyDashboardCharts("Collection degraded", "Metrics collection is reporting a problem. Check Settings for collection status; no retained history is available to display yet."), "Collection degraded"
+			return emptyDashboardCharts("Collection degraded", "Metrics collection is reporting a problem. Check Settings for collection status; no retained history is available to display yet.", aggregate), "Collection degraded"
 		}
 		if !status.Collecting {
-			return emptyDashboardCharts("Collector starting", "The metrics collector is starting; no dashboard history is available yet."), "Starting"
+			return emptyDashboardCharts("Collector starting", "The metrics collector is starting; no dashboard history is available yet.", aggregate), "Starting"
 		}
-		return emptyDashboardCharts("Waiting for observations", "No observations were recorded during the last hour."), "Collecting"
+		return emptyDashboardCharts("Waiting for observations", "No observations were recorded during the last hour.", aggregate), "Collecting"
 	}
 	containerCount := fmt.Sprintf("%d containers", len(series))
 	if len(series) == 1 {
 		containerCount = "1 container"
 	}
 	countStatus := "Last hour · " + containerCount
+	if aggregate {
+		countStatus = "Last hour aggregate · " + containerCount
+	}
 	metricsStatus := "Last hour"
 	if status.Problem != "" {
 		countStatus = "Collection degraded · " + containerCount + " with retained history"
+		if aggregate {
+			countStatus = "Collection degraded · aggregate of " + containerCount + " with retained history"
+		}
 		metricsStatus = "Collection degraded"
 	} else if !status.Collecting {
 		countStatus = "Collector starting · " + containerCount + " with retained history"
+		if aggregate {
+			countStatus = "Collector starting · aggregate of " + containerCount + " with retained history"
+		}
 		metricsStatus = "Starting"
 	}
-	builders := []func() (chartPanel, error){
-		func() (chartPanel, error) {
-			return buildDashboardChart("dashboard-cpu", "CPU by container", "CPU (%)", series, start, end, func(point metrics.ChartPoint) *float64 { return point.CPUPercent })
+	memoryMiB := func(point metrics.ChartPoint) *float64 {
+		if point.MemoryUsageBytes == nil {
+			return nil
+		}
+		value := float64(*point.MemoryUsageBytes) / (1024 * 1024)
+		return &value
+	}
+	rateMiB := func(value *float64) *float64 {
+		if value == nil {
+			return nil
+		}
+		converted := *value / (1024 * 1024)
+		return &converted
+	}
+	type chartDefinition struct {
+		id             string
+		containerTitle string
+		aggregateTitle string
+		yLabel         string
+		containerValue func(metrics.ChartPoint) *float64
+		aggregate      []dashboardAggregateMetric
+	}
+	definitions := []chartDefinition{
+		{
+			id: "dashboard-cpu", containerTitle: "CPU by container", aggregateTitle: "CPU across collected containers", yLabel: "CPU (%)",
+			containerValue: func(point metrics.ChartPoint) *float64 { return point.CPUPercent },
+			aggregate:      []dashboardAggregateMetric{{Label: "Collected container total", Color: "blue", Value: func(point metrics.ChartPoint) *float64 { return point.CPUPercent }}},
 		},
-		func() (chartPanel, error) {
-			return buildDashboardChart("dashboard-memory", "Docker raw memory usage by container", "MiB", series, start, end, func(point metrics.ChartPoint) *float64 {
-				if point.MemoryUsageBytes == nil {
-					return nil
-				}
-				value := *point.MemoryUsageBytes / (1024 * 1024)
-				return &value
-			})
+		{
+			id: "dashboard-memory", containerTitle: "Docker raw memory usage by container", aggregateTitle: "Raw memory across collected containers", yLabel: "MiB",
+			containerValue: memoryMiB,
+			aggregate:      []dashboardAggregateMetric{{Label: "Collected container total", Color: "amber", Value: memoryMiB}},
 		},
-		func() (chartPanel, error) {
-			return buildDashboardChart("dashboard-network-rx", "Network receive by container", "MiB/s", series, start, end, func(point metrics.ChartPoint) *float64 {
-				if point.NetworkRxBytesPerSec == nil {
-					return nil
-				}
-				value := *point.NetworkRxBytesPerSec / (1024 * 1024)
-				return &value
-			})
+		{
+			id: "dashboard-network-rx", containerTitle: "Network receive by container", aggregateTitle: "Network throughput across collected containers", yLabel: "MiB/s",
+			containerValue: func(point metrics.ChartPoint) *float64 { return rateMiB(point.NetworkRxBytesPerSec) },
+			aggregate: []dashboardAggregateMetric{
+				{Label: "Receive", Color: "blue", Value: func(point metrics.ChartPoint) *float64 { return rateMiB(point.NetworkRxBytesPerSec) }},
+				{Label: "Transmit", Color: "amber", Value: func(point metrics.ChartPoint) *float64 { return rateMiB(point.NetworkTxBytesPerSec) }},
+			},
 		},
-		func() (chartPanel, error) {
-			return buildDashboardChart("dashboard-network-tx", "Network transmit by container", "MiB/s", series, start, end, func(point metrics.ChartPoint) *float64 {
-				if point.NetworkTxBytesPerSec == nil {
-					return nil
-				}
-				value := *point.NetworkTxBytesPerSec / (1024 * 1024)
-				return &value
-			})
+		{
+			id: "dashboard-network-tx", containerTitle: "Network transmit by container", aggregateTitle: "Network transmit by container", yLabel: "MiB/s",
+			containerValue: func(point metrics.ChartPoint) *float64 { return rateMiB(point.NetworkTxBytesPerSec) },
 		},
 	}
-	panelIDs := []string{"dashboard-cpu", "dashboard-memory", "dashboard-network-rx", "dashboard-network-tx"}
-	panelTitles := []string{"CPU by container", "Docker raw memory usage by container", "Network receive by container", "Network transmit by container"}
-	panels = make([]chartPanel, 0, len(builders))
-	for i, build := range builders {
-		panel, err := build()
+	if aggregate {
+		definitions = definitions[:3]
+	}
+	panels = make([]chartPanel, 0, len(definitions))
+	for _, definition := range definitions {
+		title := definition.containerTitle
+		var panel chartPanel
+		var err error
+		if aggregate {
+			title = definition.aggregateTitle
+			panel, err = buildAggregateDashboardChart(definition.id, title, definition.yLabel, series, start, end, chartBucket, definition.aggregate)
+		} else {
+			panel, err = buildDashboardChart(definition.id, title, definition.yLabel, series, start, end, definition.containerValue)
+		}
 		if err != nil {
 			server.logger.ErrorContext(ctx, "encode dashboard chart", "error", err)
-			panel = chartPanel{ID: panelIDs[i], Title: panelTitles[i], Status: "Unavailable", EmptyTitle: "Chart unavailable", EmptyDetail: "Stored chart data could not be displayed."}
+			panel = chartPanel{ID: definition.id, Title: title, Status: "Unavailable", EmptyTitle: "Chart unavailable", EmptyDetail: "Stored chart data could not be displayed."}
 		}
 		panels = append(panels, panel)
 	}
@@ -254,7 +292,14 @@ func timelineEventDescription(event metrics.Event) string {
 	}
 }
 
-func emptyDashboardCharts(status, detail string) []chartPanel {
+func emptyDashboardCharts(status, detail string, aggregate bool) []chartPanel {
+	if aggregate {
+		return []chartPanel{
+			{ID: "dashboard-cpu", Title: "CPU across collected containers", Status: status, EmptyTitle: "Container CPU unavailable", EmptyDetail: detail},
+			{ID: "dashboard-memory", Title: "Raw memory across collected containers", Status: status, EmptyTitle: "Container memory unavailable", EmptyDetail: detail},
+			{ID: "dashboard-network-rx", Title: "Network throughput across collected containers", Status: status, EmptyTitle: "Container network unavailable", EmptyDetail: detail},
+		}
+	}
 	return []chartPanel{
 		{ID: "dashboard-cpu", Title: "CPU by container", Status: status, EmptyTitle: "CPU unavailable", EmptyDetail: detail},
 		{ID: "dashboard-memory", Title: "Docker raw memory usage by container", Status: status, EmptyTitle: "Memory unavailable", EmptyDetail: detail},
@@ -303,6 +348,76 @@ func buildDashboardChart(id, title, yLabel string, containers []metrics.Containe
 	return chartPanel{
 		ID: id, Title: title, Status: "Last hour", EmptyTitle: title + " unavailable",
 		EmptyDetail: "No recorded values for this metric.", Series: string(encoded),
+	}, nil
+}
+
+func buildAggregateDashboardChart(id, title, yLabel string, containers []metrics.ContainerChartSeries, start, end time.Time, bucket time.Duration, aggregateMetrics []dashboardAggregateMetric) (chartPanel, error) {
+	if len(containers) == 0 || len(aggregateMetrics) == 0 || bucket <= 0 {
+		return chartPanel{}, fmt.Errorf("invalid %s aggregate chart input", title)
+	}
+	bucketCount := len(containers[0].Points)
+	for _, container := range containers[1:] {
+		if len(container.Points) != bucketCount {
+			return chartPanel{}, fmt.Errorf("inconsistent %s aggregate chart buckets", title)
+		}
+	}
+	input := dashboardChartData{
+		Min: 0, Max: 1, XMin: start.UnixMilli(), XMax: end.UnixMilli(),
+		SelectedTime: end.UnixMilli(), XLabel: "Time", YLabel: yLabel,
+		Series: make([]dashboardSeries, 0, len(aggregateMetrics)),
+	}
+	maxValue := 0.0
+	hasValue := false
+	for _, metric := range aggregateMetrics {
+		if metric.Value == nil {
+			return chartPanel{}, fmt.Errorf("invalid %s aggregate metric", title)
+		}
+		series := dashboardSeries{
+			Label: metric.Label, Color: metric.Color,
+			Points: make([]dashboardDataPoint, bucketCount),
+		}
+		for index := 0; index < bucketCount; index++ {
+			sum, complete := 0.0, true
+			for _, container := range containers {
+				value := metric.Value(container.Points[index])
+				if value == nil {
+					complete = false
+					continue
+				}
+				if math.IsNaN(*value) || math.IsInf(*value, 0) || *value < 0 {
+					return chartPanel{}, fmt.Errorf("invalid %s observation for container %s", yLabel, container.ContainerID)
+				}
+				sum += *value
+			}
+			var total *float64
+			if complete {
+				if math.IsNaN(sum) || math.IsInf(sum, 0) {
+					return chartPanel{}, fmt.Errorf("invalid %s aggregate", yLabel)
+				}
+				total = &sum
+				hasValue = true
+				maxValue = math.Max(maxValue, sum)
+			}
+			series.Points[index] = dashboardDataPoint{
+				X: start.Add(time.Duration(index) * bucket).UnixMilli(),
+				Y: total,
+			}
+		}
+		input.Series = append(input.Series, series)
+	}
+	if hasValue {
+		input.Max = math.Max(1, maxValue*1.1)
+		if math.IsInf(input.Max, 0) {
+			input.Max = maxValue
+		}
+	}
+	encoded, err := json.Marshal(input)
+	if err != nil {
+		return chartPanel{}, fmt.Errorf("encode %s dashboard chart: %w", title, err)
+	}
+	return chartPanel{
+		ID: id, Title: title, Status: "Last hour", EmptyTitle: title + " unavailable",
+		EmptyDetail: "No complete aggregate observations for this metric.", Series: string(encoded),
 	}, nil
 }
 

@@ -94,6 +94,14 @@ status snapshot under LIVE-002. This does not authorize Compose operations.
 The owner subsequently requested distinct, read-only container and expandable
 project pages as a maintainable UI foundation. Opening these inventory views
 requests a snapshot; it does not authorize management operations.
+On 2026-11-23 the owner requested that the overview emphasize aggregate and
+system metrics rather than per-container lines, keeping detailed per-container
+charts in Observability. The first UI slice uses the existing opt-in container
+samples only; host-level telemetry remains a separate integration and is not
+inferred from Docker container stats. The provided dashboard references target
+1440p desktop layouts; browser checks cover 2560×1440, narrower desktop
+breakpoints and mobile overflow/responsiveness. See the
+[verification record](../verification.md#aggregate-overview-dashboard-presentation).
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,

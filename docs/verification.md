@@ -877,6 +877,33 @@ No live Docker-backed dashboard collection or platform-specific verification
 was performed. Collection remains opt-in; disabled and unavailable states were
 covered without opening the metrics database from dashboard reads.
 
+## Aggregate Overview Dashboard Presentation
+
+2026-11-23, Linux development container, branch
+`feat/dashboard-aggregate-overview`. Overview now presents aggregate CPU,
+Docker raw memory and combined receive/transmit throughput from existing opt-in
+container samples. Per-container chart lines remain on Observability. An
+aggregate bucket is shown only when every returned container series has a value
+for that metric; otherwise it remains a gap. The UI labels these as
+collected-container totals and explicitly says host-level resources are not
+collected. Collection, retained samples and the one-hour range are unchanged.
+
+- `go test ./internal/web`: passed aggregate sum/gap, degraded-history and
+  per-container Observability regressions.
+- `npm run test:e2e -- --grep='first login forces password setup before protected dashboard and works on mobile'`:
+  passed in Chromium; Firefox, WebKit and mobile Chromium skip this
+  bootstrap-only flow by design.
+- `make check QUIET=1`: passed Go race tests, vet, build, Node and HTTP tests,
+  the complete browser suite, asset verification and contract structure checks.
+- `make docs && make check-docs`: passed public/opt-in Hugo variants and local
+  link validation.
+- Browser layout assertions cover 2560×1440 and narrower desktop widths from
+  1440 through 620 pixels, checking for horizontal overflow and visible charts.
+
+No host-level data source or live Docker collection was added or verified.
+Aggregate totals are derived from independently recorded container samples and
+are not simultaneous host measurements.
+
 ## Metrics Settings And Large Chart Usability
 
 2026-11-23, Linux development container, branch `feat/settings-metrics-ui`,

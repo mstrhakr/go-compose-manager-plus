@@ -105,6 +105,18 @@ bounded, individually switchable series controls; collection and retention
 behavior are unchanged. These refinements are recorded under
 [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views).
 
+On 2026-11-23 the owner requested a dashboard presentation change: show
+aggregate and system metrics rather than per-container lines on Overview, while
+keeping detailed per-container charts in Observability. The owner clarified
+that the supplied dashboard references target a 1440p display. The current data
+source contains opt-in container metrics, not host-level CPU, memory, storage
+or network readings. The bounded overview slice aggregates only those existing
+container samples, preserves missing values as gaps, and does not add a host
+collector, mount or privilege. Host metrics remain a separate source and
+security/collection decision. The overview's responsive presentation is
+verified at 2560×1440 and narrower desktop/mobile widths; see the
+[verification record](../verification.md#aggregate-overview-dashboard-presentation).
+
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose
 project name, even for copies resolving to the same name. This is runtime

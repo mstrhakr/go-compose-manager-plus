@@ -298,7 +298,7 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 	var timeline dashboardTimeline
 	if view == "observability" {
 		start, end := dashboardTimeRange()
-		charts, metricsStatus = server.dashboardChartsForRange(r.Context(), start, end)
+		charts, metricsStatus = server.dashboardChartsForRange(r.Context(), start, end, false)
 		timeline = server.dashboardTimeline(r.Context(), start, end)
 	}
 	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, ProjectColumns: listPanel{ID: "projects-title", Title: "Projects", Columns: []string{"Project", "Discovery", "Activation", "Containers"}}, Filters: filters, SubviewNav: subviews,

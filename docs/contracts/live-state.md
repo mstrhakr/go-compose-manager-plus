@@ -232,13 +232,25 @@ atomic committed bit without replaying the interrupted batch. While collection
 is disabled, the default-off collector does not reopen the metrics database;
 after a process restart, stored eviction history is therefore not rediscovered
 until collection is enabled again.
-Collection targets are not schedule guarantees. The overview dashboard now reads
-the opted-in SQLite history and plots per-container CPU, raw memory usage, and
-network receive/transmit rates. For display only, it selects the latest recorded
-sample in each 30-second bucket; it does not combine container values or alter
-retained samples, and missing buckets remain gaps. Memory is labeled as Docker's
-raw usage, not the cache-adjusted CLI value. These charts cover the last hour
-and report when collection is disabled, starting, paused or has no observations.
+Collection targets are not schedule guarantees. The initial overview dashboard
+read the opted-in SQLite history and plotted per-container CPU, raw memory usage,
+and network receive/transmit rates, selecting the latest recorded sample in each
+30-second bucket. On 2026-11-23 the owner requested an overview focused on
+aggregate and system metrics rather than per-container lines; detailed
+per-container charts remain in Observability. This changes presentation only:
+collection, stored samples and the one-hour range remain unchanged.
+
+For this bounded UI slice, aggregate charts sum values from the collected
+container series for each display bucket, and show a gap if any returned
+container series lacks a value for that metric in the bucket. They do not infer
+zeroes or alter retained samples. CPU totals may exceed 100%; raw memory sums
+describe Docker container usage, not host RAM. The chart selects the latest
+recorded sample per container in each 30-second bucket, so a displayed total is
+not a simultaneous host measurement. True host CPU, memory, storage and network
+measurements require a separate host data source and remain unimplemented; do
+not present container aggregates as host metrics or assume additional mounts or
+privileges. These charts cover the last hour and report when collection is
+disabled, starting, paused or has no observations.
 The authenticated Containers observability view presents the same one-hour
 metric charts with a shared timeline slider, observed lifecycle markers and a
 newest-first list bounded to 200 events. Slider, marker, list, chart-click and
@@ -283,6 +295,12 @@ does not implement these behaviors.
   right end of the input.
 - Large chart legends stay bounded; every series remains discoverable and can
   be toggled individually without changing the plot's layout.
+- The overview shows aggregate collected-container metrics rather than
+  per-container metric lines; per-container charts remain in Observability.
+  Missing observations remain gaps, and container totals are not presented as
+  host-level measurements. The wide dashboard is designed for the owner's
+  1440p reference screenshots and remains usable without overflow at smaller
+  desktop and mobile widths.
 - The initial observability view shows the last hour; chart, slider, marker and
   event-list selections stay synchronized. Only recorded events appear, and the
   view does not imply Docker event history is complete.
@@ -336,3 +354,14 @@ These checks do not establish the whole LIVE-003 contract. Live Docker
 collection, physical disk-full recovery, platform-specific behavior, measured
 resource costs, and historical logs remain unverified or unimplemented. See
 the [source register](../planning/sources.md).
+
+The aggregate Overview presentation slice was exercised on Linux on
+2026-11-23. `make check QUIET=1` and `make docs && make check-docs` passed.
+Regressions verify complete-bucket sums, gaps for incomplete aggregate buckets,
+and per-container chart retention in Observability. Browser checks verify
+aggregate-only Overview labels, explicit unavailability of host-level resource
+metrics, and no horizontal overflow at 2560×1440 and desktop widths from 1440
+through 620 pixels; the full browser suite includes mobile Chromium. These
+checks do not add or verify a host telemetry source, live Docker collection,
+physical disk-full recovery, platform-specific behavior or measured resource
+costs.

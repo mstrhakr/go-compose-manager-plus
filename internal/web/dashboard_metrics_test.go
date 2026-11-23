@@ -107,20 +107,75 @@ func TestDashboardChartsKeepRetainedHistoryWhenCollectionIsDegraded(t *testing.T
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
 	panels, status := server.dashboardCharts(ctx)
-	if status != "Collection degraded" || len(panels) != 4 {
+	if status != "Collection degraded" || len(panels) != 3 {
 		t.Fatalf("dashboard status = %q, panels = %d", status, len(panels))
 	}
 	for _, panel := range panels {
-		if panel.Status != "Collection degraded · 1 container with retained history" || panel.Series == "" {
+		if panel.Status != "Collection degraded · aggregate of 1 container with retained history" || panel.Series == "" {
 			t.Fatalf("degraded chart panel = %#v", panel)
 		}
 		var data dashboardChartData
 		if err := json.Unmarshal([]byte(panel.Series), &data); err != nil {
 			t.Fatal(err)
 		}
-		if len(data.Series) != 1 || len(data.Series[0].Points) != 1 || data.Series[0].Points[0].Y == nil {
+		wantSeriesCount := 1
+		if panel.ID == "dashboard-network-rx" {
+			wantSeriesCount = 2
+		}
+		if len(data.Series) != wantSeriesCount || len(data.Series[0].Points) != 1 || data.Series[0].Points[0].Y == nil {
 			t.Fatalf("retained chart data = %#v", data)
 		}
+	}
+	start, end := dashboardTimeRange()
+	observabilityPanels, _ := server.dashboardChartsForRange(ctx, start, end, false)
+	if len(observabilityPanels) != 4 {
+		t.Fatalf("observability chart count = %d, want four per-container charts", len(observabilityPanels))
+	}
+	var observabilityCPU dashboardChartData
+	if err := json.Unmarshal([]byte(observabilityPanels[0].Series), &observabilityCPU); err != nil {
+		t.Fatal(err)
+	}
+	if len(observabilityCPU.Series) != 1 || observabilityCPU.Series[0].Label != "Container aaaaaaaaaaaa" {
+		t.Fatalf("observability CPU chart was aggregated: %#v", observabilityCPU.Series)
+	}
+}
+
+func TestBuildAggregateDashboardChartSumsCompleteBucketsAndPreservesGaps(t *testing.T) {
+	start := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	cpu1, cpu2 := 25.0, 15.0
+	containers := []metrics.ContainerChartSeries{
+		{ContainerID: strings.Repeat("a", 64), Points: []metrics.ChartPoint{
+			{CPUPercent: &cpu1}, {CPUPercent: &cpu1},
+		}},
+		{ContainerID: strings.Repeat("b", 64), Points: []metrics.ChartPoint{
+			{CPUPercent: &cpu2}, {},
+		}},
+	}
+	panel, err := buildAggregateDashboardChart(
+		"dashboard-cpu", "CPU across collected containers", "CPU (%)", containers, start, end, chartBucket,
+		[]dashboardAggregateMetric{{Label: "Collected container total", Color: "blue", Value: func(point metrics.ChartPoint) *float64 {
+			return point.CPUPercent
+		}}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got dashboardChartData
+	if err := json.Unmarshal([]byte(panel.Series), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Series) != 1 || len(got.Series[0].Points) != 2 {
+		t.Fatalf("aggregate chart shape = %#v", got)
+	}
+	if got.Series[0].Points[0].Y == nil || *got.Series[0].Points[0].Y != 40 {
+		t.Fatalf("aggregate total = %#v", got.Series[0].Points[0])
+	}
+	if got.Series[0].Points[1].Y != nil {
+		t.Fatalf("incomplete aggregate bucket should remain a gap: %#v", got.Series[0].Points[1])
+	}
+	if got.Series[0].Label != "Collected container total" || got.Series[0].Color != "blue" {
+		t.Fatalf("aggregate series presentation = %#v", got.Series[0])
 	}
 }
 
@@ -197,7 +252,7 @@ func TestObservabilityTemplateRendersTimelineMarkersAndEventList(t *testing.T) {
 			Status: "1 observed event", Message: "Observed lifecycle events only.",
 			Events: []dashboardTimelineEvent{event}, RecentEvents: []dashboardTimelineEvent{event},
 		},
-		Charts: emptyDashboardCharts("Collecting", "No recorded values."),
+		Charts: emptyDashboardCharts("Collecting", "No recorded values.", false),
 	}
 	response := httptest.NewRecorder()
 	server.render(response, data)

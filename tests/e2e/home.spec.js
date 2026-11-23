@@ -92,15 +92,20 @@ test('first login forces password setup before protected dashboard and works on 
     for (const name of ['Resources unavailable', 'Activity unavailable']) {
       await expect(page.getByRole('button', { name })).toBeDisabled();
     }
-    for (const name of ['CPU by container', 'Docker raw memory usage by container', 'Network receive by container', 'Network transmit by container']) {
+    for (const name of ['CPU across collected containers', 'Raw memory across collected containers', 'Network throughput across collected containers']) {
       await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
     }
+    await expect(page.getByText('Host-level resource metrics are not collected', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'CPU by container', exact: true })).toHaveCount(0);
     await expect(page.getByText('No metrics are being collected.', { exact: false }).first()).toBeVisible();
     await page.goto('/containers/observability');
     await expect(page.getByRole('heading', { level: 1, name: 'Container observability' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Container views' }).getByRole('link', { name: 'Observability' })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('slider', { name: 'Selected time in the last hour' })).toBeVisible();
     await expect(page.locator('[data-timeline-message]')).toContainText('Metrics collection is disabled');
+    for (const name of ['CPU by container', 'Docker raw memory usage by container', 'Network receive by container', 'Network transmit by container']) {
+      await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole('link', { name: 'Settings', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Metrics settings' })).toBeVisible();
@@ -255,7 +260,7 @@ test('first login forces password setup before protected dashboard and works on 
     await page.goto('/');
     await page.screenshot({ path: 'test-results/auth-dashboard-desktop.png', fullPage: true });
 
-    const themed = await browser.newContext({ baseURL, colorScheme: 'dark', viewport: { width: 1440, height: 900 } });
+    const themed = await browser.newContext({ baseURL, colorScheme: 'dark', viewport: { width: 2560, height: 1440 } });
     try {
       await themed.addCookies(await context.cookies());
       const themedPage = await themed.newPage();
@@ -282,6 +287,16 @@ test('first login forces password setup before protected dashboard and works on 
       expect(layout.sidebar).toBe(272);
       expect(layout.chart).toBe(245);
       expect(layout.mainLeft).toBe(layout.sidebarRight);
+      expect(await themedPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      for (const width of [1440, 1024, 901, 900, 621, 620]) {
+        await themedPage.setViewportSize({ width, height: 900 });
+        expect(await themedPage.evaluate(() => {
+          const charts = [...document.querySelectorAll('.chart-panel')];
+          return document.documentElement.scrollWidth <= window.innerWidth &&
+            charts.length === 3 && charts.every(chart => chart.getBoundingClientRect().width > 0);
+        })).toBe(true);
+      }
+      await themedPage.setViewportSize({ width: 2560, height: 1440 });
       await themedPage.screenshot({ path: 'test-results/auth-dashboard-dark.png', fullPage: true });
       const hostPanel = themedPage.locator('.sidebar-disclosure');
       await hostPanel.locator('summary').focus();
