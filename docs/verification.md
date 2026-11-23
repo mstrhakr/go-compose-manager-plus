@@ -442,3 +442,8 @@ JavaScript, all columns remain visible. This does not implement metrics or logs.
 
 Real container rows were not exercised against a Docker daemon for this UI
 change; the populated shared list fixture covers the same table component.
+At `193500f`, a review found that replacing the customizer's options inside
+an htmx swap left event handlers referring to the removed controls. The fix
+uses the current controls and preserves the in-page selection when browser
+storage is unavailable. Focused Chromium and mobile Chromium tests cover the
+partial swap; `PLAYWRIGHT_PORT=18334 make check QUIET=1` passed with the fix.

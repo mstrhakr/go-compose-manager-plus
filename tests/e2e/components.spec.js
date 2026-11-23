@@ -94,6 +94,27 @@ test('column controls report blocked browser storage but remain usable', async (
   await list.getByLabel('Status', { exact: true }).uncheck();
   await expect(list.locator('[data-column="Status"]').first()).toBeHidden();
   await expect(list.getByRole('status')).toContainText('Column preferences could not be saved');
+  await list.locator('tbody').evaluate(element => element.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true })));
+  await expect(list.locator('[data-column="Status"]').first()).toBeHidden();
+});
+
+test('column controls survive a partial swap of their options and restore button', async ({ page }) => {
+  const list = page.locator('[data-column-manager="projects-title"]');
+  const editor = list.locator('[data-column-controls]');
+  await editor.locator('summary').click();
+  await editor.getByLabel('Status', { exact: true }).uncheck();
+  await editor.locator('.column-customizer-panel').evaluate(panel => {
+    panel.innerHTML = panel.innerHTML;
+    panel.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
+  });
+  await expect(editor.getByLabel('Status', { exact: true })).not.toBeChecked();
+  await editor.getByLabel('Status', { exact: true }).check();
+  await expect(list.getByRole('columnheader', { name: 'Status' })).toBeVisible();
+  await editor.getByLabel('Status', { exact: true }).uncheck();
+  await editor.getByRole('button', { name: 'Restore defaults' }).click();
+  await expect(list.getByRole('columnheader', { name: 'Status' })).toBeVisible();
+  await page.reload();
+  await expect(list.getByRole('columnheader', { name: 'Status' })).toBeVisible();
 });
 
 test('reinitializes swapped components and handles zero selectable entries', async ({ page }) => {

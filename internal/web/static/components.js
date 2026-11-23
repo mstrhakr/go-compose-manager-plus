@@ -1,6 +1,7 @@
 (() => {
   const svgNS = 'http://www.w3.org/2000/svg';
   const colors = new Set(['blue', 'amber', 'purple', 'green', 'red']);
+  const columnStates = new WeakMap();
 
   function drawChart(chart) {
     const raw = chart.dataset.chartSeries;
@@ -167,47 +168,54 @@
 
   function initializeColumns(manager) {
     const controls = manager.querySelector('[data-column-controls]');
-    const options = [...manager.querySelectorAll('[data-column-option]')];
-    const notice = manager.querySelector('[data-column-notice]');
-    if (!controls || !notice || !options.length) return;
+    if (!controls || !controls.querySelector('[data-column-notice]') ||
+        !controls.querySelector('[data-column-option]') || !controls.querySelector('[data-column-restore]')) return;
     const key = `compose-manager-columns:${manager.dataset.columnManager}`;
+    const options = () => [...controls.querySelectorAll('[data-column-option]')];
     function reportFailure(action) {
+      const notice = controls.querySelector('[data-column-notice]');
+      if (!notice) return;
       notice.hidden = false;
       notice.textContent = `Column preferences could not be ${action} in this browser.`;
     }
     function apply() {
-      const visible = new Set(options.filter(option => option.checked).map(option => option.value));
+      const visible = new Set(options().filter(option => option.checked).map(option => option.value));
       for (const cell of manager.querySelectorAll('[data-column]')) {
-        cell.hidden = !visible.has(cell.dataset.column);
+        if (cell.closest('[data-column-manager]') === manager) cell.hidden = !visible.has(cell.dataset.column);
       }
     }
-    if (controls.dataset.initialized) {
-      apply();
-      return;
-    }
-    try {
-      const saved = localStorage.getItem(key);
-      if (saved !== null) {
-        const hidden = JSON.parse(saved);
-        if (!Array.isArray(hidden) || !hidden.every(value => typeof value === 'string')) {
-          throw new Error('Invalid column preferences');
+    let hidden = columnStates.get(controls);
+    if (!hidden) {
+      hidden = [];
+      try {
+        const saved = localStorage.getItem(key);
+        if (saved !== null) {
+          hidden = JSON.parse(saved);
+          if (!Array.isArray(hidden) || !hidden.every(value => typeof value === 'string')) {
+            throw new Error('Invalid column preferences');
+          }
         }
-        for (const option of options) {
-          option.checked = option.disabled || !hidden.includes(option.value);
-        }
+      } catch (error) {
+        hidden = [];
+        reportFailure('loaded');
+        console.error('Unable to load column preferences:', error);
       }
-    } catch (error) {
-      reportFailure('loaded');
-      console.error('Unable to load column preferences:', error);
+      columnStates.set(controls, hidden);
+    }
+    for (const option of options()) {
+      option.checked = option.disabled || !hidden.includes(option.value);
     }
     apply();
     controls.hidden = false;
+    if (controls.dataset.initialized) return;
     controls.dataset.initialized = 'true';
     function save() {
+      columnStates.set(controls, options().filter(option => !option.checked).map(option => option.value));
       apply();
       try {
-        localStorage.setItem(key, JSON.stringify(options.filter(option => !option.checked).map(option => option.value)));
-        notice.hidden = true;
+        localStorage.setItem(key, JSON.stringify(columnStates.get(controls)));
+        const notice = controls.querySelector('[data-column-notice]');
+        if (notice) notice.hidden = true;
       } catch (error) {
         reportFailure('saved');
         console.error('Unable to save column preferences:', error);
@@ -216,8 +224,9 @@
     controls.addEventListener('change', event => {
       if (event.target.matches('[data-column-option]')) save();
     });
-    controls.querySelector('[data-column-restore]').addEventListener('click', () => {
-      for (const option of options) option.checked = true;
+    controls.addEventListener('click', event => {
+      if (!(event.target instanceof Element) || !event.target.closest('[data-column-restore]')) return;
+      for (const option of options()) option.checked = true;
       save();
     });
   }
