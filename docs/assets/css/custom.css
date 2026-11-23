@@ -1,7 +1,5 @@
-@layer theme {
-  :root {
-    --primary-hue: 210deg;
-    --primary-saturation: 100%;
-    --primary-lightness: 42%;
-  }
+:root {
+  --primary-hue: 210deg;
+  --primary-saturation: 100%;
+  --primary-lightness: 42%;
 }
