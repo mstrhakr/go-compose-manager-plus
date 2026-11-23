@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
@@ -20,8 +21,8 @@ type EvictedSamples struct {
 }
 
 // EvictOldestSamples removes up to limit samples, ordered by observation time
-// and container ID. It does not infer that deleting rows returns disk space.
-// Callers must report early expiry and decide whether writes can resume.
+// and container ID, and atomically records the cumulative eviction history.
+// It does not infer that deleting rows returns disk space.
 func (s *Store) EvictOldestSamples(ctx context.Context, limit int) (EvictedSamples, error) {
 	if limit < 1 {
 		return EvictedSamples{}, errors.New("eviction limit must be positive")
@@ -55,8 +56,32 @@ func (s *Store) EvictOldestSamples(ctx context.Context, limit int) (EvictedSampl
 	if deleted != count {
 		return EvictedSamples{}, errors.New("evicted sample count changed during transaction")
 	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO sample_eviction_history (id, sample_count, oldest_ns, newest_ns)
+		VALUES (1, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET
+			sample_count = sample_count + excluded.sample_count,
+			oldest_ns = min(oldest_ns, excluded.oldest_ns),
+			newest_ns = max(newest_ns, excluded.newest_ns)`, count, oldest, newest); err != nil {
+		return EvictedSamples{}, fmt.Errorf("record sample eviction: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return EvictedSamples{}, fmt.Errorf("commit sample eviction: %w", err)
+	}
+	return EvictedSamples{Count: count, Oldest: time.Unix(0, oldest).UTC(), Newest: time.Unix(0, newest).UTC()}, nil
+}
+
+// SampleEvictionHistory reports cumulative sample eviction since schema
+// version 4. The span bounds evicted timestamps, not a continuous gap.
+// Older unrecorded evictions cannot be reconstructed.
+func (s *Store) SampleEvictionHistory(ctx context.Context) (EvictedSamples, error) {
+	var count, oldest, newest int64
+	err := s.db.QueryRowContext(ctx, `SELECT sample_count, oldest_ns, newest_ns
+		FROM sample_eviction_history WHERE id = 1`).Scan(&count, &oldest, &newest)
+	if errors.Is(err, sql.ErrNoRows) {
+		return EvictedSamples{}, nil
+	}
+	if err != nil {
+		return EvictedSamples{}, fmt.Errorf("read sample eviction history: %w", err)
 	}
 	return EvictedSamples{Count: count, Oldest: time.Unix(0, oldest).UTC(), Newest: time.Unix(0, newest).UTC()}, nil
 }

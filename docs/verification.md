@@ -586,6 +586,25 @@ lengths are not atomic snapshots or filesystem block counts. Filesystem-full
 recovery, earliest-first pressure eviction, warning and write pause/retry,
 collector startup and shutdown, and Docker integration remain unverified.
 
+### Durable Sample-Eviction Summary
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`c209dcf` with changes uncommitted during these checks. Schema version 4 records
+a cumulative sample-eviction count and the oldest and newest removed sample
+timestamps in the same transaction as each nonempty eviction. The bounds do not
+describe a continuous gap or identify affected containers. The summary persists
+across normal expiry and reopen; it cannot reconstruct prior evictions in
+version 3 or earlier. No acknowledgement or automatic clearing policy is
+implemented.
+
+The focused metrics and runtime race tests cover reopen, concurrent evictions,
+schema-version-3 migration, injected delete and summary-write failures, and
+count overflow: `go test -race -count=1 ./internal/metrics ./internal/runtime`
+passed. `PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and
+`make check-docs` passed. These checks do not establish crash or physical-disk-full
+recovery. The store remains unwired: it has no user-facing warning, budget
+controller, write pause/retry, scheduled retention or collector.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,

@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 3
+const schemaVersion = 4
 
 type Sample struct {
 	ContainerID string
@@ -175,6 +175,22 @@ func initialize(ctx context.Context, db *sql.DB) error {
 		} {
 			if _, err := tx.ExecContext(ctx, statement); err != nil {
 				return fmt.Errorf("migrate metrics schema to version 3: %w", err)
+			}
+		}
+		version = 3
+	}
+	if version == 3 {
+		for _, statement := range []string{
+			`CREATE TABLE sample_eviction_history (
+				id INTEGER PRIMARY KEY CHECK (id = 1),
+				sample_count INTEGER NOT NULL CHECK (typeof(sample_count) = 'integer' AND sample_count > 0),
+				oldest_ns INTEGER NOT NULL,
+				newest_ns INTEGER NOT NULL CHECK (oldest_ns <= newest_ns)
+			)`,
+			`PRAGMA user_version = 4`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 4: %w", err)
 			}
 		}
 	}

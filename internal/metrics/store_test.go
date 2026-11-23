@@ -208,6 +208,57 @@ func TestVersionTwoMigrationCreatesHistory(t *testing.T) {
 	}
 }
 
+func TestVersionThreeMigrationRecordsEviction(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	store, err := Open(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := strings.Repeat("c", 64)
+	base := time.Date(2026, 11, 22, 21, 0, 0, 0, time.UTC)
+	if err := store.Insert(ctx, []Sample{{ContainerID: id, Observation: runtime.Observations{Time: base}}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.InsertEvents(ctx, []Event{{ContainerID: id, Time: base, Kind: EventOOM}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(ctx, `DROP TABLE sample_eviction_history`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(ctx, `PRAGMA user_version = 3`); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err = Open(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	var version int
+	if err := store.db.QueryRowContext(ctx, `PRAGMA user_version`).Scan(&version); err != nil || version != schemaVersion {
+		t.Fatalf("schema version = %d, error = %v", version, err)
+	}
+	evicted, err := store.EvictOldestSamples(ctx, 1)
+	if err != nil || evicted.Count != 1 || !evicted.Oldest.Equal(base) {
+		t.Fatalf("eviction after migration = %#v, error = %v", evicted, err)
+	}
+	history, err := store.SampleEvictionHistory(ctx)
+	if err != nil || history != evicted {
+		t.Fatalf("history after migration = %#v, error = %v", history, err)
+	}
+	events, err := store.SelectEvents(ctx, id, base, base.Add(time.Second), 1)
+	if err != nil || len(events) != 1 || events[0].Kind != EventOOM {
+		t.Fatalf("event after migration = %#v, error = %v", events, err)
+	}
+}
+
 func TestInsertValidationAndAtomicity(t *testing.T) {
 	ctx := context.Background()
 	store, err := Open(ctx, t.TempDir())
@@ -357,7 +408,7 @@ func TestOpenRejectsUnknownSchema(t *testing.T) {
 		name string
 		sql  string
 	}{
-		{"newer version", `PRAGMA user_version = 4`},
+		{"newer version", `PRAGMA user_version = 5`},
 		{"unversioned database", `CREATE TABLE unrelated (id INTEGER)`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

@@ -16,6 +16,7 @@ func TestEvictOldestSamplesAcrossContainers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	ids := []string{strings.Repeat("a", 64), strings.Repeat("b", 64)}
 	base := time.Date(2026, 11, 22, 21, 0, 0, 0, time.UTC)
 	for _, id := range ids {
@@ -27,6 +28,9 @@ func TestEvictOldestSamplesAcrossContainers(t *testing.T) {
 	}
 	if err := store.InsertEvents(ctx, []Event{{ContainerID: ids[0], Time: base, Kind: EventStart}}); err != nil {
 		t.Fatal(err)
+	}
+	if history, err := store.SampleEvictionHistory(ctx); err != nil || history != (EvictedSamples{}) {
+		t.Fatalf("initial history = %#v, error %v", history, err)
 	}
 	if _, err := store.EvictOldestSamples(ctx, 0); err == nil {
 		t.Fatal("accepted zero eviction limit")
@@ -47,6 +51,10 @@ func TestEvictOldestSamplesAcrossContainers(t *testing.T) {
 			t.Error(err)
 		}
 	}()
+	history, err := store.SampleEvictionHistory(ctx)
+	if err != nil || history != evicted {
+		t.Fatalf("reopened eviction history = %#v, want %#v, error %v", history, evicted, err)
+	}
 	a, err := store.Select(ctx, ids[0], base, base.Add(3*time.Second), 10)
 	if err != nil || len(a) != 1 || !a[0].Observation.Time.Equal(base.Add(2*time.Second)) {
 		t.Fatalf("container a = %#v, error %v", a, err)
@@ -66,5 +74,16 @@ func TestEvictOldestSamplesAcrossContainers(t *testing.T) {
 	evicted, err = store.EvictOldestSamples(ctx, 10)
 	if err != nil || evicted != (EvictedSamples{}) {
 		t.Fatalf("empty eviction = %#v, error %v", evicted, err)
+	}
+	history, err = store.SampleEvictionHistory(ctx)
+	if err != nil || history.Count != 6 || !history.Oldest.Equal(base) || !history.Newest.Equal(base.Add(2*time.Second)) {
+		t.Fatalf("cumulative history = %#v, error %v", history, err)
+	}
+	if _, err := store.ExpireHistoryBefore(ctx, base.Add(4*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	persisted, err := store.SampleEvictionHistory(ctx)
+	if err != nil || persisted != history {
+		t.Fatalf("expiry changed eviction history = %#v, error %v", persisted, err)
 	}
 }

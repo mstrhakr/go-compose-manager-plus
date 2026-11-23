@@ -16,6 +16,7 @@ func TestEvictionFailureRollsBack(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	defer func() {
 		if err := store.Close(); err != nil {
 			t.Error(err)
@@ -41,5 +42,27 @@ func TestEvictionFailureRollsBack(t *testing.T) {
 	got, err := store.Select(ctx, id, base, base.Add(2*time.Second), 10)
 	if err != nil || len(got) != 2 {
 		t.Fatalf("failed eviction changed samples: %#v, error %v", got, err)
+	}
+	history, err := store.SampleEvictionHistory(ctx)
+	if err != nil || history != (EvictedSamples{}) {
+		t.Fatalf("failed eviction changed history: %#v, error %v", history, err)
+	}
+	if _, err := store.db.ExecContext(ctx, `DROP TRIGGER eviction_failure`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(ctx, `CREATE TRIGGER history_failure BEFORE INSERT ON sample_eviction_history
+		BEGIN SELECT RAISE(ABORT, 'injected history failure'); END`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.EvictOldestSamples(ctx, 2); err == nil {
+		t.Fatal("expected history write failure")
+	}
+	got, err = store.Select(ctx, id, base, base.Add(2*time.Second), 10)
+	if err != nil || len(got) != 2 {
+		t.Fatalf("failed history write changed samples: %#v, error %v", got, err)
+	}
+	history, err = store.SampleEvictionHistory(ctx)
+	if err != nil || history != (EvictedSamples{}) {
+		t.Fatalf("failed history write changed history: %#v, error %v", history, err)
 	}
 }

@@ -84,10 +84,13 @@ to a future collector; it does not reconnect or replay events itself.
 The foundation does not start collection, enforce one-hour expiry or a storage
 budget, or implement migration to TimescaleDB. A caller can atomically delete
 sample, event and state records before a cutoff, inspect SQLite file lengths,
-attempt a WAL checkpoint, and remove batches of oldest samples. These are
-unwired primitives, not a budget
-controller. Deleting SQLite rows does not by itself guarantee disk space is
-returned; file lengths do not measure allocated blocks or peak usage.</p>
+attempt a WAL checkpoint, and remove batches of oldest samples. Each nonempty
+sample eviction atomically updates a persistent cumulative count and timestamp
+bounds; the bounds do not imply a continuous gap, and evictions made before
+schema version 4 cannot be reconstructed. This record is not a user-facing
+warning and does not report event or state loss. These are unwired primitives,
+not a budget controller. Deleting SQLite rows does not by itself guarantee disk
+space is returned; file lengths do not measure allocated blocks or peak usage.</p>
 <p>To measure one synthetic hour of SQLite samples for 1, 5, 25 and 50
 containers without Docker, run:</p>
 <pre><code>CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 \
