@@ -445,6 +445,30 @@ measure Docker overhead, process memory, realtime collection, deletion,
 filesystem exhaustion, crash recovery or the production storage design.
 The results do not set preset budgets or validate oldest-first eviction.
 
+### Docker Stats Conversion Foundation
+
+2026-11-22, Linux x86_64 development container, branch
+`spike/docker-metrics-storage`, based on `a2d9ff6` with these changes
+uncommitted during the checks. The runtime package can request one bounded
+read-only Docker stats response and convert consecutive observations from the
+same uninterrupted container into CPU utilization and network/block byte
+rates. Raw memory usage and limit preserve missing values. Counters are
+compared per interface or block device so resets and membership changes do not
+become false rates. The caller must discard its previous sample across a
+disconnect or container identity change. No background collection is wired.
+
+- `go test -race -count=1 ./internal/runtime ./internal/metricspoc`: passed,
+  using fixture and mock HTTP responses; the opt-in live test was skipped.
+- `PLAYWRIGHT_PORT=18334 make check QUIET=1`: passed Go race tests, vet, build,
+  Node, HTTP and browser tests, asset verification and contract structure.
+- `make docs`, `make check-docs` and `git diff --check`: passed.
+
+The new on-demand endpoint and calculations have not been tested against a live
+daemon, all platform/cgroup variants, a scheduler, storage or the UI. The
+five-second snapshot timeout is not a streaming implementation or proof of the
+one-second target. Retention enforcement, safe eviction and recovery remain
+unimplemented.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,

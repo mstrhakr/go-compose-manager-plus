@@ -68,6 +68,13 @@ containers without contacting Docker, run:</p>
 reports directory sizes at the end of ingestion and after closing. Its generated
 values and accelerated writes do not model production workloads or peak disk
 usage and must not be used as storage guarantees.</p>
+<p>The runtime package also exposes a bounded, on-demand Docker stats snapshot
+and conversion of two consecutive observations to CPU and I/O rates. It does
+not start a collector. The caller must pass the previous observation only for
+the same uninterrupted container instance and discard it after a disconnect.
+Memory usage is raw Docker usage, not the CLI's cache-adjusted value. Missing
+counters, resets and changing interface/device sets produce unavailable rates
+instead of zero; platform support remains unverified.</p>
 <h2>UI components</h2>
 <p>Reusable server-rendered metric, chart and list panels are defined in
 <code>internal/web/templates/partials/components.html</code>, with their Go
