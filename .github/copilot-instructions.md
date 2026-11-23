@@ -39,6 +39,6 @@
 - Keep PR validation read-only and secret-free. Never execute PR source in a
   privileged workflow. Scope writes/OIDC per job; review pins, executable downloads,
   dependencies and build/release tooling. Do not automatically merge updates.
-- Follow the [development guide](../docs/content/development.html) and
-  [delivery guide](../docs/content/deployment.html). Keep native-platform evidence
+- Follow the [development guide](../docs/content/docs/development.md) and
+  [delivery guide](../docs/content/docs/deployment.md). Keep native-platform evidence
   separate from cross-compilation and simulation.

@@ -24,6 +24,18 @@ updates:
         applies-to: security-updates
         patterns: ["*"]
         update-types: ["minor", "patch"]
+  - package-ecosystem: gomod
+    directory: /docs
+    schedule:
+      interval: weekly
+    groups:
+      docs-go-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      docs-go-security-minor-patch:
+        applies-to: security-updates
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

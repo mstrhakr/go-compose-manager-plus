@@ -1,8 +1,76 @@
 baseURL = 'http://localhost:1313/'
 locale = 'en-us'
 title = 'Compose Manager Plus'
-disableKinds = ['taxonomy', 'term', 'RSS']
-ignoreFiles = ['(^|/)(architecture|development|deployment)\.html$']
+disableKinds = ['taxonomy', 'term']
+ignoreFiles = ['(^|/)(architecture|development|deployment)\.md$']
+
+[module]
+[module.hugoVersion]
+  extended = true
+  min = '0.146.0'
+[[module.imports]]
+  path = 'github.com/imfing/hextra'
+
+[outputs]
+home = ['html', 'llms']
+page = ['html', 'markdown']
+section = ['html', 'rss', 'markdown']
 
 [security]
 allowContent = ['^text/html$', '^text/markdown$']
+
+[markup.highlight]
+noClasses = false
+
+[markup.goldmark.renderer]
+unsafe = true
+
+enableInlineShortcodes = true
+externalLinkDecoration = true
+
+[[menu.main]]
+identifier = 'documentation'
+name = 'Documentation'
+pageRef = '/docs'
+weight = 1
+
+[[menu.main]]
+name = 'Search'
+weight = 2
+[menu.main.params]
+  type = 'search'
+
+[[menu.main]]
+name = 'GitHub'
+url = 'https://github.com/mstrhakr/go-compose-manager-plus'
+weight = 3
+[menu.main.params]
+  icon = 'github'
+
+[params]
+description = 'Compose Manager Plus is a contract-led, Compose-native manager for Docker hosts.'
+
+[params.navbar]
+displayTitle = true
+displayLogo = false
+width = 'wide'
+
+[params.theme]
+default = 'system'
+displayToggle = true
+
+[params.search]
+enable = true
+type = 'flexsearch'
+
+[params.page]
+width = 'wide'
+
+[params.toc]
+displayTags = true
+
+[params.footer]
+enable = true
+displayCopyright = true
+displayPoweredBy = false
+width = 'wide'

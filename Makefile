@@ -24,7 +24,7 @@ help:
 	@echo "make test-e2e    Desktop browsers and mobile Chromium"
 	@echo "make test-live-docker  Opt-in disposable Docker snapshot test"
 	@echo "make run         Start the application"
-	@echo "make docs        Build documentation (requires Hugo)"
+	@echo "make docs        Build documentation (requires extended Hugo and Go)"
 	@echo "make check QUIET=1  Show phase progress and full output only on failure"
 	@echo "make pr-checks [PR=number]  Watch PR checks (default: current branch)"
 	@echo "make run-watch RUN=id       Watch a specific GitHub Actions run"

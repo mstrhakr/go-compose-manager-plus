@@ -14,7 +14,7 @@ Read the [contract index](../../../docs/contracts/README.md), relevant contracts
 [product plan](../../../docs/planning/README.md),
 [reuse map](../../../docs/planning/contract-reuse.md),
 [source register](../../../docs/planning/sources.md) and
-[development guide](../../../docs/content/development.html).
+[development guide](../../../docs/content/docs/development.md).
 The index owns status/ownership conventions. Do not assume a product inventory
 exists or substitute the plugin's inventory and approvals for standalone intent.
 
