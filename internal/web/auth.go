@@ -26,6 +26,7 @@ type authServer struct {
 	manager         *auth.Manager
 	discovery       *discovery.Store
 	metricsSettings *metrics.SettingsStore
+	collector       *metrics.Collector
 	pages           *template.Template
 	publicURL       *url.URL
 	trustedProxies  []netip.Prefix

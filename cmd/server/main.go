@@ -74,9 +74,25 @@ func run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if cfg.DockerSocket != "" {
 		docker = runtime.NewClient(cfg.DockerSocket)
 	}
+	metricsSettings := metrics.NewSettingsStore(database.SQL)
+	collector, err := metrics.NewCollector(cfg.DataDir, metricsSettings, discovery.NewStore(database.SQL), docker, logger)
+	if err != nil {
+		return fmt.Errorf("initialize metrics collector: %w", err)
+	}
+	collectorCtx, cancelCollector := context.WithCancel(ctx)
+	collectorDone := make(chan error, 1)
+	go func() {
+		collectorDone <- collector.Run(collectorCtx)
+	}()
+	defer func() {
+		cancelCollector()
+		if err := <-collectorDone; err != nil && !errors.Is(err, context.Canceled) {
+			logger.Error("metrics collector stopped", "error", err)
+		}
+	}()
 	server := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           web.Handler(authManager, discovery.NewStore(database.SQL), metrics.NewSettingsStore(database.SQL), cfg.PublicURL, cfg.TrustedProxyRanges, logger, docker),
+		Handler:           web.Handler(authManager, discovery.NewStore(database.SQL), metricsSettings, collector, cfg.PublicURL, cfg.TrustedProxyRanges, logger, docker),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      15 * time.Second,

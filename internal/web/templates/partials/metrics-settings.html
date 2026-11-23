@@ -1,16 +1,17 @@
 {{define "metrics-settings"}}
 <section class="workspace-panel metrics-settings" aria-labelledby="metrics-settings-title">
-  <div class="panel-heading"><div><h1 id="metrics-settings-title">Metrics settings</h1><p>Configure preferences for the future collector.</p></div></div>
+  <div class="panel-heading"><div><h1 id="metrics-settings-title">Metrics settings</h1><p>Configure opt-in background metrics collection.</p></div></div>
   <div class="discovery-content">
-    <p role="status"><strong>Collection unavailable.</strong> Saving these preferences does not enable collection. No background metrics collection is running.</p>
-    <p>History is planned for one hour. Suggested storage sizes have not been measured; enter an explicit limit. SQLite file usage can temporarily exceed that target.</p>
+    <p role="status"><strong>Collection status:</strong> {{.CollectionStatusText}}</p>
+    {{if .CollectionWarning}}<p class="discovery-notice" role="status">{{.CollectionWarning}}</p>{{end}}
+    <p>Collection retains up to one hour of history; storage pressure may shorten it. Suggested storage sizes have not been measured; enter an explicit limit. SQLite file usage can temporarily exceed that target.</p>
     {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
     {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
     <form action="/settings/metrics" method="post" class="auth-form">
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <input type="hidden" name="revision" value="{{.MetricsSettings.Revision}}">
       <label for="metrics-profile">Profile</label>
-      <select id="metrics-profile" name="profile">
+      <select id="metrics-profile" name="profile" data-metrics-profile>
         <option value="low" {{if eq .MetricsSettings.Profile "low"}}selected{{end}}>Low — activated stacks, 15 seconds</option>
         <option value="medium" {{if eq .MetricsSettings.Profile "medium"}}selected{{end}}>Medium — activated stacks, 5 seconds</option>
         <option value="high" {{if eq .MetricsSettings.Profile "high"}}selected{{end}}>High — all running containers, 1 second</option>
@@ -25,6 +26,7 @@
       <input id="metrics-interval" name="interval" value="{{.MetricsSettings.Interval}}">
       <label for="metrics-limit">Storage target in bytes</label>
       <input id="metrics-limit" name="storage_limit" type="number" min="1" step="1" value="{{.MetricsSettings.Limit}}" required>
+      <label class="metrics-opt-in"><input name="enabled" type="checkbox" value="true" {{if .MetricsSettings.Enabled}}checked{{end}}> Enable background metrics collection</label>
       <button class="primary-button" type="submit">Save metrics preferences</button>
     </form>
   </div>

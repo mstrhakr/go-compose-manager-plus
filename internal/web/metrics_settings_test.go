@@ -38,7 +38,12 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := metrics.NewSettingsStore(db.SQL)
-	handler := Handler(manager, discovery.NewStore(db.SQL), store, origin, nil, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	collector, err := metrics.NewCollector(t.TempDir(), store, discovery.NewStore(db.SQL), nil, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := Handler(manager, discovery.NewStore(db.SQL), store, collector, origin, nil, logger, nil)
 	cookies := map[string]*http.Cookie{}
 	response := perform(handler, http.MethodGet, "/settings", nil, cookies, "")
 	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/login" {
@@ -61,11 +66,11 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 		t.Fatalf("password change = %d", response.Code)
 	}
 	response = perform(handler, http.MethodGet, "/settings", nil, cookies, "")
-	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "does not enable collection") {
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Disabled; no background metrics collection") {
 		t.Fatalf("settings page = %d %q", response.Code, response.Body.String())
 	}
 	token = tokenFromBody(t, response.Body.String())
-	values := url.Values{"profile": {"high"}, "storage_limit": {"10485760"}, "revision": {"0"}, "enabled": {"true"}}
+	values := url.Values{"profile": {"high"}, "storage_limit": {"10485760"}, "revision": {"0"}}
 	response = perform(handler, http.MethodPost, "/settings/metrics", values, cookies, "bad-token")
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("CSRF failure = %d", response.Code)
@@ -77,6 +82,11 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 	saved, err := store.Load(ctx)
 	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileHigh || saved.Scope != metrics.ScopeAll || saved.Interval != time.Second || saved.StorageLimit != 10485760 || saved.Revision != 1 {
 		t.Fatalf("saved = %#v, %v", saved, err)
+	}
+	enable := url.Values{"profile": {"high"}, "storage_limit": {"10485760"}, "revision": {"1"}, "enabled": {"true"}}
+	response = perform(handler, http.MethodPost, "/settings/metrics", enable, cookies, token)
+	if !strings.Contains(response.Body.String(), "Configure a Docker socket") {
+		t.Fatalf("enable without Docker = %d %q", response.Code, response.Body.String())
 	}
 	if _, err := os.Stat(filepath.Join(dir, "metrics.db")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("saving preferences created metrics database: %v", err)
@@ -114,5 +124,18 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 	saved, err = metrics.NewSettingsStore(reopened.SQL).Load(ctx)
 	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileCustom || saved.Interval != 250*time.Millisecond || saved.Revision != 2 {
 		t.Fatalf("reopened settings = %#v, %v", saved, err)
+	}
+}
+
+func TestCollectionHistoryWarningReportsCumulativeBounds(t *testing.T) {
+	oldest := time.Date(2026, time.November, 22, 10, 0, 0, 0, time.UTC)
+	newest := oldest.Add(5 * time.Minute)
+	got := collectionHistoryWarning(metrics.EvictedSamples{Count: 12, Oldest: oldest, Newest: newest})
+	want := "Cumulative storage-pressure evictions have shortened history: 12 samples removed between 2026-11-22T10:00:00Z and 2026-11-22T10:05:00Z (these bounds may not be a continuous gap)."
+	if got != want {
+		t.Fatalf("collection history warning = %q, want %q", got, want)
+	}
+	if got := collectionHistoryWarning(metrics.EvictedSamples{}); got != "" {
+		t.Fatalf("warning without evictions = %q", got)
 	}
 }

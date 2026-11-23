@@ -800,3 +800,50 @@ an htmx swap left event handlers referring to the removed controls. The fix
 uses the current controls and preserves the in-page selection when browser
 storage is unavailable. Focused Chromium and mobile Chromium tests cover the
 partial swap; `PLAYWRIGHT_PORT=18334 make check QUIET=1` passed with the fix.
+
+## Opt-In Metrics Collector
+
+2026-11-23, Linux development container, branch `spike/docker-metrics-storage`,
+based on `802b209` with implementation changes uncommitted during verification.
+The authenticated Settings page now controls a persisted opt-in collector.
+Disabled mode does not open `metrics.db` or access Docker. Enabled collection
+uses the one-hour managed SQLite store, targets the selected interval, caps
+concurrent per-container observations at eight, saves discrete states/samples,
+and observes lifecycle/health events from a reconnecting Docker event stream.
+Activated scope resolves Compose project names and matches Docker project
+labels, including shared names; leaving scope retains history but drops rate
+baselines. Rates remain unavailable unless event continuity and container
+identity are stable. Identical event replay keys are deduplicated and their
+identities expire atomically with the one-hour event records.
+
+Pending write markers carry a committed bit atomically with batch records. On
+reopen, the collector reconciles and clears a marker without replaying the
+batch. The Settings page reports collector health and cumulative sample
+evictions with timestamp bounds that are not claimed to represent a continuous
+gap. Because default-off mode does not reopen the metrics store, a prior
+eviction warning is not rediscovered after a restart until collection is
+enabled.
+
+Temporary SQLite and mock Unix Docker sockets cover opt-out/no database
+creation, collector start/stop on settings changes, shared-name scope,
+sample/state/event persistence, duplicate event replay, rate continuity,
+eviction status and transactional recovery. Authenticated HTTP tests cover
+session/CSRF gates, validation, stale settings and refusing opt-in without a
+configured Docker socket. Browser tests cover profile-to-Custom transitions,
+preset resets, storage-limit edits, keyboard/touch use and mobile overflow.
+
+- `go test -race -count=1 ./internal/metrics ./internal/runtime ./internal/web ./cmd/server`:
+  passed.
+- `PLAYWRIGHT_PORT=18334 npx playwright test tests/e2e/home.spec.js --project=chromium --project=mobile-chromium`:
+  passed 9 tests with one intentional mobile bootstrap skip.
+- `PLAYWRIGHT_PORT=18334 make check QUIET=1`: passed Go race tests, vet, build,
+  Node, HTTP and desktop/mobile browser tests, asset verification and contract
+  structure checks.
+- `make docs`, `make check-docs` and `git diff --check`: passed.
+
+No live Docker daemon, throughput, physical disk-full, abrupt power-loss,
+Windows/macOS or hosted CI verification was performed. The approved zero
+inference from a known stopped state remains unimplemented pending metric and
+time-boundary rules. Charts, synchronized timeline, persisted per-container gap
+history, historical logs, preset sizing recommendations and TimescaleDB remain
+unimplemented. SQLite deletion does not impose a hard physical disk quota.

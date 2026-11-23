@@ -86,8 +86,8 @@ func validateState(state State) (int64, error) {
 	return timestamp(state.Time)
 }
 
-// InsertEvents records only events observed by a caller; it does not fill gaps
-// or deduplicate reconnect replays.
+// InsertEvents records only observed events. A container/timestamp/kind/health
+// key makes identical reconnect replays idempotent; it does not fill gaps.
 func (s *Store) InsertEvents(ctx context.Context, events []Event) error {
 	return s.insertEvents(ctx, events, false)
 }
@@ -108,13 +108,29 @@ func (s *Store) insertEvents(ctx context.Context, events []Event, pending bool) 
 		return fmt.Errorf("begin event insert: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	stmt, err := tx.PrepareContext(ctx, `INSERT INTO container_events(container_id, observed_ns, kind, health) VALUES (?, ?, ?, ?)`)
+	stmt, err := tx.PrepareContext(ctx, `INSERT OR IGNORE INTO event_dedup(container_id, observed_ns, kind, health) VALUES (?, ?, ?, ?)`)
+	if err != nil {
+		return fmt.Errorf("prepare event deduplication: %w", err)
+	}
+	defer stmt.Close()
+	eventStmt, err := tx.PrepareContext(ctx, `INSERT INTO container_events(container_id, observed_ns, kind, health) VALUES (?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("prepare event insert: %w", err)
 	}
-	defer stmt.Close()
+	defer eventStmt.Close()
 	for i, event := range events {
-		if _, err := stmt.ExecContext(ctx, event.ContainerID, times[i], event.Kind, event.Health); err != nil {
+		result, err := stmt.ExecContext(ctx, event.ContainerID, times[i], event.Kind, event.Health)
+		if err != nil {
+			return fmt.Errorf("deduplicate event %d: %w", i, err)
+		}
+		inserted, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("check event deduplication %d: %w", i, err)
+		}
+		if inserted == 0 {
+			continue
+		}
+		if _, err := eventStmt.ExecContext(ctx, event.ContainerID, times[i], event.Kind, event.Health); err != nil {
 			return fmt.Errorf("insert event %d: %w", i, err)
 		}
 	}

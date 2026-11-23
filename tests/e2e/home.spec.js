@@ -94,12 +94,32 @@ test('first login forces password setup before protected dashboard and works on 
     }
     await page.getByRole('link', { name: 'Settings', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Metrics settings' })).toBeVisible();
-    await expect(page.getByText('Saving these preferences does not enable collection.', { exact: false })).toBeVisible();
+    await expect(page.getByText('Disabled; no background metrics collection', { exact: false })).toBeVisible();
+    const interactiveContext = await browser.newContext({ baseURL });
+    try {
+      await interactiveContext.addCookies(await context.cookies());
+      const interactivePage = await interactiveContext.newPage();
+      await interactivePage.goto('/settings');
+      await interactivePage.getByLabel('Profile').selectOption('low');
+      await interactivePage.getByLabel('Custom scope (used only with Custom)').selectOption('all');
+      await expect(interactivePage.getByLabel('Profile')).toHaveValue('custom');
+      await interactivePage.getByLabel('Profile').selectOption('high');
+      await expect(interactivePage.getByLabel('Custom scope (used only with Custom)')).toHaveValue('all');
+      await expect(interactivePage.getByLabel('Custom sampling interval (used only with Custom, for example 5s)')).toHaveValue('1s');
+      await interactivePage.getByLabel('Storage target in bytes').fill('10485760');
+      await expect(interactivePage.getByLabel('Profile')).toHaveValue('custom');
+    } finally {
+      await interactiveContext.close();
+    }
     await page.getByLabel('Profile').selectOption('medium');
     await page.getByLabel('Storage target in bytes').fill('10485760');
     await page.getByRole('button', { name: 'Save metrics preferences' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Metrics preferences saved' })).toBeVisible();
     await expect(page.getByLabel('Profile')).toHaveValue('medium');
+    await page.getByLabel('Enable background metrics collection').check();
+    await page.getByRole('button', { name: 'Save metrics preferences' }).click();
+    await expect(page.getByRole('alert')).toContainText('Configure a Docker socket');
+    await page.getByLabel('Enable background metrics collection').uncheck();
     await page.setViewportSize({ width: 375, height: 812 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByLabel('Profile').selectOption('custom');

@@ -191,27 +191,37 @@ fitness and operational characteristics still need evaluation.
 
 **Enforcement:** The reusable column customizer is implemented for the Projects
 and Containers inventory views; preferences are browser-local and the
-identifying column remains visible. Application collection, historical logs
-and history are not implemented. Unwired SQLite sample, event and state
-persistence provides transactional cutoff deletion, file-length and reusable-page
-accounting, and a persistent summary of sample evictions. An unwired managed
-store serializes writes and maintenance, attempts one-hour expiry and bounded
-pressure eviction, and reports paused state. A durable pending-write marker
-blocks automatic writes after an interrupted batch until reconciliation; it
-does not identify the full batch or deduplicate event replays. An unwired scheduler retries idle
-maintenance, and persisted opt-in settings support the approved preset scopes
-and intervals with an explicit storage limit. An authenticated settings page
-allows those preferences to be saved and explicitly states that collection is
-unavailable; it does not enable collection or implement the setup wizard.
-Neither maintenance nor collection is connected to app startup; there is no
-user-facing pressure warning or hard filesystem quota.
-Read-only Docker inspect, stats and event-stream foundations and an unwired
-single-container sampler exist but are not connected to a collector or UI.
-The sampler requires its caller to establish event-stream continuity before
-deriving rates; matching start times alone do not prove uninterrupted state. A
-test-only, single-container Docker stats/tstorage feasibility spike is recorded
-in [verification](../verification.md#docker-metrics-storage-proof-of-concept);
-it does not implement settings, retention tiers or this requirement.
+identifying column remains visible. An authenticated Settings page persists
+Low, Medium, High and Custom preferences, an explicit storage target and a
+default-off collection opt-in. The application collector opens the separate
+SQLite store and contacts Docker only while opted in. It samples selected
+containers read-only, persists discrete state and metric records, and captures
+observed lifecycle/health events. Activated scope uses resolved Compose project
+names and Docker project labels; leaving scope drops baselines and keeps history.
+The single-process event stream reconnects after disconnects, event fingerprints
+make identical replays idempotent and expire with their one-hour event records,
+and rate fields remain unavailable unless event-stream continuity and container
+identity are stable. Missing observations are not inferred as zero; the approved
+inference from a specific known state (such as stopped) remains unimplemented
+pending its metric and time-boundary rules.
+
+The collector is connected to app startup/shutdown and reports its enabled,
+cycle, event-stream and failure status on the authenticated Settings page.
+Maintenance expires the one-hour window and retries storage recovery while the
+rest of the app remains available. Cumulative early sample evictions are shown
+as a shortened-history warning with timestamp bounds that are explicitly not a
+continuous-gap claim. Durable pending-write markers are reconciled from their
+atomic committed bit without replaying the interrupted batch. While collection
+is disabled, the default-off collector does not reopen the metrics database;
+after a process restart, stored eviction history is therefore not rediscovered
+until collection is enabled again.
+Collection targets are not schedule guarantees. There is no chart/timeline UI,
+persisted per-container gap ledger, hard filesystem quota or measured preset
+sizing/throughput. Historical logs and TimescaleDB remain unimplemented.
+Platform behavior, live-Docker recovery and physical disk-full behavior remain
+unverified. A test-only Docker/tstorage feasibility spike is recorded in
+[verification](../verification.md#docker-metrics-storage-proof-of-concept); it
+does not implement these behaviors.
 
 ## Dependencies
 

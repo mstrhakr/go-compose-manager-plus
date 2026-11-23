@@ -499,7 +499,12 @@ func TestTrustedProxyLoginRequiresHTTPSOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := Handler(manager, discovery.NewStore(database.SQL), metrics.NewSettingsStore(database.SQL), publicURL, proxies, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	settings := metrics.NewSettingsStore(database.SQL)
+	collector, err := metrics.NewCollector(t.TempDir(), settings, discovery.NewStore(database.SQL), nil, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := Handler(manager, discovery.NewStore(database.SQL), settings, collector, publicURL, proxies, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
 	page := httptest.NewRequest(http.MethodGet, "/login", nil)
 	page.Host = "backend:8080"
 	page.RemoteAddr = "192.0.2.10:12345"
@@ -565,7 +570,12 @@ func testHandlerWithDocker(t *testing.T, trustedProxies []netip.Prefix, logger *
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Handler(manager, discovery.NewStore(database.SQL), metrics.NewSettingsStore(database.SQL), publicURL, trustedProxies, logger, docker)
+	settings := metrics.NewSettingsStore(database.SQL)
+	collector, err := metrics.NewCollector(t.TempDir(), settings, discovery.NewStore(database.SQL), docker, logger)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return Handler(manager, discovery.NewStore(database.SQL), settings, collector, publicURL, trustedProxies, logger, docker)
 }
 
 func perform(handler http.Handler, method, path string, values url.Values, cookies map[string]*http.Cookie, csrfToken string) *httptest.ResponseRecorder {

@@ -21,24 +21,26 @@ import (
 var content embed.FS
 
 type pageData struct {
-	Title           string
-	View            string
-	Username        string
-	Initial         string
-	Error           string
-	CSRFToken       string
-	Root            string
-	Projects        []projectView
-	RuntimeMessage  string
-	RuntimeState    string
-	Notice          string
-	Activity        chartPanel
-	Metrics         []metricPanel
-	Containers      listPanel
-	ProjectColumns  listPanel
-	Filters         inventoryFilters
-	SubviewNav      viewNavigation
-	MetricsSettings metricsSettingsForm
+	Title                string
+	View                 string
+	Username             string
+	Initial              string
+	Error                string
+	CSRFToken            string
+	Root                 string
+	Projects             []projectView
+	RuntimeMessage       string
+	RuntimeState         string
+	Notice               string
+	Activity             chartPanel
+	Metrics              []metricPanel
+	Containers           listPanel
+	ProjectColumns       listPanel
+	Filters              inventoryFilters
+	SubviewNav           viewNavigation
+	MetricsSettings      metricsSettingsForm
+	CollectionStatusText string
+	CollectionWarning    string
 }
 
 type projectView struct {
@@ -66,17 +68,17 @@ func (project projectView) ActivationStatus() string {
 	return "Inactive"
 }
 
-func Handler(manager *auth.Manager, store *discovery.Store, metricsSettings *metrics.SettingsStore, publicURL *url.URL, trustedProxies []netip.Prefix, logger *slog.Logger, docker *runtime.Client) http.Handler {
+func Handler(manager *auth.Manager, store *discovery.Store, metricsSettings *metrics.SettingsStore, collector *metrics.Collector, publicURL *url.URL, trustedProxies []netip.Prefix, logger *slog.Logger, docker *runtime.Client) http.Handler {
 	pages := template.Must(template.ParseFS(content, "templates/*.html", "templates/partials/*.html"))
 	assets, err := fs.Sub(content, "static")
 	if err != nil {
 		panic(err)
 	}
-	if manager == nil || store == nil || metricsSettings == nil || publicURL == nil || logger == nil {
+	if manager == nil || store == nil || metricsSettings == nil || collector == nil || publicURL == nil || logger == nil {
 		panic("authenticated web handler requires auth manager and public origin")
 	}
 	mux := http.NewServeMux()
-	server := &authServer{manager: manager, discovery: store, metricsSettings: metricsSettings, pages: pages, publicURL: publicURL, trustedProxies: trustedProxies, logger: logger, docker: docker}
+	server := &authServer{manager: manager, discovery: store, metricsSettings: metricsSettings, collector: collector, pages: pages, publicURL: publicURL, trustedProxies: trustedProxies, logger: logger, docker: docker}
 	server.registerRoutes(mux)
 	static := http.StripPrefix("/static/", http.FileServerFS(assets))
 	mux.Handle("GET /static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

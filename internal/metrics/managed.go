@@ -285,6 +285,43 @@ func (m *ManagedStore) AcknowledgeReconciledWrite(ctx context.Context) error {
 	return nil
 }
 
+// ReconcilePendingWrite inspects the transactional marker and removes it
+// without replaying the interrupted batch. The committed bit changed in the
+// same transaction as its records, so either outcome is known after reopen.
+func (m *ManagedStore) ReconcilePendingWrite(ctx context.Context) (*PendingWrite, error) {
+	if err := m.acquire(ctx); err != nil {
+		return nil, err
+	}
+	defer m.release()
+	if m.closed {
+		return nil, errors.New("metrics store is closed")
+	}
+	pending, err := m.pendingWrite(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if pending == nil {
+		if m.uncertain != nil {
+			return nil, fmt.Errorf("cannot reconcile metrics write without a durable marker: %w", m.uncertain)
+		}
+		return nil, nil
+	}
+	result, err := m.store.db.ExecContext(ctx, `DELETE FROM pending_write WHERE id = 1`)
+	if err != nil {
+		return nil, fmt.Errorf("clear reconciled metrics write: %w", err)
+	}
+	count, err := result.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("check reconciled metrics write: %w", err)
+	}
+	if count != 1 {
+		return nil, errors.New("pending metrics write changed during reconciliation")
+	}
+	m.uncertain = nil
+	m.paused = nil
+	return pending, nil
+}
+
 func (m *ManagedStore) write(ctx context.Context, now time.Time, kind string, insert func() error) error {
 	if err := m.acquire(ctx); err != nil {
 		return err

@@ -133,6 +133,9 @@ func (s *Store) ExpireHistoryBefore(ctx context.Context, cutoff time.Time) (Expi
 			return ExpiredHistory{}, fmt.Errorf("count expired history: %w", err)
 		}
 	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM event_dedup WHERE observed_ns < ?`, ns); err != nil {
+		return ExpiredHistory{}, fmt.Errorf("expire event replay identities: %w", err)
+	}
 	if err := tx.Commit(); err != nil {
 		return ExpiredHistory{}, fmt.Errorf("commit history expiry: %w", err)
 	}

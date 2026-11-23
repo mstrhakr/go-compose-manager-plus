@@ -28,6 +28,13 @@ type ContainerEvent struct {
 // disconnection or a callback error. EOF is an error: reconnects can have gaps.
 // The caller owns reconciliation, scope, retry and replay deduplication.
 func (c *Client) WatchContainerEvents(ctx context.Context, consume func(ContainerEvent) error) error {
+	return c.WatchContainerEventsWithConnect(ctx, nil, consume)
+}
+
+// WatchContainerEventsWithConnect calls connected after the Docker response has
+// been accepted and before reading events. A subsequent return means continuity
+// was lost and the caller must discard any continuity-dependent baselines.
+func (c *Client) WatchContainerEventsWithConnect(ctx context.Context, connected func(), consume func(ContainerEvent) error) error {
 	if consume == nil {
 		return errors.New("container event callback is required")
 	}
@@ -46,6 +53,9 @@ func (c *Client) WatchContainerEvents(ctx context.Context, consume func(Containe
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("Docker events returned HTTP %d", response.StatusCode)
+	}
+	if connected != nil {
+		connected()
 	}
 	scanner := bufio.NewScanner(response.Body)
 	scanner.Buffer(make([]byte, 4096), maxEventBytes)

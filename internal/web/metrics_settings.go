@@ -13,6 +13,7 @@ import (
 )
 
 type metricsSettingsForm struct {
+	Enabled  bool
 	Profile  string
 	Scope    string
 	Interval string
@@ -25,10 +26,19 @@ func formFromMetricsSettings(settings metrics.Settings) metricsSettingsForm {
 		return metricsSettingsForm{Profile: string(metrics.ProfileLow), Scope: string(metrics.ScopeActivated), Interval: "15s", Revision: "0"}
 	}
 	return metricsSettingsForm{
-		Profile: string(settings.Profile), Scope: string(settings.Scope),
+		Enabled: settings.Enabled, Profile: string(settings.Profile), Scope: string(settings.Scope),
 		Interval: settings.Interval.String(), Limit: strconv.FormatInt(settings.StorageLimit, 10),
 		Revision: strconv.FormatInt(settings.Revision, 10),
 	}
+}
+
+func collectionHistoryWarning(evictions metrics.EvictedSamples) string {
+	if evictions.Count == 0 {
+		return ""
+	}
+	return "Cumulative storage-pressure evictions have shortened history: " + strconv.FormatInt(evictions.Count, 10) +
+		" samples removed between " + evictions.Oldest.Format(time.RFC3339) +
+		" and " + evictions.Newest.Format(time.RFC3339) + " (these bounds may not be a continuous gap)."
 }
 
 func (server *authServer) metricsSettingsPage(w http.ResponseWriter, r *http.Request) {
@@ -51,8 +61,26 @@ func (server *authServer) renderMetricsSettings(w http.ResponseWriter, r *http.R
 	if runes := []rune(user.Username); len(runes) != 0 {
 		initial = strings.ToUpper(string(runes[0]))
 	}
+	status := server.collector.Status()
+	statusText := "Disabled; no background metrics collection is running."
+	if status.Enabled {
+		switch {
+		case status.Problem != "":
+			statusText = "Enabled but not healthy: " + status.Problem
+		case status.Collecting && status.EventConnected:
+			statusText = "Collecting; Docker lifecycle event stream is connected."
+		case status.Collecting:
+			statusText = "Collecting; lifecycle event stream is reconnecting, so rates may be unavailable."
+		default:
+			statusText = "Enabled; collector is starting."
+		}
+	}
+	if !status.LastCycle.IsZero() {
+		statusText += " Last collection cycle: " + status.LastCycle.Format(time.RFC3339)
+	}
 	server.render(w, pageData{Title: "Settings", View: "settings", Username: user.Username, Initial: initial,
-		CSRFToken: nosurf.Token(r), MetricsSettings: form, Error: problem, Notice: notice})
+		CSRFToken: nosurf.Token(r), MetricsSettings: form, CollectionStatusText: statusText,
+		CollectionWarning: collectionHistoryWarning(status.Evictions), Error: problem, Notice: notice})
 }
 
 func (server *authServer) saveMetricsSettings(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +89,7 @@ func (server *authServer) saveMetricsSettings(w http.ResponseWriter, r *http.Req
 		return
 	}
 	form := metricsSettingsForm{
-		Profile: r.FormValue("profile"), Scope: r.FormValue("scope"), Interval: r.FormValue("interval"),
+		Enabled: r.FormValue("enabled") == "true", Profile: r.FormValue("profile"), Scope: r.FormValue("scope"), Interval: r.FormValue("interval"),
 		Limit: r.FormValue("storage_limit"), Revision: r.FormValue("revision"),
 	}
 	fail := func(message string) { server.renderMetricsSettings(w, r, form, message, "") }
@@ -94,13 +122,11 @@ func (server *authServer) saveMetricsSettings(w http.ResponseWriter, r *http.Req
 		fail("Choose a valid metrics profile.")
 		return
 	}
-	current, err := server.metricsSettings.Load(r.Context())
-	if err != nil {
-		server.logger.ErrorContext(r.Context(), "read metrics settings failed", "error", err)
-		http.Error(w, "Unable to read metrics settings", http.StatusInternalServerError)
+	if form.Enabled && server.docker == nil {
+		fail("Configure a Docker socket before enabling metrics collection.")
 		return
 	}
-	settings.Enabled = current.Enabled
+	settings.Enabled = form.Enabled
 	if _, err := server.metricsSettings.Save(r.Context(), settings); err != nil {
 		if errors.Is(err, metrics.ErrStaleSettings) {
 			fail("Settings changed in another session. Reload this page before saving.")
@@ -110,6 +136,6 @@ func (server *authServer) saveMetricsSettings(w http.ResponseWriter, r *http.Req
 		http.Error(w, "Unable to save metrics settings", http.StatusInternalServerError)
 		return
 	}
-	server.manager.SessionManager().Put(r.Context(), "metrics_notice", "Metrics preferences saved. Collection is not available yet.")
+	server.manager.SessionManager().Put(r.Context(), "metrics_notice", "Metrics preferences saved.")
 	http.Redirect(w, r, "/settings", http.StatusSeeOther)
 }

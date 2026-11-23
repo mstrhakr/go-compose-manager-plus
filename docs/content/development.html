@@ -76,67 +76,80 @@ Memory usage is raw Docker usage, not the CLI's cache-adjusted value. Missing
 counters, resets and changing interface/device sets produce unavailable rates
 instead of zero; platform support remains unverified.</p>
 <p>A read-only Docker container inspection supplies a discrete running/health
-state and start time. An unwired sampler brackets each running stats request with
+state and start time. The sampler brackets each running stats request with
 inspections, drops its baseline on errors or changes, and emits no stopped-state
-zeroes. Its caller must establish uninterrupted lifecycle and event-stream
-continuity before asking for rates, discard baselines after disconnected or
-uncertain intervals, and handle scope, persistence and errors. Start-time
-equality alone cannot establish continuity; this is not a running collector.</p>
-<p>The unwired SQLite metrics persistence foundation stores observations in a
+zeroes. The opt-in application collector resolves the configured scope, updates
+it on each collection cycle, and limits concurrent observations to eight.
+Rates require an uninterrupted event stream and a stable container start time;
+disconnects and errors discard rate continuity. Sampling intervals are targets,
+not schedule guarantees.</p>
+<p>The SQLite metrics persistence foundation stores observations in a
 separate <code>metrics.db</code>, preserving unavailable fields as SQL NULL.
 Memory values use decimal text to retain the full unsigned Docker counter range.
-It can also persist observed event and state records, but does not collect them
-or infer state between snapshots. A read-only Docker event stream is available
-to a future collector; it does not reconnect or replay events itself.
-The foundation does not start collection, schedule one-hour expiry or implement
-migration to TimescaleDB. A caller can atomically delete
+It persists observed event and state records but does not infer state between
+snapshots. The collector reconnects the read-only Docker event stream and
+deduplicates exact event replay keys (container, timestamp, kind and health).
+Replay identities expire with their one-hour event records, and deduplication
+cannot restore events missed during a disconnect. The approved inference of
+zero values from specific known states, such as stopped, remains
+unimplemented; an absent observation alone is not evidence of zero. A caller
+can atomically delete
 sample, event and state records before a cutoff, inspect SQLite file lengths,
 inspect logical database page counts and reusable pages, attempt a WAL
 checkpoint, and remove batches of oldest samples. Reusable pages are still in
 the database file; reusing them can require additional WAL space. Each nonempty
 sample eviction atomically updates a persistent cumulative count and timestamp
 bounds; the bounds do not imply a continuous gap, and evictions made before
-schema version 4 cannot be reconstructed. This record is not a user-facing
-warning and does not report event or state loss.</p>
-<p>An unwired <code>ManagedStore</code> serializes reads, writes and maintenance
-under an exclusive SQLite lock. Its caller supplies a byte limit. An unwired
-<code>RunMaintenance</code> loop performs an immediate attempt and retries at a
-caller-supplied interval even when collection is idle; its caller owns shutdown
-and reports failures. Maintenance expires records
+schema version 4 cannot be reconstructed. The persisted summary does not
+describe event or state loss; the collector surfaces it as a warning when
+collection is active.</p>
+<p><code>ManagedStore</code> serializes reads, writes and maintenance under an
+exclusive SQLite lock. Its caller supplies a byte limit. The collector runs
+maintenance immediately and retries every five seconds, including while idle.
+Maintenance expires records
 older than one hour and attempts bounded oldest-sample eviction at a 90% active
 logical-usage target. Its durable pressure gate prevents repeated eviction
 when no measurable progress is made, including after reopening. It reports
-paused writes and a cumulative eviction summary, but does not display warnings
-or schedule retries itself. A write can succeed before subsequent maintenance
+paused writes and a cumulative eviction summary. A write can succeed before subsequent maintenance
 fails; callers must distinguish <code>ErrWriteCommitted</code> and not retry
 that committed batch. A failed commit returns
 <code>ErrWriteOutcomeUnknown</code>; reconcile the batch before retrying it.
 The managed store records a durable pending-write marker before each batch and
 marks it committed in the same transaction as the data. A surviving marker
-pauses maintenance and writes across reopening until the caller explicitly
-acknowledges reconciliation. It records the batch kind and start time, not
-the payload or a replay identity. It does not by itself deduplicate replayed
-Docker events or resolve a crash after the marker was cleared; the collector
-must separately handle those boundaries and report gaps.
-The implementation checkpoints frequently and its cost
-at target sampling rates is unmeasured.</p>
+pauses maintenance and writes across reopening. The collector inspects the
+atomic committed bit and clears the marker without replaying the interrupted
+batch. The marker records the batch kind and start time, not the payload or a
+replay identity. Event replay deduplication is separate; neither mechanism
+reconstructs gaps. The implementation checkpoints frequently and its cost at
+target sampling rates is unmeasured.</p>
 <p>The authenticated Settings page can save Low, Medium, High or Custom metrics
-preferences and an explicit byte target. It does not enable or start metrics
-collection; the page identifies collection as unavailable. Preset size
-recommendations and the setup wizard remain unimplemented.</p>
+preferences and an explicit byte target, and collection is default-off until
+explicitly enabled. Enabling requires a configured Docker socket. Status shows
+the latest cycle, event-stream state and failures. Once the collector has read
+eviction history, Settings warns when storage pressure has removed samples,
+including the cumulative count and timestamp bounds (not a continuous-gap
+claim). To preserve default-off behavior, a disabled collector does not reopen
+the metrics database on startup, so it cannot rediscover this warning until
+collection is enabled. Preset size recommendations and the setup wizard remain
+unimplemented.</p>
 <p>This is not a hard disk quota: SQLite deletion does not itself shrink the
 database, file lengths are not allocated blocks or peak usage, WAL and
 transactions can exceed the target, and physical filesystem-full recovery is
 unverified. If file length itself reaches the limit, maintenance pauses rather
 than assuming row deletion will reclaim filesystem space. An eviction that
 does not reduce active usage also pauses until accounting conditions change or
-the configured limit increases. No application collector uses this path yet.</p>
-<p>Metrics settings can be persisted separately in application state. An
+the configured limit increases. The collector retries maintenance every five
+seconds; failed writes pause metrics collection but leave the rest of the app
+usable.</p>
+<p>Metrics settings are persisted separately in application state. An
 unconfigured installation is disabled, and the storage limit must be explicitly
-provided; no preset storage defaults are assumed. The low, medium and high
-profile scopes and intervals are validated. Settings use revision checks to
-reject stale updates, but are not yet exposed in the UI or connected to a
-collector. Saving settings alone does not start Docker access or delete history.</p>
+provided; no preset storage defaults are assumed. The authenticated Settings
+page exposes enable/disable, the low, medium and high profile scopes and
+intervals, Custom controls, and collection status. Settings use revision
+checks to reject stale updates. Saving settings while disabled does not open
+the metrics database or access Docker. The collector uses the persisted
+opt-in after restart and closes on disable or application shutdown. The setup
+wizard, charts, synchronized timeline and historical logs remain unimplemented.</p>
 <p>To measure one synthetic hour of SQLite samples for 1, 5, 25 and 50
 containers without Docker, run:</p>
 <pre><code>CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 \

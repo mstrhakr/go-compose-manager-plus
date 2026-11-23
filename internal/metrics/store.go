@@ -1,5 +1,4 @@
-// Package metrics provides persistence for collected container observations.
-// It is not connected to the application or a background collector yet.
+// Package metrics provides persistence and opt-in collection for container observations.
 package metrics
 
 import (
@@ -18,7 +17,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 6
+const schemaVersion = 7
 
 // ErrWriteOutcomeUnknown means a database commit failed and its outcome must
 // be reconciled before retrying the same batch.
@@ -34,8 +33,7 @@ type Store struct {
 	path string
 }
 
-// Open uses a separate database from application state. It does not start
-// collection or enforce a storage budget.
+// Open uses a separate database from application state without starting collection.
 func Open(ctx context.Context, dataDir string) (*Store, error) {
 	return open(ctx, dataDir, false)
 }
@@ -239,6 +237,24 @@ func initialize(ctx context.Context, db *sql.DB) error {
 		} {
 			if _, err := tx.ExecContext(ctx, statement); err != nil {
 				return fmt.Errorf("migrate metrics schema to version 6: %w", err)
+			}
+		}
+		version = 6
+	}
+	if version == 6 {
+		for _, statement := range []string{
+			`CREATE TABLE event_dedup (
+				container_id TEXT NOT NULL,
+				observed_ns INTEGER NOT NULL,
+				kind TEXT NOT NULL,
+				health TEXT NOT NULL,
+				PRIMARY KEY (container_id, observed_ns, kind, health)
+			) WITHOUT ROWID`,
+			`INSERT OR IGNORE INTO event_dedup SELECT container_id, observed_ns, kind, health FROM container_events`,
+			`PRAGMA user_version = 7`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 7: %w", err)
 			}
 		}
 	}

@@ -44,6 +44,9 @@ func TestVersionFourMigrationCreatesPressureGate(t *testing.T) {
 	if _, err := store.db.ExecContext(ctx, `DROP TABLE pending_write`); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := store.db.ExecContext(ctx, `DROP TABLE event_dedup`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := store.db.ExecContext(ctx, `PRAGMA user_version = 4`); err != nil {
 		t.Fatal(err)
 	}

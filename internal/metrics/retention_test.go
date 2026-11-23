@@ -46,12 +46,19 @@ func TestExpireHistoryBeforeIsAtomicAndPreservesCutoff(t *testing.T) {
 	if err != nil || len(events) != 3 {
 		t.Fatalf("failed transaction changed events: %d, %v", len(events), err)
 	}
+	var identities int
+	if err := store.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM event_dedup`).Scan(&identities); err != nil || identities != 3 {
+		t.Fatalf("failed transaction changed replay identities: %d, %v", identities, err)
+	}
 	if _, err := store.db.ExecContext(ctx, `DROP TRIGGER expiry_failure`); err != nil {
 		t.Fatal(err)
 	}
 	counts, err := store.ExpireHistoryBefore(ctx, cutoff)
 	if err != nil || counts != (ExpiredHistory{Samples: 1, Events: 1, States: 1}) {
 		t.Fatalf("expiry counts = %#v, error %v", counts, err)
+	}
+	if err := store.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM event_dedup`).Scan(&identities); err != nil || identities != 2 {
+		t.Fatalf("expiry retained replay identities beyond cutoff: %d, %v", identities, err)
 	}
 	if err := store.Close(); err != nil {
 		t.Fatal(err)

@@ -54,6 +54,8 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 .auth-form input, .auth-form select { min-height: 46px; padding: .7rem .8rem; }
 .auth-form input:focus, .auth-form select:focus, .discovery-controls input:focus { border-color: var(--blue); }
 .metrics-settings .auth-form { max-width: 40rem; }
+.metrics-opt-in { display: flex; align-items: center; gap: .6rem; }
+.metrics-opt-in input { width: auto; min-height: auto; }
 .primary-button { min-height: 46px; margin-top: .9rem; padding: .7rem 1rem; display: flex; justify-content: space-between; align-items: center; color: #fff; background: #0067d6; border: 1px solid #0067d6; border-radius: 4px; font-size: .9rem; font-weight: 650; }
 .primary-button:hover { background: #0056b5; }
 .form-error, .discovery-notice { margin: .75rem 0; padding: .75rem; font-size: .8rem; line-height: 1.45; overflow-wrap: anywhere; }
