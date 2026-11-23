@@ -753,6 +753,27 @@ target sampling rates has not been measured. Collection remains off.
 `PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
 passed.
 
+### Metrics Preference Settings Page
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`34f3dd8` with changes uncommitted during verification. The authenticated
+Settings page saves preset or custom metrics preferences and an explicit byte
+target, using revision checks to reject stale saves. It cannot turn collection
+on and states that collection is unavailable. The page does not create
+`metrics.db` or start Docker collection.
+
+HTTP tests cover anonymous and forced-password-change gates, CSRF, forged enable
+fields, stale saves, validation, preset and custom values, and database reopen.
+Desktop and mobile browser coverage exercises the form without JavaScript,
+keyboard submission, touch focus, persisted values and horizontal overflow.
+The wizard, enable/disable control, running collector, pressure warning and
+history remain unimplemented.
+
+`go test -race -count=1 ./internal/web ./cmd/server`,
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
+passed. The first targeted browser attempt timed out while the web-server Go
+build was still starting; subsequent targeted and full browser runs passed.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,

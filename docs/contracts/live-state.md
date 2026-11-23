@@ -200,8 +200,11 @@ pressure eviction, and reports paused state. A durable pending-write marker
 blocks automatic writes after an interrupted batch until reconciliation; it
 does not identify the full batch or deduplicate event replays. An unwired scheduler retries idle
 maintenance, and persisted opt-in settings support the approved preset scopes
-and intervals with an explicit storage limit. Neither is connected to app startup
-or a settings UI; there is no user-facing warning or hard filesystem quota.
+and intervals with an explicit storage limit. An authenticated settings page
+allows those preferences to be saved and explicitly states that collection is
+unavailable; it does not enable collection or implement the setup wizard.
+Neither maintenance nor collection is connected to app startup; there is no
+user-facing pressure warning or hard filesystem quota.
 Read-only Docker inspect, stats and event-stream foundations and an unwired
 single-container sampler exist but are not connected to a collector or UI.
 The sampler requires its caller to establish event-stream continuity before

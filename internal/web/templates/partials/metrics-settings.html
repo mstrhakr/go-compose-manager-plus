@@ -1,0 +1,32 @@
+{{define "metrics-settings"}}
+<section class="workspace-panel metrics-settings" aria-labelledby="metrics-settings-title">
+  <div class="panel-heading"><div><h1 id="metrics-settings-title">Metrics settings</h1><p>Configure preferences for the future collector.</p></div></div>
+  <div class="discovery-content">
+    <p role="status"><strong>Collection unavailable.</strong> Saving these preferences does not enable collection. No background metrics collection is running.</p>
+    <p>History is planned for one hour. Suggested storage sizes have not been measured; enter an explicit limit. SQLite file usage can temporarily exceed that target.</p>
+    {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+    {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
+    <form action="/settings/metrics" method="post" class="auth-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <input type="hidden" name="revision" value="{{.MetricsSettings.Revision}}">
+      <label for="metrics-profile">Profile</label>
+      <select id="metrics-profile" name="profile">
+        <option value="low" {{if eq .MetricsSettings.Profile "low"}}selected{{end}}>Low — activated stacks, 15 seconds</option>
+        <option value="medium" {{if eq .MetricsSettings.Profile "medium"}}selected{{end}}>Medium — activated stacks, 5 seconds</option>
+        <option value="high" {{if eq .MetricsSettings.Profile "high"}}selected{{end}}>High — all running containers, 1 second</option>
+        <option value="custom" {{if eq .MetricsSettings.Profile "custom"}}selected{{end}}>Custom</option>
+      </select>
+      <label for="metrics-scope">Custom scope (used only with Custom)</label>
+      <select id="metrics-scope" name="scope">
+        <option value="activated" {{if eq .MetricsSettings.Scope "activated"}}selected{{end}}>Activated stacks</option>
+        <option value="all" {{if eq .MetricsSettings.Scope "all"}}selected{{end}}>All running containers</option>
+      </select>
+      <label for="metrics-interval">Custom sampling interval (used only with Custom, for example 5s)</label>
+      <input id="metrics-interval" name="interval" value="{{.MetricsSettings.Interval}}">
+      <label for="metrics-limit">Storage target in bytes</label>
+      <input id="metrics-limit" name="storage_limit" type="number" min="1" step="1" value="{{.MetricsSettings.Limit}}" required>
+      <button class="primary-button" type="submit">Save metrics preferences</button>
+    </form>
+  </div>
+</section>
+{{end}}

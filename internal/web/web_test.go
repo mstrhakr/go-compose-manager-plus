@@ -22,6 +22,7 @@ import (
 
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/metrics"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 )
 
@@ -498,7 +499,7 @@ func TestTrustedProxyLoginRequiresHTTPSOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := Handler(manager, discovery.NewStore(database.SQL), publicURL, proxies, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
+	handler := Handler(manager, discovery.NewStore(database.SQL), metrics.NewSettingsStore(database.SQL), publicURL, proxies, slog.New(slog.NewTextHandler(io.Discard, nil)), nil)
 	page := httptest.NewRequest(http.MethodGet, "/login", nil)
 	page.Host = "backend:8080"
 	page.RemoteAddr = "192.0.2.10:12345"
@@ -564,7 +565,7 @@ func testHandlerWithDocker(t *testing.T, trustedProxies []netip.Prefix, logger *
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Handler(manager, discovery.NewStore(database.SQL), publicURL, trustedProxies, logger, docker)
+	return Handler(manager, discovery.NewStore(database.SQL), metrics.NewSettingsStore(database.SQL), publicURL, trustedProxies, logger, docker)
 }
 
 func perform(handler http.Handler, method, path string, values url.Values, cookies map[string]*http.Cookie, csrfToken string) *httptest.ResponseRecorder {

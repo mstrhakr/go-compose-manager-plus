@@ -120,6 +120,10 @@ Docker events or resolve a crash after the marker was cleared; the collector
 must separately handle those boundaries and report gaps.
 The implementation checkpoints frequently and its cost
 at target sampling rates is unmeasured.</p>
+<p>The authenticated Settings page can save Low, Medium, High or Custom metrics
+preferences and an explicit byte target. It does not enable or start metrics
+collection; the page identifies collection as unavailable. Preset size
+recommendations and the setup wizard remain unimplemented.</p>
 <p>This is not a hard disk quota: SQLite deletion does not itself shrink the
 database, file lengths are not allocated blocks or peak usage, WAL and
 transactions can exceed the target, and physical filesystem-full recovery is

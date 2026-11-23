@@ -89,9 +89,40 @@ test('first login forces password setup before protected dashboard and works on 
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole('heading', { name: 'System status' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Overview views' }).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
-    for (const name of ['Resources unavailable', 'Activity unavailable', 'Settings unavailable']) {
+    for (const name of ['Resources unavailable', 'Activity unavailable']) {
       await expect(page.getByRole('button', { name })).toBeDisabled();
     }
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Metrics settings' })).toBeVisible();
+    await expect(page.getByText('Saving these preferences does not enable collection.', { exact: false })).toBeVisible();
+    await page.getByLabel('Profile').selectOption('medium');
+    await page.getByLabel('Storage target in bytes').fill('10485760');
+    await page.getByRole('button', { name: 'Save metrics preferences' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Metrics preferences saved' })).toBeVisible();
+    await expect(page.getByLabel('Profile')).toHaveValue('medium');
+    await page.setViewportSize({ width: 375, height: 812 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByLabel('Profile').selectOption('custom');
+    await page.getByLabel('Custom scope (used only with Custom)').selectOption('all');
+    await page.getByLabel('Custom sampling interval (used only with Custom, for example 5s)').fill('3s');
+    await page.getByRole('button', { name: 'Save metrics preferences' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByLabel('Profile')).toHaveValue('custom');
+    await expect(page.getByLabel('Custom sampling interval (used only with Custom, for example 5s)')).toHaveValue('3s');
+    const touchContext = await browser.newContext({ baseURL, viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+    try {
+      await touchContext.addCookies(await context.cookies());
+      const touchPage = await touchContext.newPage();
+      await touchPage.goto('/settings');
+      await expect(touchPage.getByLabel('Profile')).toHaveValue('custom');
+      await touchPage.getByLabel('Storage target in bytes').tap();
+      await expect(touchPage.getByLabel('Storage target in bytes')).toBeFocused();
+      expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    } finally {
+      await touchContext.close();
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.getByRole('link', { name: 'Overview', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Compose projects' })).toBeVisible();
     await expect(page.getByText('Docker integration pending')).toBeVisible();
     await page.getByLabel('Discovery root (application-visible path)').fill('relative-path');

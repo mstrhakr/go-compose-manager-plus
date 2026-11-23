@@ -16,19 +16,21 @@ import (
 	"github.com/justinas/nosurf"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/metrics"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 )
 
 const maxFormBytes = 8192
 
 type authServer struct {
-	manager        *auth.Manager
-	discovery      *discovery.Store
-	pages          *template.Template
-	publicURL      *url.URL
-	trustedProxies []netip.Prefix
-	logger         *slog.Logger
-	docker         *runtime.Client
+	manager         *auth.Manager
+	discovery       *discovery.Store
+	metricsSettings *metrics.SettingsStore
+	pages           *template.Template
+	publicURL       *url.URL
+	trustedProxies  []netip.Prefix
+	logger          *slog.Logger
+	docker          *runtime.Client
 }
 
 func (server *authServer) registerRoutes(mux *http.ServeMux) {
@@ -40,6 +42,8 @@ func (server *authServer) registerRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /{$}", server.requireUser(false, http.HandlerFunc(server.dashboard)))
 	mux.Handle("GET /projects", server.requireUser(false, http.HandlerFunc(server.projectsPage)))
 	mux.Handle("GET /containers", server.requireUser(false, http.HandlerFunc(server.containersPage)))
+	mux.Handle("GET /settings", server.requireUser(false, http.HandlerFunc(server.metricsSettingsPage)))
+	mux.Handle("POST /settings/metrics", server.requireUser(false, http.HandlerFunc(server.saveMetricsSettings)))
 	mux.Handle("POST /discovery/root", server.requireUser(false, http.HandlerFunc(server.saveRoot)))
 	mux.Handle("POST /discovery/scan", server.requireUser(false, http.HandlerFunc(server.scanProjects)))
 	mux.Handle("POST /discovery/activate", server.requireUser(false, http.HandlerFunc(server.activateProject)))
