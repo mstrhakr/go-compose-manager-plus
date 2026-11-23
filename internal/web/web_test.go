@@ -32,7 +32,7 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 	handler := testHandler(t, nil)
 	cookies := make(map[string]*http.Cookie)
 	var response *httptest.ResponseRecorder
-	for _, path := range []string{"/", "/projects", "/containers"} {
+	for _, path := range []string{"/", "/projects", "/containers", "/containers/observability"} {
 		response = perform(handler, http.MethodGet, path, nil, cookies, "")
 		if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/login" {
 			t.Fatalf("anonymous %s = %d, location %q", path, response.Code, response.Header().Get("Location"))
@@ -60,7 +60,7 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 		t.Fatalf("bootstrap login = %d, location %q", response.Code, response.Header().Get("Location"))
 	}
 	collectCookies(cookies, response)
-	for _, path := range []string{"/", "/projects", "/containers"} {
+	for _, path := range []string{"/", "/projects", "/containers", "/containers/observability"} {
 		response = perform(handler, http.MethodGet, path, nil, cookies, "")
 		if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/setup/password" {
 			t.Fatalf("forced-change gate %s = %d, location %q", path, response.Code, response.Header().Get("Location"))
@@ -90,6 +90,11 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 		if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Docker status unavailable: no socket configured.") {
 			t.Fatalf("unconfigured %s = %d %q", path, response.Code, response.Body.String())
 		}
+	}
+	response = perform(handler, http.MethodGet, "/containers/observability", nil, cookies, "")
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Last-hour timeline") ||
+		!strings.Contains(response.Body.String(), "Observability") || !strings.Contains(response.Body.String(), "Metrics collection is disabled") {
+		t.Fatalf("observability page = %d %q", response.Code, response.Body.String())
 	}
 	csrfToken = tokenFromBody(t, response.Body.String())
 	response = perform(handler, http.MethodPost, "/logout", url.Values{}, cookies, csrfToken)

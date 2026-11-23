@@ -33,6 +33,7 @@ type pageData struct {
 	RuntimeState         string
 	Notice               string
 	Charts               []chartPanel
+	Timeline             dashboardTimeline
 	MetricsStatus        string
 	Metrics              []metricPanel
 	Containers           listPanel

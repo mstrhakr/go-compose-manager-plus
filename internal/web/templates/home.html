@@ -59,7 +59,7 @@
     <nav class="console-rail" aria-label="Main navigation" id="main-navigation">
       <a class="rail-item{{if eq .View "dashboard"}} selected{{end}}" href="/" {{if eq .View "dashboard"}}aria-current="page"{{end}} aria-label="Overview" title="Overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h7V3H3v10Zm0 8h7v-5H3v5Zm11 0h7V11h-7v10Zm0-18v5h7V3h-7Z"/></svg><span class="rail-label">Overview</span></a>
       <a class="rail-item{{if eq .View "projects"}} selected{{end}}" href="/projects" {{if eq .View "projects"}}aria-current="page"{{end}} aria-label="Compose projects" title="Compose projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4zM6 7h12M8 4h8"/></svg><span class="rail-label">Compose projects</span></a>
-      <a class="rail-item{{if eq .View "containers"}} selected{{end}}" href="/containers" {{if eq .View "containers"}}aria-current="page"{{end}} aria-label="Containers" title="Containers"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4v10l-8 4-8-4V7l8-4Zm-8 4 8 4 8-4m-8 4v10"/></svg><span class="rail-label">Containers</span></a>
+      <a class="rail-item{{if or (eq .View "containers") (eq .View "observability")}} selected{{end}}" href="/containers" {{if or (eq .View "containers") (eq .View "observability")}}aria-current="page"{{end}} aria-label="Containers" title="Containers"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4v10l-8 4-8-4V7l8-4Zm-8 4 8 4 8-4m-8 4v10"/></svg><span class="rail-label">Containers</span></a>
       <button class="rail-item unavailable" type="button" disabled title="Resources unavailable" aria-label="Resources unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 2 3.6 3 8 3s8-1 8-3V6M4 12c0 2 3.6 3 8 3s8-1 8-3"/></svg><span class="rail-label">Resources</span></button>
       <button class="rail-item unavailable" type="button" disabled title="Activity unavailable" aria-label="Activity unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg><span class="rail-label">Activity</span></button>
       <a class="rail-item{{if eq .View "settings"}} selected{{end}}" href="/settings" {{if eq .View "settings"}}aria-current="page"{{end}} title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/><circle cx="12" cy="12" r="7"/></svg><span class="rail-label">Settings</span></a>
@@ -109,6 +109,12 @@
       </section>
       </details>
     </aside>
+    {{else if eq .View "observability"}}
+    <aside class="host-sidebar inventory-sidebar observability-sidebar" aria-label="Container views">
+      <div class="filter-heading"><h2>Container views</h2></div>
+      {{template "view-navigation" .SubviewNav}}
+      <p class="inventory-footnote">Explore the last hour of recorded container metrics and observed events.</p>
+    </aside>
     {{else if ne .View "settings"}}
     {{template "inventory-filters" .}}
     {{end}}
@@ -139,6 +145,41 @@
       {{template "projects-page" .}}
       {{else if eq .View "containers"}}
       {{template "containers-page" .}}
+      {{else if eq .View "observability"}}
+      <div class="workspace-toolbar">
+        <div><h1>Container observability</h1><p>Containers / Observability · last hour</p></div>
+        <span class="toolbar-pill">Collection <span>{{.MetricsStatus}}</span></span>
+      </div>
+      <div class="observability-timeline" data-timeline data-start="{{.Timeline.Start}}" data-end="{{.Timeline.End}}" data-selected="{{.Timeline.SelectedTime}}">
+      <section class="timeline-panel" aria-labelledby="observability-timeline-title">
+        <div class="section-heading">
+          <div><h2 id="observability-timeline-title">Last-hour timeline</h2><p class="timeline-message" data-timeline-message>{{.Timeline.Message}}</p></div>
+          <span class="toolbar-pill timeline-status">{{.Timeline.Status}}</span>
+        </div>
+        <div class="timeline-track" role="group" aria-label="Observed container events">
+          {{range .Timeline.Events}}<button class="timeline-marker" type="button" data-timeline-select="{{.Time}}" data-timeline-marker data-position="{{printf "%.3f" .Position}}" data-kind="{{.Kind}}" aria-label="Select {{.Description}} at {{.TimeLabel}} for {{.Container}}" title="{{.Description}} · {{.Container}} · {{.TimeLabel}}"><span aria-hidden="true"></span></button>{{end}}
+        </div>
+        <label class="timeline-label" for="observability-time">Selected time <output data-timeline-output for="observability-time">{{.Timeline.EndLabel}}</output></label>
+        <input id="observability-time" class="timeline-slider" type="range" min="{{.Timeline.Start}}" max="{{.Timeline.End}}" step="1000" value="{{.Timeline.SelectedTime}}" data-timeline-slider aria-label="Selected time in the last hour">
+        <div class="timeline-axis"><time>{{.Timeline.StartLabel}}</time><time>{{.Timeline.EndLabel}}</time></div>
+        <p class="timeline-hint">Only recorded observations are shown. Docker event history may have gaps; missing events are not inferred.</p>
+        <noscript><p class="timeline-hint">Timeline selection requires JavaScript. The recorded event list remains available below.</p></noscript>
+      </section>
+      <section class="resource-section timeline-events" aria-labelledby="timeline-events-title">
+        <div class="section-heading"><h2 id="timeline-events-title">Observed events</h2><span>Newest first</span></div>
+        {{if .Timeline.Truncated}}<p class="timeline-hint">Showing the newest 200 recorded events in this hour.</p>{{end}}
+        {{if .Timeline.RecentEvents}}
+        <ol class="timeline-event-list">
+          {{range .Timeline.RecentEvents}}<li><button type="button" class="timeline-event" data-timeline-select="{{.Time}}" data-kind="{{.Kind}}" aria-label="Select {{.Description}} at {{.TimeLabel}} for {{.Container}}">
+            <time>{{.TimeLabel}}</time><span class="timeline-event-kind">{{.Description}}</span><span class="timeline-event-container">{{.Container}}</span>
+          </button></li>{{end}}
+        </ol>
+        {{else}}<p class="timeline-empty">No recorded events for this hour.</p>{{end}}
+      </section>
+      </div>
+      <div class="telemetry-section">
+        {{range .Charts}}{{template "chart-panel" .}}{{end}}
+      </div>
       {{else if eq .View "settings"}}
       {{template "metrics-settings" .}}
       {{end}}

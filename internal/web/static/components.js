@@ -4,6 +4,7 @@
   const columnStates = new WeakMap();
   const chartSelections = new WeakMap();
   const chartTooltips = new WeakMap();
+  const timelineSelections = new WeakMap();
 
   function formatChartTime(value) {
     if (Math.abs(value) < 100000000000) return String(value);
@@ -315,6 +316,72 @@
       item.closest('[data-select-list]') === list && !item.disabled);
   }
 
+  function initializeTimeline(timeline) {
+    if (timeline.dataset.timelineReady === 'true') return;
+    const slider = timeline.querySelector('[data-timeline-slider]');
+    const output = timeline.querySelector('[data-timeline-output]');
+    const start = Number(timeline.dataset.start);
+    const end = Number(timeline.dataset.end);
+    if (!slider || !output || !Number.isFinite(start) || !Number.isFinite(end) || start >= end) return;
+    const step = Number(slider.step) || 1000;
+    const format = time => {
+      const label = new Date(time).toLocaleString(undefined, {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit',
+      });
+      const milliseconds = ((Math.round(time) % 1000) + 1000) % 1000;
+      return milliseconds ? `${label}.${String(milliseconds).padStart(3, '0')}` : label;
+    };
+    const setTime = time => {
+      const selected = Math.round(Math.max(start, Math.min(end, time)));
+      const sliderTime = Math.max(start, Math.min(end,
+        start + Math.round((selected - start) / step) * step));
+      slider.value = String(sliderTime);
+      timeline.dataset.selected = String(selected);
+      output.value = format(selected);
+      output.textContent = output.value;
+      slider.setAttribute('aria-valuetext', output.value);
+      for (const marker of timeline.querySelectorAll('[data-timeline-select]')) {
+        const eventTime = Number(marker.dataset.timelineSelect);
+        const selectedMarker = marker.hasAttribute('data-timeline-marker')
+          ? Math.abs(eventTime - selected) <= step / 2
+          : eventTime === selected;
+        if (selectedMarker) marker.setAttribute('aria-current', 'time');
+        else marker.removeAttribute('aria-current');
+      }
+      return selected;
+    };
+    const announce = () => {
+      const time = Number(slider.value);
+      if (!Number.isFinite(time)) return;
+      setTime(time);
+      timeline.dispatchEvent(new CustomEvent('observability:timechange', {
+        bubbles: true,
+        detail: { time: Math.round(time) },
+      }));
+    };
+    slider.addEventListener('input', announce);
+    timeline.addEventListener('click', event => {
+      if (!(event.target instanceof Element)) return;
+      const button = event.target.closest('[data-timeline-select]');
+      if (!button || !timeline.contains(button)) return;
+      const time = Number(button.dataset.timelineSelect);
+      if (!Number.isFinite(time)) return;
+      const selected = setTime(time);
+      timeline.dispatchEvent(new CustomEvent('observability:timechange', {
+        bubbles: true,
+        detail: { time: selected },
+      }));
+    });
+    timelineSelections.set(timeline, setTime);
+    timeline.dataset.timelineReady = 'true';
+    const initial = Number(timeline.dataset.selected);
+    setTime(Number.isFinite(initial) ? initial : end);
+    for (const marker of timeline.querySelectorAll('[data-timeline-marker]')) {
+      const position = Number(marker.dataset.position);
+      if (Number.isFinite(position)) marker.style.left = `${Math.max(0, Math.min(100, position))}%`;
+    }
+  }
+
   function updateList(list) {
     const entries = items(list);
     const selected = entries.filter(item => item.checked).length;
@@ -399,6 +466,11 @@
   }
 
   function initialize(root) {
+    const timelines = [...root.querySelectorAll('[data-timeline]')];
+    if (root.matches?.('[data-timeline]')) timelines.unshift(root);
+    const parentTimeline = root.closest?.('[data-timeline]');
+    if (parentTimeline && !timelines.includes(parentTimeline)) timelines.push(parentTimeline);
+    for (const timeline of timelines) initializeTimeline(timeline);
     const charts = [...root.querySelectorAll('[data-chart]')];
     if (root.matches?.('[data-chart]')) charts.unshift(root);
     const parentChart = root.closest?.('[data-chart]');
@@ -435,8 +507,12 @@
   document.addEventListener('observability:timechange', event => {
     const time = event.detail?.time;
     if (!Number.isFinite(time)) return;
+    let selectedTime = time;
+    for (const timeline of document.querySelectorAll('[data-timeline]')) {
+      selectedTime = timelineSelections.get(timeline)?.(time) ?? selectedTime;
+    }
     for (const chart of document.querySelectorAll('[data-chart]')) {
-      chartSelections.get(chart)?.(time);
+      chartSelections.get(chart)?.(selectedTime);
     }
   });
   document.addEventListener('pointerdown', event => {

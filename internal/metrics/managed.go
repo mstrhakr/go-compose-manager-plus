@@ -449,6 +449,17 @@ func (m *ManagedStore) SelectEvents(ctx context.Context, id string, start, end t
 	return m.store.SelectEvents(ctx, id, start, end, limit)
 }
 
+func (m *ManagedStore) SelectTimelineEvents(ctx context.Context, start, end time.Time, limit int) ([]Event, error) {
+	if err := m.acquire(ctx); err != nil {
+		return nil, err
+	}
+	defer m.release()
+	if m.closed {
+		return nil, errors.New("metrics store is closed")
+	}
+	return m.store.SelectTimelineEvents(ctx, start, end, limit)
+}
+
 func (m *ManagedStore) SelectStates(ctx context.Context, id string, start, end time.Time, limit int) ([]State, error) {
 	if err := m.acquire(ctx); err != nil {
 		return nil, err

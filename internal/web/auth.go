@@ -43,6 +43,7 @@ func (server *authServer) registerRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /{$}", server.requireUser(false, http.HandlerFunc(server.dashboard)))
 	mux.Handle("GET /projects", server.requireUser(false, http.HandlerFunc(server.projectsPage)))
 	mux.Handle("GET /containers", server.requireUser(false, http.HandlerFunc(server.containersPage)))
+	mux.Handle("GET /containers/observability", server.requireUser(false, http.HandlerFunc(server.observabilityPage)))
 	mux.Handle("GET /settings", server.requireUser(false, http.HandlerFunc(server.metricsSettingsPage)))
 	mux.Handle("POST /settings/metrics", server.requireUser(false, http.HandlerFunc(server.saveMetricsSettings)))
 	mux.Handle("POST /discovery/root", server.requireUser(false, http.HandlerFunc(server.saveRoot)))
@@ -165,6 +166,10 @@ func (server *authServer) containersPage(w http.ResponseWriter, r *http.Request)
 	server.workspace(w, r, "containers")
 }
 
+func (server *authServer) observabilityPage(w http.ResponseWriter, r *http.Request) {
+	server.workspace(w, r, "observability")
+}
+
 func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view string) {
 	user, _, err := server.manager.CurrentUser(r.Context())
 	if err != nil {
@@ -276,7 +281,13 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 		title = "Containers"
 		subviews = viewNavigation{Label: "Container views", Tabs: []viewTab{
 			{Label: "Containers", Href: "/containers", Current: true},
-			{Label: "Observability"},
+			{Label: "Observability", Href: "/containers/observability"},
+		}}
+	} else if view == "observability" {
+		title = "Container observability"
+		subviews = viewNavigation{Label: "Container views", Tabs: []viewTab{
+			{Label: "Containers", Href: "/containers"},
+			{Label: "Observability", Href: "/containers/observability", Current: true},
 		}}
 	}
 	var charts []chartPanel
@@ -284,9 +295,15 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 	if view == "dashboard" {
 		charts, metricsStatus = server.dashboardCharts(r.Context())
 	}
+	var timeline dashboardTimeline
+	if view == "observability" {
+		start, end := dashboardTimeRange()
+		charts, metricsStatus = server.dashboardChartsForRange(r.Context(), start, end)
+		timeline = server.dashboardTimeline(r.Context(), start, end)
+	}
 	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, ProjectColumns: listPanel{ID: "projects-title", Title: "Projects", Columns: []string{"Project", "Discovery", "Activation", "Containers"}}, Filters: filters, SubviewNav: subviews,
 		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: views, RuntimeMessage: runtimeMessage, RuntimeState: runtimeState,
-		Charts: charts, MetricsStatus: metricsStatus,
+		Charts: charts, MetricsStatus: metricsStatus, Timeline: timeline,
 		Metrics: []metricPanel{
 			{ID: "restart-title", Title: "Container restart & OOM rate", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
 			{ID: "health-title", Title: "Stack health & readiness", Status: "Unavailable", Value: "--", Detail: "No runtime data"},

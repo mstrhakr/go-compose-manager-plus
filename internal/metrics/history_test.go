@@ -68,6 +68,41 @@ func TestEventAndStateHistoryReopenAndBoundaries(t *testing.T) {
 	}
 }
 
+func TestSelectTimelineEventsReturnsNewestEventsInChronologicalOrder(t *testing.T) {
+	ctx := context.Background()
+	store, err := Open(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	first, second := strings.Repeat("a", 64), strings.Repeat("b", 64)
+	start := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
+	events := []Event{
+		{ContainerID: first, Time: start, Kind: EventStart},
+		{ContainerID: second, Time: start.Add(time.Second), Kind: EventStop},
+		{ContainerID: first, Time: start.Add(2 * time.Second), Kind: EventOOM},
+		{ContainerID: second, Time: start.Add(2 * time.Second), Kind: EventExit},
+		{ContainerID: first, Time: start.Add(3 * time.Second), Kind: EventRestart},
+	}
+	if err := store.InsertEvents(ctx, events); err != nil {
+		t.Fatal(err)
+	}
+	got, err := store.SelectTimelineEvents(ctx, start, start.Add(3*time.Second), 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, events[2:4]) {
+		t.Fatalf("newest bounded timeline events = %#v, want %#v", got, events[2:4])
+	}
+	if _, err := store.SelectTimelineEvents(ctx, start, start.Add(time.Second), 0); err == nil {
+		t.Fatal("accepted a nonpositive timeline event limit")
+	}
+}
+
 func TestInvalidHistoryAndAtomicStateInsert(t *testing.T) {
 	ctx := context.Background()
 	store, err := Open(ctx, t.TempDir())

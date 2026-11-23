@@ -11,12 +11,14 @@ import (
 )
 
 const chartBucket = 30 * time.Second
+const timelineEventLimit = 200
 
 var chartColors = []string{"blue", "amber", "purple", "green", "red"}
 
 type dashboardMetricsCollector interface {
 	Status() metrics.CollectorStatus
 	SelectChartSeries(context.Context, time.Time, time.Time, time.Duration) ([]metrics.ContainerChartSeries, error)
+	SelectTimelineEvents(context.Context, time.Time, time.Time, int) ([]metrics.Event, error)
 }
 
 type dashboardChartData struct {
@@ -42,8 +44,17 @@ type dashboardDataPoint struct {
 }
 
 func (server *authServer) dashboardCharts(ctx context.Context) ([]chartPanel, string) {
+	start, end := dashboardTimeRange()
+	return server.dashboardChartsForRange(ctx, start, end)
+}
+
+func dashboardTimeRange() (time.Time, time.Time) {
 	end := time.Now().UTC().Truncate(time.Second)
 	start := end.Add(-time.Hour)
+	return start, end
+}
+
+func (server *authServer) dashboardChartsForRange(ctx context.Context, start, end time.Time) ([]chartPanel, string) {
 	panels := emptyDashboardCharts("Collection disabled", "No metrics are being collected. Enable opt-in collection in Settings to populate these charts.")
 	settings, err := server.metricsSettings.Load(ctx)
 	if err != nil {
@@ -130,6 +141,117 @@ func (server *authServer) dashboardCharts(ctx context.Context) ([]chartPanel, st
 		}
 	}
 	return panels, metricsStatus
+}
+
+type dashboardTimeline struct {
+	Start        int64
+	End          int64
+	SelectedTime int64
+	StartLabel   string
+	EndLabel     string
+	Status       string
+	Message      string
+	Events       []dashboardTimelineEvent
+	RecentEvents []dashboardTimelineEvent
+	Truncated    bool
+}
+
+type dashboardTimelineEvent struct {
+	Time        int64
+	TimeLabel   string
+	Position    float64
+	Container   string
+	Description string
+	Kind        string
+}
+
+func (server *authServer) dashboardTimeline(ctx context.Context, start, end time.Time) dashboardTimeline {
+	timeline := dashboardTimeline{
+		Start: start.UnixMilli(), End: end.UnixMilli(), SelectedTime: end.UnixMilli(),
+		StartLabel: start.Format("Jan 2 · 15:04 MST"), EndLabel: end.Format("Jan 2 · 15:04 MST"),
+		Status: "Unavailable", Message: "Timeline data could not be loaded.",
+		Events: []dashboardTimelineEvent{}, RecentEvents: []dashboardTimelineEvent{},
+	}
+	settings, err := server.metricsSettings.Load(ctx)
+	if err != nil {
+		server.logger.ErrorContext(ctx, "load observability timeline settings", "error", err)
+		return timeline
+	}
+	if !settings.Enabled {
+		timeline.Status = "Disabled"
+		timeline.Message = "Metrics collection is disabled. Enable opt-in collection in Settings to populate this timeline."
+		return timeline
+	}
+	events, err := server.collector.SelectTimelineEvents(ctx, start, end, timelineEventLimit+1)
+	if err != nil {
+		server.logger.ErrorContext(ctx, "read observability timeline events", "error", err)
+		return timeline
+	}
+	if len(events) > timelineEventLimit {
+		timeline.Truncated = true
+		events = events[len(events)-timelineEventLimit:]
+	}
+	for _, event := range events {
+		description := timelineEventDescription(event)
+		timeline.Events = append(timeline.Events, dashboardTimelineEvent{
+			Time:        event.Time.UnixMilli(),
+			TimeLabel:   event.Time.UTC().Format("Jan 2 · 15:04:05 UTC"),
+			Position:    float64(event.Time.Sub(start)) / float64(end.Sub(start)) * 100,
+			Container:   "Container " + shortContainerID(event.ContainerID),
+			Description: description,
+			Kind:        string(event.Kind),
+		})
+	}
+	for i := len(timeline.Events) - 1; i >= 0; i-- {
+		timeline.RecentEvents = append(timeline.RecentEvents, timeline.Events[i])
+	}
+	status := server.collector.Status()
+	switch {
+	case status.Problem != "":
+		timeline.Status = "Collection degraded"
+	case !status.Collecting:
+		timeline.Status = "Collector starting"
+	case !status.EventConnected:
+		timeline.Status = "Event stream disconnected"
+	default:
+		timeline.Status = fmt.Sprintf("%d observed events", len(timeline.Events))
+		if len(timeline.Events) == 1 {
+			timeline.Status = "1 observed event"
+		}
+	}
+	if timeline.Truncated {
+		timeline.Message = fmt.Sprintf("Showing the newest %d recorded events. Docker event history may be incomplete.", timelineEventLimit)
+	} else if status.Problem != "" {
+		timeline.Message = "Collection is reporting a problem; stored events are shown, but recent history may be incomplete."
+	} else if !status.Collecting {
+		timeline.Message = "The metrics collector is starting. Previously recorded events may still appear below."
+	} else if !status.EventConnected {
+		timeline.Message = "The Docker event stream is disconnected. Recorded events may be incomplete."
+	} else if len(events) == 0 {
+		timeline.Message = "No lifecycle events were recorded in the last hour. Docker event history may be incomplete."
+	} else {
+		timeline.Message = "Observed lifecycle events only; Docker may not provide a complete event history."
+	}
+	return timeline
+}
+
+func timelineEventDescription(event metrics.Event) string {
+	switch event.Kind {
+	case metrics.EventStart:
+		return "Started"
+	case metrics.EventStop:
+		return "Stopped"
+	case metrics.EventExit:
+		return "Exited"
+	case metrics.EventRestart:
+		return "Restarted"
+	case metrics.EventOOM:
+		return "Out of memory"
+	case metrics.EventHealth:
+		return "Health: " + string(event.Health)
+	default:
+		return "Container event"
+	}
 }
 
 func emptyDashboardCharts(status, detail string) []chartPanel {
