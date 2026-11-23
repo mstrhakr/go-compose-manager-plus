@@ -28,7 +28,8 @@ type Snapshot struct {
 }
 
 type Client struct {
-	http *http.Client
+	http   *http.Client
+	stream *http.Client
 }
 
 func NewClient(socket string) *Client {
@@ -38,13 +39,14 @@ func NewClient(socket string) *Client {
 		},
 		DisableCompression: true,
 	}
+	noRedirect := func(*http.Request, []*http.Request) error {
+		return errors.New("Docker API redirect refused")
+	}
 	return &Client{http: &http.Client{
-		Transport: transport,
-		Timeout:   5 * time.Second,
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return errors.New("Docker API redirect refused")
-		},
-	}}
+		Transport:     transport,
+		Timeout:       5 * time.Second,
+		CheckRedirect: noRedirect,
+	}, stream: &http.Client{Transport: transport, CheckRedirect: noRedirect}}
 }
 
 // Snapshot uses only the Docker Engine container-list endpoint.
