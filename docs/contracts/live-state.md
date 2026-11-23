@@ -200,8 +200,10 @@ pressure eviction, and reports paused state. An unwired scheduler retries idle
 maintenance, and persisted opt-in settings support the approved preset scopes
 and intervals with an explicit storage limit. Neither is connected to app startup
 or a settings UI; there is no user-facing warning or hard filesystem quota.
-Read-only Docker stats and event-stream foundations exist but are not connected
-to a collector or UI. A
+Read-only Docker inspect, stats and event-stream foundations and an unwired
+single-container sampler exist but are not connected to a collector or UI.
+The sampler requires its caller to establish event-stream continuity before
+deriving rates; matching start times alone do not prove uninterrupted state. A
 test-only, single-container Docker stats/tstorage feasibility spike is recorded
 in [verification](../verification.md#docker-metrics-storage-proof-of-concept);
 it does not implement settings, retention tiers or this requirement.

@@ -706,6 +706,30 @@ app lifecycle integration, freshness and gap reporting remain unimplemented.
 ./internal/metrics ./internal/auth`, `PLAYWRIGHT_PORT=18334 make check QUIET=1`,
 `make docs` and `make check-docs` passed.
 
+### Read-Only Container Sampling
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`c4bfd86` with changes uncommitted during these checks. A read-only Docker
+inspection request validates full container identity and returns discrete
+state, health and start time. A missing Docker config object yields unknown
+health rather than an assumed absent health check. A single-owner sampler inspects before and after each
+running stats request and discards its baseline on a failed or changed
+observation. It does not infer zero for stopped containers. Rates require an
+explicit continuity assertion from its caller as well as a matching nonzero
+start time; matching start times alone cannot prove no intervening pause or
+event-stream gap.
+
+The focused race tests exercise healthy/unknown/no-health-check states,
+malformed responses and IDs, stopped containers, failed requests, reset and
+instance change. An integration test uses a mock read-only Unix Docker socket,
+the real runtime client and the managed SQLite store to persist and retrieve
+state and samples. It does not implement scope selection, event-stream
+reconciliation, app startup, settings UI, collector freshness or user warnings.
+No live Docker test or throughput measurement was performed.
+`go test -race -count=1 ./internal/runtime ./internal/metrics`,
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
+passed.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,

@@ -75,6 +75,13 @@ the same uninterrupted container instance and discard it after a disconnect.
 Memory usage is raw Docker usage, not the CLI's cache-adjusted value. Missing
 counters, resets and changing interface/device sets produce unavailable rates
 instead of zero; platform support remains unverified.</p>
+<p>A read-only Docker container inspection supplies a discrete running/health
+state and start time. An unwired sampler brackets each running stats request with
+inspections, drops its baseline on errors or changes, and emits no stopped-state
+zeroes. Its caller must establish uninterrupted lifecycle and event-stream
+continuity before asking for rates, discard baselines after disconnected or
+uncertain intervals, and handle scope, persistence and errors. Start-time
+equality alone cannot establish continuity; this is not a running collector.</p>
 <p>The unwired SQLite metrics persistence foundation stores observations in a
 separate <code>metrics.db</code>, preserving unavailable fields as SQL NULL.
 Memory values use decimal text to retain the full unsigned Docker counter range.
