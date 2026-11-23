@@ -911,6 +911,35 @@ Docker workload. The storage-write issue reported earlier had resolved before
 this change and was not reproduced, so no root cause is claimed. Live Docker,
 physical disk-full behavior and Windows/macOS remain unverified.
 
+## Authenticated One-Hour Observability Timeline
+
+2026-11-23, Linux development container, branch `feat/observability-timeline`,
+based on `6ee8015` with implementation changes uncommitted during verification.
+The authenticated Containers observability view uses the same last-hour range
+as the charts, presents observed lifecycle events and synchronizes the slider,
+markers, event list and chart cursors. The event query is bounded; the UI
+displays the newest 200 events and identifies when older events were omitted.
+The route reads stored history without requesting a live Docker snapshot, and
+the UI does not claim that Docker event history is complete.
+
+- `go test ./internal/metrics ./internal/web`: passed.
+- `npm run test:e2e -- --grep='timeline markers and keyboard selection|authenticated observability route'`:
+  passed the timeline interaction in Chromium, Firefox, WebKit and mobile
+  Chromium.
+- `npm run test:e2e -- --grep='first login forces password setup before protected dashboard and works on mobile'`:
+  passed the authenticated route flow in Chromium; the other three projects
+  were intentionally skipped by the test's single-bootstrap-account guard.
+- `make check QUIET=1`: passed Go race tests, vet, build, Node, HTTP, complete
+  desktop/Firefox/WebKit/mobile browser tests, asset verification and contract
+  structure checks.
+- `make docs && make check-docs` and `make check-security`: passed, including
+  npm audit and govulncheck with no findings.
+
+No live Docker daemon, event-replay completeness, physical disk-full,
+platform-specific or historical-log behavior was verified. The event display
+limit does not establish a retention policy; the broader LIVE-003 contract
+remains partially implemented and unverified.
+
 ## Automatic Documentation Publishing
 
 2026-11-23, Linux development container, branch `feat/settings-metrics-ui`,

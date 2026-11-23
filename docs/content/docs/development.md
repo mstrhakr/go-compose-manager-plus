@@ -153,13 +153,17 @@ intervals, Custom controls, and collection status. Settings use revision
 checks to reject stale updates. Saving settings while disabled does not open
 the metrics database or access Docker. The collector uses the persisted
 opt-in after restart and closes on disable or application shutdown. The setup
-wizard, per-container charts in the Containers observability view, synchronized
-timeline and historical logs remain unimplemented. The overview dashboard reads
-the opted-in SQLite history and displays per-container CPU, Docker raw memory
-usage and network receive/transmit rates for the last hour. It selects the latest
-stored sample per 30-second display bucket without combining containers or
-changing retained samples; missing buckets stay gaps. Disabled and unavailable
-states are explicit.</p>
+wizard and historical logs remain unimplemented. The Containers observability
+view shows per-container charts for the last hour, a shared time slider, observed
+lifecycle markers and a newest-first event list capped at 200 entries. Chart,
+slider, marker and list selection move the same selected-time cursor; the view
+does not claim Docker event history is complete. It uses stored events without
+requesting a live Docker snapshot. The overview dashboard reads the opted-in
+SQLite history and displays per-container CPU, Docker raw memory usage and
+network receive/transmit rates for the last hour. It selects the latest stored
+sample per 30-second display bucket without combining containers or changing
+retained samples; missing buckets stay gaps. Disabled and unavailable states
+are explicit.</p>
 <p>To measure one synthetic hour of SQLite samples for 1, 5, 25 and 50
 containers without Docker, run:</p>
 <pre><code>CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 \

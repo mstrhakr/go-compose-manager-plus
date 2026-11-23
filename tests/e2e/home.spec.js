@@ -96,6 +96,12 @@ test('first login forces password setup before protected dashboard and works on 
       await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
     }
     await expect(page.getByText('No metrics are being collected.', { exact: false }).first()).toBeVisible();
+    await page.goto('/containers/observability');
+    await expect(page.getByRole('heading', { level: 1, name: 'Container observability' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Container views' }).getByRole('link', { name: 'Observability' })).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('slider', { name: 'Selected time in the last hour' })).toBeVisible();
+    await expect(page.locator('[data-timeline-message]')).toContainText('Metrics collection is disabled');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole('link', { name: 'Settings', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Metrics settings' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Settings categories' }).getByRole('link', { name: 'Metrics' })).toHaveAttribute('aria-current', 'page');
@@ -203,7 +209,11 @@ test('first login forces password setup before protected dashboard and works on 
     await expect(page).toHaveURL(/\/containers$/);
     const containerViews = page.getByRole('navigation', { name: 'Container views' });
     await expect(containerViews.getByRole('link', { name: 'Containers' })).toHaveAttribute('aria-current', 'page');
-    await expect(containerViews.getByRole('button', { name: 'Observability' })).toBeDisabled();
+    await expect(containerViews.getByRole('link', { name: 'Observability' })).toBeVisible();
+    await containerViews.getByRole('link', { name: 'Observability' }).click();
+    await expect(page).toHaveURL(/\/containers\/observability$/);
+    await expect(page.getByRole('heading', { level: 1, name: 'Container observability' })).toBeVisible();
+    await page.getByRole('navigation', { name: 'Container views' }).getByRole('link', { name: 'Containers' }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Containers' })).toBeVisible();
     await expect(page.locator('.list-empty')).toContainText('Docker status unavailable');
     await expect(page.locator('.list-empty')).not.toContainText('No containers found');
@@ -338,6 +348,13 @@ test('first login forces password setup before protected dashboard and works on 
       expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await touchPage.getByRole('link', { name: 'Containers', exact: true }).tap();
       await expect(touchPage.locator('.list-empty')).toContainText('Docker status unavailable');
+      await touchPage.getByRole('navigation', { name: 'Container views' }).getByRole('link', { name: 'Observability' }).tap();
+      const timelineSlider = touchPage.getByRole('slider', { name: 'Selected time in the last hour' });
+      await expect(timelineSlider).toBeVisible();
+      const endTime = Number(await timelineSlider.getAttribute('max'));
+      await timelineSlider.tap({ position: { x: 24, y: 16 } });
+      await expect.poll(async () => Number(await timelineSlider.inputValue())).toBeLessThan(endTime);
+      expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     } finally {
       await touch.close();

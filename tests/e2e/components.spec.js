@@ -99,6 +99,61 @@ test('charts expose hover values and synchronize pointer and keyboard time selec
   await expect(firstCursor).toHaveAttribute('x1', await secondCursor.getAttribute('x1'));
 });
 
+test('timeline markers and keyboard selection stay synchronized with every chart', async ({ page }, testInfo) => {
+  const charts = page.locator('[data-chart]');
+  for (const chart of await charts.all()) {
+    await chart.evaluate(element => {
+      element.dataset.chartSeries = JSON.stringify({
+        min: 0, max: 10, xMin: 1000, xMax: 4000, selectedTime: 4000,
+        series: [{ label: 'CPU', color: 'blue', points: [{ x: 1000, y: 1 }, { x: 4000, y: 8 }] }],
+      });
+      element.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
+    });
+  }
+  await page.evaluate(() => {
+    const timeline = document.createElement('section');
+    timeline.innerHTML = `<div data-timeline data-start="1000" data-end="4000" data-selected="4000">
+      <label for="timeline-fixture">Selected time <output data-timeline-output for="timeline-fixture">Initial</output></label>
+      <input id="timeline-fixture" type="range" min="1000" max="4000" step="1000" value="4000" data-timeline-slider aria-label="Selected time in the last hour">
+      <button type="button" data-timeline-marker data-timeline-select="2000" data-position="33.333" aria-label="Start event"></button>
+      <button type="button" data-timeline-select="2000" aria-label="Select event at 2000"></button>
+    </div>`;
+    const component = timeline.firstElementChild;
+    document.body.append(component);
+    component.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
+  });
+  const timeline = page.locator('[data-timeline]');
+  const slider = timeline.getByLabel('Selected time in the last hour');
+  await expect(slider).toHaveValue('4000');
+  expect(await timeline.locator('[data-timeline-marker]').evaluate(element => element.style.left)).toBe('33.333%');
+
+  if (testInfo.project.name === 'mobile-chromium') {
+    await timeline.getByRole('button', { name: 'Start event' }).tap();
+  } else {
+    await timeline.getByRole('button', { name: 'Start event' }).click();
+  }
+  await expect(slider).toHaveValue('2000');
+  const cursors = await charts.evaluateAll(elements => elements.map(element => element.querySelector('.chart-cursor').getAttribute('x1')));
+  expect(new Set(cursors).size).toBe(1);
+
+  const svg = charts.nth(0).locator('svg');
+  const bounds = await svg.boundingBox();
+  const chartPoint = { x: bounds.width * 2 / 3, y: bounds.height / 2 };
+  if (testInfo.project.name === 'mobile-chromium') {
+    await svg.tap({ position: chartPoint });
+  } else {
+    await svg.click({ position: chartPoint });
+  }
+  await expect(slider).toHaveValue('3000');
+  const chartTime = await svg.getAttribute('aria-valuenow');
+  expect(chartTime).toBe('3000');
+  await slider.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(slider).toHaveValue('2000');
+  expect(await charts.nth(1).locator('svg').getAttribute('aria-valuenow')).toBe('2000');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('selection is scoped, keyboard operable and handles disabled rows', async ({ page }, testInfo) => {
   const projects = page.locator('[data-select-list]').filter({ has: page.getByRole('heading', { name: 'Projects', exact: true }) });
   const other = page.locator('[data-select-list]').filter({ has: page.getByRole('heading', { name: 'Other resources' }) });

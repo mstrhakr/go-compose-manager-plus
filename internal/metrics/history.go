@@ -191,6 +191,10 @@ func historyRange(id string, start, end time.Time, limit int) (int64, int64, err
 	if err := validateID(id); err != nil {
 		return 0, 0, err
 	}
+	return historyTimeRange(start, end, limit)
+}
+
+func historyTimeRange(start, end time.Time, limit int) (int64, int64, error) {
 	from, err := timestamp(start)
 	if err != nil {
 		return 0, 0, fmt.Errorf("invalid start: %w", err)
@@ -233,6 +237,41 @@ func (s *Store) SelectEvents(ctx context.Context, id string, start, end time.Tim
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("read container events: %w", err)
+	}
+	return result, nil
+}
+
+// SelectTimelineEvents returns the newest observed events in chronological order.
+func (s *Store) SelectTimelineEvents(ctx context.Context, start, end time.Time, limit int) ([]Event, error) {
+	from, to, err := historyTimeRange(start, end, limit)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT container_id, observed_ns, kind, health FROM container_events
+		WHERE observed_ns >= ? AND observed_ns < ?
+		ORDER BY observed_ns DESC, sequence DESC LIMIT ?`, from, to, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query timeline events: %w", err)
+	}
+	defer rows.Close()
+	var result []Event
+	for rows.Next() {
+		var ns int64
+		event := Event{}
+		if err := rows.Scan(&event.ContainerID, &ns, &event.Kind, &event.Health); err != nil {
+			return nil, fmt.Errorf("read timeline event: %w", err)
+		}
+		event.Time = time.Unix(0, ns).UTC()
+		if _, err := validateEvent(event); err != nil {
+			return nil, fmt.Errorf("invalid stored timeline event: %w", err)
+		}
+		result = append(result, event)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read timeline events: %w", err)
+	}
+	for left, right := 0, len(result)-1; left < right; left, right = left+1, right-1 {
+		result[left], result[right] = result[right], result[left]
 	}
 	return result, nil
 }

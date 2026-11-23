@@ -239,12 +239,17 @@ sample in each 30-second bucket; it does not combine container values or alter
 retained samples, and missing buckets remain gaps. Memory is labeled as Docker's
 raw usage, not the cache-adjusted CLI value. These charts cover the last hour
 and report when collection is disabled, starting, paused or has no observations.
-Chart clicks and keyboard selection dispatch the shared
-`observability:timechange` event with a Unix-millisecond timestamp; all dashboard
-charts move their selected-time cursor together. A future timeline can use this
-event contract, but no timeline, event markers/list, persisted per-container gap
-ledger, hard filesystem quota or measured preset sizing/throughput is implemented.
-Historical logs and TimescaleDB remain unimplemented. Platform behavior,
+The authenticated Containers observability view presents the same one-hour
+metric charts with a shared timeline slider, observed lifecycle markers and a
+newest-first list bounded to 200 events. Slider, marker, list, chart-click and
+chart-keyboard selection share the `observability:timechange` event and keep
+the timeline and chart cursors synchronized. It reads stored history without
+requesting a Docker snapshot. Event history may be incomplete; the view labels
+observed events rather than asserting a complete lifecycle record. A bounded
+event list is explicitly marked when older events are omitted. No persisted
+per-container gap ledger, hard filesystem quota or measured preset
+sizing/throughput is implemented. Historical logs and TimescaleDB remain
+unimplemented. Platform behavior,
 live-Docker recovery and physical disk-full behavior remain unverified. A
 test-only Docker/tstorage feasibility spike is recorded in
 [verification](../verification.md#docker-metrics-storage-proof-of-concept); it
@@ -278,6 +283,9 @@ does not implement these behaviors.
   right end of the input.
 - Large chart legends stay bounded; every series remains discoverable and can
   be toggled individually without changing the plot's layout.
+- The initial observability view shows the last hour; chart, slider, marker and
+  event-list selections stay synchronized. Only recorded events appear, and the
+  view does not imply Docker event history is complete.
 
 ### Proposed Cases Requiring Review And Eventual Execution-Based Checks
 
@@ -314,15 +322,17 @@ does not implement these behaviors.
 
 ## Verification
 
-The approved Settings/chart presentation refinement was exercised on Linux on
-2026-11-23. `make check QUIET=1`, `make docs && make check-docs`, and
-`make check-security` passed; browser checks cover desktop and mobile layouts,
-40-series chart selection, profile transitions, unit conversion display,
-keyboard/touch interaction and the no-JavaScript form fallback. See the
-[verification record](../verification.md#metrics-settings-and-large-chart-usability)
+The approved Settings/chart presentation refinement and the bounded
+authenticated timeline implementation were exercised on Linux on 2026-11-23.
+`make check QUIET=1`, `make docs && make check-docs`, and `make check-security`
+passed. Browser checks cover chart selection, profile transitions, unit
+conversion, keyboard/touch use, the no-JavaScript form fallback and
+synchronization of the last-hour timeline, event markers/list and charts.
+See the [verification record](../verification.md#metrics-settings-and-large-chart-usability)
+and [timeline verification](../verification.md#authenticated-one-hour-observability-timeline)
 for exact scope and remaining limits.
 
 These checks do not establish the whole LIVE-003 contract. Live Docker
 collection, physical disk-full recovery, platform-specific behavior, measured
-resource costs, timeline behavior, event markers and historical logs remain
-unverified or unimplemented. See the [source register](../planning/sources.md).
+resource costs, and historical logs remain unverified or unimplemented. See
+the [source register](../planning/sources.md).

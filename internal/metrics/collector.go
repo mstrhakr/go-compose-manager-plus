@@ -271,6 +271,15 @@ func (c *Collector) SelectChartSeries(ctx context.Context, start, end time.Time,
 	return c.store.SelectChartSeries(ctx, start, end, bucket)
 }
 
+func (c *Collector) SelectTimelineEvents(ctx context.Context, start, end time.Time, limit int) ([]Event, error) {
+	c.storeMu.RLock()
+	defer c.storeMu.RUnlock()
+	if c.store == nil {
+		return nil, nil
+	}
+	return c.store.SelectTimelineEvents(ctx, start, end, limit)
+}
+
 func (c *Collector) collectCycle(ctx context.Context, settings Settings, store *ManagedStore, continuity *eventContinuity, samplers map[string]*Sampler, previousCycleOK *bool, previousGeneration *uint64) error {
 	snapshot, err := c.docker.Snapshot(ctx)
 	if err != nil {
