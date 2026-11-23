@@ -2,14 +2,15 @@
 <div class="inventory-toolbar"><div><h1>Compose projects</h1><p>{{.Filters.Shown}} of {{.Filters.Total}} projects</p></div><a class="inventory-filter-link" href="#inventory-filter-toggle">Filters &amp; sort</a><span>{{.RuntimeMessage}}</span></div>
 {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
 {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
-<section class="list-panel inventory-panel" aria-labelledby="projects-list-title">
+<section class="list-panel inventory-panel" aria-labelledby="projects-list-title" data-column-manager="projects-title">
   <h2 class="visually-hidden" id="projects-list-title">Projects</h2>
-  <div class="inventory-columns" aria-hidden="true"><span>Project</span><span>Discovery</span><span>Activation</span><span>Containers</span></div>
+  {{template "column-customizer" .ProjectColumns}}
+  <div class="inventory-columns" aria-hidden="true"><span data-column="Project">Project</span><span data-column="Discovery">Discovery</span><span data-column="Activation">Activation</span><span data-column="Containers">Containers</span></div>
   {{if .Projects}}
   <ul class="inventory-list">
     {{range .Projects}}
     <li><details class="inventory-item">
-      <summary><span class="inventory-name"><span class="project-glyph" aria-hidden="true">&#9636;</span>{{.DisplayName}}</span><span><span class="inventory-mobile-label">Discovery: </span>{{.DiscoveryStatus}}</span><span><span class="inventory-mobile-label">Activation: </span>{{.ActivationStatus}}</span><span><span class="inventory-mobile-label">Containers: </span>{{if .RuntimeName}}{{len .Containers}}{{else}}Unknown{{end}}</span></summary>
+      <summary><span class="inventory-name" data-column="Project"><span class="project-glyph" aria-hidden="true">&#9636;</span>{{.DisplayName}}</span><span data-column="Discovery"><span class="inventory-mobile-label">Discovery: </span>{{.DiscoveryStatus}}</span><span data-column="Activation"><span class="inventory-mobile-label">Activation: </span>{{.ActivationStatus}}</span><span data-column="Containers"><span class="inventory-mobile-label">Containers: </span>{{if .RuntimeName}}{{len .Containers}}{{else}}Unknown{{end}}</span></summary>
       <div class="inventory-details">
         <p>Folder: {{.Path}}</p>
         {{if ne .Root $.Root}}<p>Outside the current discovery root; save its root to activate.</p>{{end}}

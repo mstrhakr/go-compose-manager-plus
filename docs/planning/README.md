@@ -232,15 +232,68 @@ This work does not require completing Git, metrics history or every queue varian
 
 On 2026-11-22 the owner selected opt-in per-container metrics and historical
 views as the next direction, including real dashboard charts, a summary-focused
-dashboard and a reusable inventory column customizer. The owner selected
-tstorage for metric history while retaining SQLite for application state, with
+dashboard and a reusable inventory column customizer. The owner initially selected
+tstorage for metric history, then selected a separate SQLite metrics database
+after a write-failure probe, with
 low-power-friendly presets and a custom setup wizard as a goal. Collection scope
 is configurable in Settings between all running containers and containers
 associated with activated stacks: Low and Medium select activated stacks and
-High all running containers, while editing an individual setting selects Custom.
-Other preset details are undecided. Scope edge cases, retention,
+High all running containers. Each preset configures the full metrics feature,
+including an adjustable storage limit; editing an individual setting selects
+Custom. Suggested limits need measurement. Use a reusable preset/custom settings
+UI structure suitable for other features.
+The initial single-resolution window is one hour, with target sample intervals
+of 15 seconds for Low, 5 seconds for Medium and 1 second for High. Longer-term
+tiers and other preset details are undecided. For this initial version, samples
+older than one hour may expire without downsampling, with the limit made clear
+in the UI. The initial observability view defaults to the last hour and uses a
+timeline synchronized with the charts. Longer ranges and custom timeframes are
+future advanced options; display aggregation does not determine stored
+resolution. The owner also wants historical logs and relevant usage together at
+the selected time; log sources and retention remain undecided. Presets are performance-oriented, but their actual costs are
+unmeasured. Scope edge cases, retention,
 resource limits and presentation details remain to be decided and
 verified; see [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views).
+
+#### Observability Inventory: Proposed Long-Term Candidates
+
+This is a planning inventory, not an implementation claim or approval of every
+candidate. The owner's Gemini mockup and timeline screenshots are private local
+references in ignored `scratch/ui-references/`; their labels are inspiration,
+not evidence that the pictured data is available. The owner selected the first
+collection slice in [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
+later priorities and source support still need verification.
+
+| Area | Candidate observations and incident context | Likely source / qualification |
+| --- | --- | --- |
+| Container lifecycle and health | Running/stopped/restarting state, health-check state and transitions, start/stop/die/restart events, exit code, OOM indication, restart count and health-check output when available | Docker inspect, list and events. A missing health check is not healthy; polling or events alone may miss transitions. Docker event history is not a durable incident log. |
+| CPU | Usage percentage, CPU time, quota/limit and throttling | Docker stats and inspect; counter deltas require valid consecutive samples. CPU percentages can exceed 100% across cores; cgroup support varies. |
+| Memory | Raw and cache-adjusted usage, limit and percentage, cache, swap, memory pressure/faults and OOM events where supported | Docker stats, inspect and events; definitions and cgroup versions vary. Show which usage definition is used and do not infer an OOM from memory usage alone. |
+| Network | Receive/transmit byte and packet rates, errors and drops, plus interface identity where available | Docker stats counters; rates require valid deltas and elapsed time. Interface changes and resets create gaps, not negative rates. |
+| Block I/O | Read/write throughput and operation rates, with device breakdown or throttling where supported | Docker stats and platform-specific counters; availability differs across cgroup versions. Block I/O is not filesystem capacity or physical disk health. |
+| Processes | Container process count, resource limits and process trends | Docker stats and inspect where supported; process-level details need separate investigation and can be sensitive. |
+| Logs and events | Timestamped container logs, lifecycle and health markers, collection gaps, and correlation with the selected timeline time | Docker logs and events or later integrations. Driver support, rotation, retention, authorization, redaction and missing history need decisions. Never assume a complete historical log. |
+| Stack context | Compose project/service association, aggregate running and health states, resource totals and container changes | Docker labels, discovery and container observations. Shared Compose names are not ownership proof; aggregates need explicit missing-data semantics. |
+| Host and storage | Host CPU, memory, load and filesystem capacity; disk capacity, latency, errors, SMART and storage-pool health | Separate host or storage integration; not implied by container stats. Mounts and privileges need security review; platform and hardware support vary. |
+| Topology and configuration | Container-to-project, network, image and mount relationships; deployment and configuration changes | Docker inventory, inspect and future operation records. Historical topology needs its own retention; avoid exposing environment variables, secrets or private paths by default. |
+| Network flows and service health | Connections, endpoints, latency, loss, DNS, HTTP status or application health | Not supplied by basic Docker stats. Requires explicit instrumentation, probes or integrations, with separate privacy, cost and security decisions. |
+| Collector health | Collection failures, freshness, gaps, storage pressure, shortened history and paused/recovered writes | Manager-owned state. Distinguish missing observations from zero, and distinguish collector failures from container failures. |
+
+Collection must remain opt-in. The agreed first raw window is one hour at the
+selected performance profile's target cadence; recording additional series,
+events or logs changes resource and retention requirements. Track identity
+across container recreation without merging unrelated instances, preserve
+timestamps and gaps, and prevent counter resets from becoming false rates.
+Metric display aggregation is distinct from stored resolution. Validate sources,
+platform differences, cardinality, privacy, permissions, storage accounting
+and recovery before enabling any candidate. Current tests cover a limited stats
+spike only; they do not establish production collection or history.
+
+Docker reference material: [runtime metrics](https://docs.docker.com/engine/containers/runmetrics/),
+[Engine stats API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerStats/)
+and [logging-driver cache limitations](https://docs.docker.com/engine/logging/dual-logging/).
+The application currently uses Engine API v1.40 for inventory; the newer stats
+reference is background evidence, not proof of v1.40 or platform support.
 
 Before exposing admin operations, close the relevant action, identity/input,
 request-security and execution/job gates above. Complete the current refinement

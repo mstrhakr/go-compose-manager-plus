@@ -51,6 +51,124 @@ anonymous volumes. It requires
 the development image to be present locally; it does not pull, build or prune.
 It is not part of <code>make check</code> and a crash can leave a fixture behind.
 Use a disposable daemon when stronger isolation is needed.</p>
+<p>The test-only metrics spike can stream read-only stats for one explicitly
+selected running container for ten seconds, writing only to a temporary
+tstorage directory. It does not create, start or stop containers:</p>
+<pre><code>CMP_METRICS_SOCKET=/var/run/docker.sock CMP_METRICS_CONTAINER=CONTAINER_NAME \
+  go test -race -count=1 -run '^TestLiveStatsStorage$' -v ./internal/metricspoc</code></pre>
+<p>Select a daemon and container only with their owner's permission. The socket
+grants host-administrative access even though this test uses a read-only API
+request. This short single-container test is not a representative resource
+benchmark, retention implementation or continuously running collector.</p>
+<p>To measure one hour of synthetic one-second samples for 1, 5, 25 and 50
+containers without contacting Docker, run:</p>
+<pre><code>CMP_METRICS_CAPACITY_TEST=1 go test -race -count=1 \
+  -run '^TestSyntheticHourCapacity$' -v ./internal/metricspoc</code></pre>
+<p>This writes temporary databases, verifies every series after reopening, and
+reports directory sizes at the end of ingestion and after closing. Its generated
+values and accelerated writes do not model production workloads or peak disk
+usage and must not be used as storage guarantees.</p>
+<p>The runtime package also exposes a bounded, on-demand Docker stats snapshot
+and conversion of two consecutive observations to CPU and I/O rates. It does
+not start a collector. The caller must pass the previous observation only for
+the same uninterrupted container instance and discard it after a disconnect.
+Memory usage is raw Docker usage, not the CLI's cache-adjusted value. Missing
+counters, resets and changing interface/device sets produce unavailable rates
+instead of zero; platform support remains unverified.</p>
+<p>A read-only Docker container inspection supplies a discrete running/health
+state and start time. The sampler brackets each running stats request with
+inspections, drops its baseline on errors or changes, and emits no stopped-state
+zeroes. The opt-in application collector resolves the configured scope, updates
+it on each collection cycle, and limits concurrent observations to eight.
+Rates require an uninterrupted event stream and a stable container start time;
+disconnects and errors discard rate continuity. Sampling intervals are targets,
+not schedule guarantees.</p>
+<p>The SQLite metrics persistence foundation stores observations in a
+separate <code>metrics.db</code>, preserving unavailable fields as SQL NULL.
+Memory values use decimal text to retain the full unsigned Docker counter range.
+It persists observed event and state records but does not infer state between
+snapshots. The collector reconnects the read-only Docker event stream and
+deduplicates exact event replay keys (container, timestamp, kind and health).
+Replay identities expire with their one-hour event records, and deduplication
+cannot restore events missed during a disconnect. The approved inference of
+zero values from specific known states, such as stopped, remains
+unimplemented; an absent observation alone is not evidence of zero. A caller
+can atomically delete
+sample, event and state records before a cutoff, inspect SQLite file lengths,
+inspect logical database page counts and reusable pages, attempt a WAL
+checkpoint, and remove batches of oldest samples. Reusable pages are still in
+the database file; reusing them can require additional WAL space. Each nonempty
+sample eviction atomically updates a persistent cumulative count and timestamp
+bounds; the bounds do not imply a continuous gap, and evictions made before
+schema version 4 cannot be reconstructed. The persisted summary does not
+describe event or state loss; the collector surfaces it as a warning when
+collection is active.</p>
+<p><code>ManagedStore</code> serializes reads, writes and maintenance under an
+exclusive SQLite lock. Its caller supplies a byte limit. The collector runs
+maintenance immediately and retries every five seconds, including while idle.
+Maintenance expires records
+older than one hour and attempts bounded oldest-sample eviction at a 90% active
+logical-usage target. Its durable pressure gate prevents repeated eviction
+when no measurable progress is made, including after reopening. It reports
+paused writes and a cumulative eviction summary. A write can succeed before subsequent maintenance
+fails; callers must distinguish <code>ErrWriteCommitted</code> and not retry
+that committed batch. A failed commit returns
+<code>ErrWriteOutcomeUnknown</code>; reconcile the batch before retrying it.
+The managed store records a durable pending-write marker before each batch and
+marks it committed in the same transaction as the data. A surviving marker
+pauses maintenance and writes across reopening. The collector inspects the
+atomic committed bit and clears the marker without replaying the interrupted
+batch. The marker records the batch kind and start time, not the payload or a
+replay identity. Event replay deduplication is separate; neither mechanism
+reconstructs gaps. The implementation checkpoints frequently and its cost at
+target sampling rates is unmeasured.</p>
+<p>The authenticated Settings page can save Low, Medium, High or Custom metrics
+preferences and an explicit byte target, and collection is default-off until
+explicitly enabled. Enabling requires a configured Docker socket. Status shows
+the latest cycle, event-stream state and failures. Once the collector has read
+eviction history, Settings warns when storage pressure has removed samples,
+including the cumulative count and timestamp bounds (not a continuous-gap
+claim). To preserve default-off behavior, a disabled collector does not reopen
+the metrics database on startup, so it cannot rediscover this warning until
+collection is enabled. Preset size recommendations and the setup wizard remain
+unimplemented.</p>
+<p>This is not a hard disk quota: SQLite deletion does not itself shrink the
+database, file lengths are not allocated blocks or peak usage, WAL and
+transactions can exceed the target, and physical filesystem-full recovery is
+unverified. If file length itself reaches the limit, maintenance pauses rather
+than assuming row deletion will reclaim filesystem space. An eviction that
+does not reduce active usage also pauses until accounting conditions change or
+the configured limit increases. The collector retries maintenance every five
+seconds; failed writes pause metrics collection but leave the rest of the app
+usable.</p>
+<p>Metrics settings are persisted separately in application state. An
+unconfigured installation is disabled, and the storage limit must be explicitly
+provided; no preset storage defaults are assumed. The authenticated Settings
+page exposes enable/disable, the low, medium and high profile scopes and
+intervals, Custom controls, and collection status. Settings use revision
+checks to reject stale updates. Saving settings while disabled does not open
+the metrics database or access Docker. The collector uses the persisted
+opt-in after restart and closes on disable or application shutdown. The setup
+wizard, per-container charts in the Containers observability view, synchronized
+timeline and historical logs remain unimplemented. The overview dashboard reads
+the opted-in SQLite history and displays per-container CPU, Docker raw memory
+usage and network receive/transmit rates for the last hour. It selects the latest
+stored sample per 30-second display bucket without combining containers or
+changing retained samples; missing buckets stay gaps. Disabled and unavailable
+states are explicit.</p>
+<p>To measure one synthetic hour of SQLite samples for 1, 5, 25 and 50
+containers without Docker, run:</p>
+<pre><code>CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 \
+  -run '^TestSyntheticHourSQLiteCapacity$' -v ./internal/metrics</code></pre>
+<p>The test batches a minute of generated observations per transaction, checks
+every observation after reopening, and reports file lengths at the end of
+ingestion and after closing. These are not peak sizes or a realtime benchmark;
+they do not establish storage limits or disk-full recovery.</p>
+<p>To measure checkpointed sample-eviction WAL sizes in a synthetic local store,
+run:</p>
+<pre><code>CMP_METRICS_SQLITE_EVICTION_PROBE=1 go test -race -count=1 \
+  -run '^TestBoundedEvictionCheckpointProbe$' -v ./internal/metrics</code></pre>
+<p>The observed sizes are not worst-case bounds or safe budget defaults.</p>
 <h2>UI components</h2>
 <p>Reusable server-rendered metric, chart and list panels are defined in
 <code>internal/web/templates/partials/components.html</code>, with their Go
@@ -69,10 +187,16 @@ has a label, a color from <code>blue</code>, <code>amber</code>,
 strictly increasing numeric <code>x</code> and numeric or null <code>y</code>.
 Values must lie within the shared range; null separates lines. Callers must
 choose consistent units, meaningful labels, and an appropriate range. The
-component does not fetch, aggregate, timestamp, or interpret data; chart
-freshness and authority remain the caller's responsibility. The chart includes
-a keyboard-accessible data table, an empty state and an explicit invalid-data
-error. With JavaScript disabled it reports that chart data cannot be displayed.</p>
+component does not fetch or aggregate data; chart freshness and authority remain
+the caller's responsibility. Optional <code>xMin</code>, <code>xMax</code> and
+<code>selectedTime</code> are numeric milliseconds when using timestamps. Charts
+listen for <code>observability:timechange</code> events with
+<code>detail.time</code> as a Unix-millisecond timestamp; chart clicks and
+keyboard selection dispatch that event, allowing a timeline to synchronize
+without coupling the component to one. Hover shows nearby series values, and
+arrow keys move between recorded timestamps. The chart includes a data table,
+an empty state and an explicit invalid-data error. With JavaScript disabled it
+reports that chart data cannot be displayed.</p>
 <p>List panels render semantic tables and optional native checkboxes; enable
 <code>Selectable</code> only when a consumer needs selection. Local enhancement
 provides a scoped select-all checkbox, count and a bubbling
@@ -85,6 +209,11 @@ applying them requests a fresh snapshot and uses counts before filtering.
 View navigation uses ordinary links and disabled buttons rather than an ARIA
 tab widget; add real destinations only when their behavior is implemented.
 With no JavaScript the individual native checkboxes remain usable.</p>
+<p>Inventory column preferences use the reusable column customizer and are
+stored independently per view in the browser. The first identifying column
+stays visible. If browser storage is unavailable, the current page can still
+change columns and reports that preferences could not be saved. Without
+JavaScript, all columns remain visible and the customizer is hidden.</p>
 <p>Run <code>npx playwright test tests/e2e/components.spec.js --project=chromium</code>
 to render the actual templates in a test-only page, with populated, empty,
 invalid and selectable examples. Browser screenshots are local test artifacts;

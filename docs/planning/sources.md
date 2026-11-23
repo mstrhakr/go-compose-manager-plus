@@ -38,6 +38,64 @@ The owner selected a roughly 90% metrics-storage usage target with 10%
 headroom, intending downsampling to precede removal and incompatible
 configurations to be prevented. Exceptional exhaustion behavior remains open;
 the target is not a guaranteed disk-space limit.
+The owner selected an initial single-resolution one-hour history for each
+preset: Low targets 15-second samples, Medium 5-second samples and High
+1-second samples. Longer-term tiering and retention remain separate decisions;
+the selected intervals are targets, not measured freshness guarantees.
+The owner approved expiry without downsampling after one hour for this initial
+single-resolution version, provided the UI explains its history limit. This
+does not supersede the later tiered-retention downsampling direction.
+After considering a 24-hour raw window, the owner confirmed one hour only for
+the initial raw layer, with longer retention to be built on top later. Low,
+Medium and High are performance-oriented settings, not a claim that High is
+lightweight. The initial observability view should default to the last hour and
+use a timeline synchronized with the charts; longer ranges and custom
+timeframes are future advanced options. Display aggregation is distinct from
+the retained sampling resolution.
+The owner also requested historical logs correlated with usage and relevant
+context in the same observability timeline for incident investigation. Log
+sources, retention, synchronization and access remain to be refined.
+For the initial single-resolution version, the owner chose early removal of
+the oldest metrics with a clear warning when the metrics store reaches its
+limit before normal expiry, rather than stopping collection as the first
+response. How to account for and enforce the limit and what happens if space
+cannot be recovered were initially open. The owner subsequently chose to pause
+metric writes, clearly report the problem and retry when space is available if
+space cannot be recovered, while keeping the rest of the app usable. Limit
+accounting and enforcement still need verification.
+The owner clarified that Low, Medium and High configure the entire metrics
+feature, including a storage limit adjustable in the wizard, and individual
+changes select Custom. Suggested limits should be informed by measurement;
+their values are not yet selected. The preset/custom settings UI should be
+reusable for other large features, without presuming their specific settings.
+For activated-stack metrics when multiple discovered folders resolve to the
+same Compose project name, the owner chose to collect the corresponding
+Docker project's containers if any matching folder is activated, while making
+the shared identity clear. The association does not establish ownership.
+When a container leaves collection scope through deactivation or a settings
+change, the owner chose to stop new collection while retaining existing
+samples until normal expiry or storage pressure removes them.
+The owner approved an initial collection scope of CPU utilization, memory usage
+and limit, network receive/transmit byte rates, block read/write byte rates,
+container running and health state, observed start/stop/exit/restart/OOM/health
+events, and collector freshness, gaps, errors and shortened-history reporting.
+The selected timeline should correlate charts with event markers and an event
+list. Missing observations, counter resets and disconnected periods are gaps;
+Docker event replay cannot guarantee complete history. Logs and additional
+integrations remain later work, not part of this approval.
+The owner subsequently clarified that missing values should be zero when a
+known state supports it, for example when a container is stopped, and requested
+that lifecycle events appear on the timeline and some charts. The exact
+metric/state and time-boundary rules remain to be refined; this is not approval
+to turn unknown or disconnected periods into zero.
+After a reproduced tstorage write-failure issue, the owner selected a separate
+SQLite metrics store for the initial one-hour implementation. A possible future
+TimescaleDB backend, longer retention, and backend-specific limits or features
+are deferred pending evidence. This replaces the earlier tstorage choice for
+the initial implementation, not the approved storage-pressure behavior.
+The owner asked whether metrics can be stored separately and later migrated to
+TimescaleDB on upgrade, with the local metrics database removable afterward.
+Migration, cutover and cleanup details are future work and are not implemented.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

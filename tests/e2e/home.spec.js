@@ -89,10 +89,65 @@ test('first login forces password setup before protected dashboard and works on 
     await expect(page).toHaveURL(/\/$/);
     await expect(page.getByRole('heading', { name: 'System status' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Overview views' }).getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page');
-    for (const name of ['Resources unavailable', 'Activity unavailable', 'Settings unavailable']) {
+    for (const name of ['Resources unavailable', 'Activity unavailable']) {
       await expect(page.getByRole('button', { name })).toBeDisabled();
     }
-    await expect(page.getByRole('heading', { name: 'Compose projects' })).toBeVisible();
+    for (const name of ['CPU by container', 'Docker raw memory usage by container', 'Network receive by container', 'Network transmit by container']) {
+      await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+    }
+    await expect(page.getByText('No metrics are being collected.', { exact: false }).first()).toBeVisible();
+    await page.getByRole('link', { name: 'Settings', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Metrics settings' })).toBeVisible();
+    await expect(page.getByText('Disabled; no background metrics collection', { exact: false })).toBeVisible();
+    const interactiveContext = await browser.newContext({ baseURL });
+    try {
+      await interactiveContext.addCookies(await context.cookies());
+      const interactivePage = await interactiveContext.newPage();
+      await interactivePage.goto('/settings');
+      await interactivePage.getByLabel('Profile').selectOption('low');
+      await interactivePage.getByLabel('Custom scope (used only with Custom)').selectOption('all');
+      await expect(interactivePage.getByLabel('Profile')).toHaveValue('custom');
+      await interactivePage.getByLabel('Profile').selectOption('high');
+      await expect(interactivePage.getByLabel('Custom scope (used only with Custom)')).toHaveValue('all');
+      await expect(interactivePage.getByLabel('Custom sampling interval (used only with Custom, for example 5s)')).toHaveValue('1s');
+      await interactivePage.getByLabel('Storage target in bytes').fill('10485760');
+      await expect(interactivePage.getByLabel('Profile')).toHaveValue('custom');
+    } finally {
+      await interactiveContext.close();
+    }
+    await page.getByLabel('Profile').selectOption('medium');
+    await page.getByLabel('Storage target in bytes').fill('10485760');
+    await page.getByRole('button', { name: 'Save metrics preferences' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Metrics preferences saved' })).toBeVisible();
+    await expect(page.getByLabel('Profile')).toHaveValue('medium');
+    await page.getByLabel('Enable background metrics collection').check();
+    await page.getByRole('button', { name: 'Save metrics preferences' }).click();
+    await expect(page.getByRole('alert')).toContainText('Configure a Docker socket');
+    await page.getByLabel('Enable background metrics collection').uncheck();
+    await page.setViewportSize({ width: 375, height: 812 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.getByLabel('Profile').selectOption('custom');
+    await page.getByLabel('Custom scope (used only with Custom)').selectOption('all');
+    await page.getByLabel('Custom sampling interval (used only with Custom, for example 5s)').fill('3s');
+    await page.getByRole('button', { name: 'Save metrics preferences' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByLabel('Profile')).toHaveValue('custom');
+    await expect(page.getByLabel('Custom sampling interval (used only with Custom, for example 5s)')).toHaveValue('3s');
+    const touchContext = await browser.newContext({ baseURL, viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+    try {
+      await touchContext.addCookies(await context.cookies());
+      const touchPage = await touchContext.newPage();
+      await touchPage.goto('/settings');
+      await expect(touchPage.getByLabel('Profile')).toHaveValue('custom');
+      await touchPage.getByLabel('Storage target in bytes').tap();
+      await expect(touchPage.getByLabel('Storage target in bytes')).toBeFocused();
+      expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    } finally {
+      await touchContext.close();
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.getByRole('link', { name: 'Overview', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Discovered stacks' })).toBeVisible();
     await expect(page.getByText('Docker integration pending')).toBeVisible();
     await page.getByLabel('Discovery root (application-visible path)').fill('relative-path');
     await page.getByLabel('Discovery root (application-visible path)').focus();
@@ -103,7 +158,7 @@ test('first login forces password setup before protected dashboard and works on 
     await page.getByLabel('Discovery root (application-visible path)').fill(root);
     await page.getByRole('button', { name: 'Save root' }).click();
     await page.getByRole('button', { name: 'Scan for projects' }).click();
-    await expect(page.getByText('Available · Inactive')).toBeVisible();
+    await expect(page.getByText('1 project discovered')).toBeVisible();
     await page.getByRole('link', { name: 'Compose projects', exact: true }).click();
     await expect(page).toHaveURL(/\/projects$/);
     const projectViews = page.getByRole('navigation', { name: 'Project views' });
@@ -122,10 +177,10 @@ test('first login forces password setup before protected dashboard and works on 
     await projectRow.getByRole('button', { name: 'Activate' }).click();
     await expect(page).toHaveURL(/\/projects$/);
     await expect(page.getByRole('status')).toContainText('No Compose operation was performed');
+    await expect(projectRow.locator('summary')).toContainText('Active');
     await page.getByRole('link', { name: 'Overview', exact: true }).click();
-    await expect(page.getByText('Available · Active')).toBeVisible();
     await page.getByRole('button', { name: 'Refresh Docker status' }).click();
-    await expect(page.getByText('Docker status unavailable: no socket configured.')).toBeVisible();
+    await expect(page.getByText('Docker status unavailable: no socket configured.').first()).toBeVisible();
     await page.getByRole('link', { name: 'Containers', exact: true }).click();
     await expect(page).toHaveURL(/\/containers$/);
     const containerViews = page.getByRole('navigation', { name: 'Container views' });
@@ -144,8 +199,9 @@ test('first login forces password setup before protected dashboard and works on 
       await themedPage.goto('/');
       await expect(themedPage.getByRole('heading', { name: 'Local instance' })).toBeVisible();
       await expect(themedPage.getByText('Docker integration pending')).toBeVisible();
-      await expect(themedPage.getByText('Runtime metrics unavailable')).toBeVisible();
-      await expect(themedPage.locator('.stack-tile')).toContainText(project);
+      await expect(themedPage.getByText('No metrics are being collected.', { exact: false }).first()).toBeVisible();
+      await expect(themedPage.getByText('1 project discovered')).toBeVisible();
+      await expect(themedPage.getByRole('link', { name: 'View project details' })).toHaveAttribute('href', '/projects');
       const layout = await themedPage.evaluate(() => {
         const bounds = selector => document.querySelector(selector).getBoundingClientRect();
         return {
@@ -176,6 +232,16 @@ test('first login forces password setup before protected dashboard and works on 
       await expect(themedPage.getByRole('button', { name: 'Collapse navigation' })).toHaveAttribute('aria-expanded', 'true');
       await themedPage.getByRole('link', { name: 'Compose projects', exact: true }).click();
       await expect(themedPage.getByRole('button', { name: 'Collapse navigation' })).toBeVisible();
+      const projectColumns = themedPage.locator('[data-column-manager="projects-title"]');
+      await projectColumns.locator('[data-column-controls] summary').click();
+      await projectColumns.getByLabel('Activation', { exact: true }).uncheck();
+      await expect(projectColumns.locator('.inventory-item summary > [data-column="Activation"]')).toBeHidden();
+      await themedPage.reload();
+      await expect(projectColumns.locator('.inventory-item summary > [data-column="Activation"]')).toBeHidden();
+      await projectColumns.locator('[data-column-controls] summary').click();
+      await projectColumns.getByRole('button', { name: 'Restore defaults' }).click();
+      await expect(projectColumns.locator('.inventory-item summary > [data-column="Activation"]')).toBeVisible();
+      await projectColumns.locator('[data-column-controls] summary').click();
       const filters = themedPage.locator('.inventory-filter-disclosure');
       for (const width of [1024, 901, 621]) {
         await themedPage.setViewportSize({ width, height: 900 });
@@ -200,7 +266,7 @@ test('first login forces password setup before protected dashboard and works on 
       await themedPage.getByRole('button', { name: 'Switch to light theme' }).click();
       await themedPage.reload();
       await expect(themedPage.locator('html')).toHaveAttribute('data-theme', 'light');
-      await expect(themedPage.getByText('Available · Active')).toBeVisible();
+      await expect(themedPage.getByText('1 project discovered')).toBeVisible();
       expect(await themedPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     } finally {
       await themed.close();
@@ -234,10 +300,10 @@ test('first login forces password setup before protected dashboard and works on 
       await touchPage.getByRole('button', { name: 'Switch to light theme' }).tap();
       await touchPage.reload();
       await expect(touchPage.locator('html')).toHaveAttribute('data-theme', 'light');
-      await expect(touchPage.getByText('Available · Active')).toBeVisible();
+      await expect(touchPage.getByText('1 project discovered')).toBeVisible();
       await touchPage.getByRole('button', { name: 'Scan for projects' }).tap();
       await expect(touchPage.getByRole('status')).toContainText('Scan complete');
-      await expect(touchPage.getByText('Available · Active')).toBeVisible();
+      await expect(touchPage.getByText('1 project discovered')).toBeVisible();
       await touchPage.getByRole('link', { name: 'Compose projects', exact: true }).tap();
       await touchPage.getByRole('link', { name: 'Filters & sort' }).tap();
       await touchPage.getByText('Collapse filters', { exact: true }).tap();
@@ -271,7 +337,7 @@ test('first login forces password setup before protected dashboard and works on 
       const mobilePage = await mobile.newPage();
       await mobilePage.goto('/');
       await expect(mobilePage.getByRole('heading', { name: 'System status' })).toBeVisible();
-      await expect(mobilePage.getByText('Available · Active')).toBeVisible();
+      await expect(mobilePage.getByText('1 project discovered')).toBeVisible();
       await expect(mobilePage.getByLabel('Discovery root (application-visible path)')).toBeVisible();
       await expect(mobilePage.locator('[data-theme-toggle]')).toBeHidden();
       await mobilePage.getByText('Collapse host panel', { exact: true }).tap();

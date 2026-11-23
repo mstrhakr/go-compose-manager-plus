@@ -56,3 +56,29 @@ if (filterLink) {
     document.querySelector('.inventory-filter-disclosure').open = true;
   });
 }
+
+const metricsProfile = document.querySelector('[data-metrics-profile]');
+if (metricsProfile) {
+  const scope = document.querySelector('#metrics-scope');
+  const interval = document.querySelector('#metrics-interval');
+  const storageLimit = document.querySelector('#metrics-limit');
+  const presets = {
+    low: ['activated', '15s'],
+    medium: ['activated', '5s'],
+    high: ['all', '1s'],
+  };
+  metricsProfile.addEventListener('change', () => {
+    const preset = presets[metricsProfile.value];
+    if (preset) {
+      [scope.value, interval.value] = preset;
+    }
+  });
+  for (const control of [scope, interval, storageLimit]) {
+    control.addEventListener('input', () => {
+      metricsProfile.value = 'custom';
+    });
+    control.addEventListener('change', () => {
+      metricsProfile.value = 'custom';
+    });
+  }
+}

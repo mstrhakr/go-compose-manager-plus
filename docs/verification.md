@@ -376,3 +376,503 @@ the dashboard, inventory rows and inventory filters.
 `PLAYWRIGHT_PORT=18219 make check QUIET=1` and `make docs` passed after these
 changes. Browser checks cover current and disabled navigation entries as well
 as the desktop keyboard, simulated touch and JavaScript-disabled paths above.
+
+## Docker Metrics Storage Proof Of Concept
+
+2026-11-22, Linux x86_64 development environment, branch
+`spike/docker-metrics-storage`, based on `c723364`. The owner approved a bounded
+proof of concept and a read-only test against the running Compose Manager
+container on the shared Docker daemon. No container was created or modified.
+The test uses the Docker Engine v1.40 per-container stats stream and a temporary
+tstorage v0.3.6 database, not the application SQLite database. Only a
+test-only package imports tstorage; no collector is started by the app.
+
+- `go test -race -count=1 ./internal/metricspoc` passed deterministic tests
+  for sample mapping, missing observations and clean storage reopen.
+- `CMP_METRICS_SOCKET=/var/run/docker.sock CMP_METRICS_CONTAINER=compose-manager-plus go test -race -count=1 -run '^TestLiveStatsStorage$' -v ./internal/metricspoc`
+  passed. The ten-second stream produced ten responses and 59 metric points
+  (nine CPU, ten each of raw memory, network receive/transmit and block
+  read/write counters); all points were readable after close and reopen.
+  The resulting temporary directory was 1,678 bytes after close; Go reported
+  144,944 bytes allocated during the measured test loop.
+- `make check-security` reported no npm or Go vulnerabilities.
+
+The sample uses raw memory usage and cumulative network/block byte counters,
+not CLI-adjusted memory or derived rates. CPU requires a prior valid counter
+sample. The first stream response lacked usable previous CPU counters, so it
+was not stored as zero. The test removes its temporary database.
+
+This short single-container run does not measure Docker daemon overhead,
+production memory usage, multi-container scale, retention or downsampling,
+hard disk budgets, crash recovery, long-running collection, native Windows/macOS
+behavior or performance on a representative low-power machine. The directory
+size and Go allocations are observations for this run, not preset budgets.
+tstorage's retention is partition-based, and its own shutdown requires callers
+to stop writers before close. Compatibility, recovery and retention need
+additional investigation before the dependency is used by the running app.
+
+Subsequent static inspection of tstorage v0.3.6 found that its public storage
+interface exposes insert, select and close, but no oldest-first eviction or
+storage-budget API. Its retention check runs hourly and applies to disk
+partitions based on partition creation time; the two writable memory
+partitions and WAL also need accounting. Its asynchronous partition flush
+errors are logged rather than returned by the insert that triggered the flush.
+These observations do not establish that the approved early-eviction, one-hour
+history, warning or recovery behaviors can be enforced. A safe design and
+targeted tests are needed before enabling collection.
+
+### Synthetic One-Hour Storage Measurement
+
+2026-11-22, Linux x86_64 development container, branch
+`spike/docker-metrics-storage`, based on `a3b010d`. An opt-in synthetic test
+inserted six generated metrics per container at one-second timestamps for one
+hour, using five-minute tstorage partitions, an unbuffered WAL and 64-character
+container labels. No Docker daemon was accessed.
+`CMP_METRICS_CAPACITY_TEST=1 go test -race -count=1 -run '^TestSyntheticHourCapacity$' -v ./internal/metricspoc`
+passed and verified the count of every series after closing and reopening:
+
+| Containers | Scalar points | Bytes at end of ingestion | Bytes after close |
+| ---: | ---: | ---: | ---: |
+| 1 | 21,600 | 588,824 | 208,971 |
+| 5 | 108,000 | 2,938,242 | 1,037,813 |
+| 25 | 540,000 | 14,686,381 | 5,183,340 |
+| 50 | 1,080,000 | 29,371,640 | 10,365,393 |
+
+These are individual file lengths observed in one accelerated run, not peak
+disk use or allocated filesystem blocks. The data values are synthetic and
+compressibility, WAL and partition behavior depend on workload; this does not
+measure Docker overhead, process memory, realtime collection, deletion,
+filesystem exhaustion, crash recovery or the production storage design.
+The results do not set preset budgets or validate oldest-first eviction.
+
+### Docker Stats Conversion Foundation
+
+2026-11-22, Linux x86_64 development container, branch
+`spike/docker-metrics-storage`, based on `a2d9ff6` with these changes
+uncommitted during the checks. The runtime package can request one bounded
+read-only Docker stats response and convert consecutive observations from the
+same uninterrupted container into CPU utilization and network/block byte
+rates. Raw memory usage and limit preserve missing values. Counters are
+compared per interface or block device so resets and membership changes do not
+become false rates. The caller must discard its previous sample across a
+disconnect or container identity change. No background collection is wired.
+
+- `go test -race -count=1 ./internal/runtime ./internal/metricspoc`: passed,
+  using fixture and mock HTTP responses; the opt-in live test was skipped.
+- `PLAYWRIGHT_PORT=18334 make check QUIET=1`: passed Go race tests, vet, build,
+  Node, HTTP and browser tests, asset verification and contract structure.
+- `make docs`, `make check-docs` and `git diff --check`: passed.
+
+The new on-demand endpoint and calculations have not been tested against a live
+daemon, all platform/cgroup variants, a scheduler, storage or the UI. The
+five-second snapshot timeout is not a streaming implementation or proof of the
+one-second target. Retention enforcement, safe eviction and recovery remain
+unimplemented.
+
+### tstorage Partition Write Failure Probe
+
+Linux development container, branch `spike/docker-metrics-storage`, baseline
+`4b3862d`. A temporary, subsequently removed race-enabled Go test inserted one
+point into a temporary tstorage v0.3.6 database with an unbuffered WAL. It
+simulated an exhausted data file by linking the test partition's `data` file to
+`/dev/full`, without filling the filesystem. `Close` logged a no-space error
+but returned nil. After removing the simulated failed partition's data link and
+metadata, reopening did not recover the point from the WAL. The test passed in
+the sense that it reproduced this failure, not that storage met the contract.
+No Docker daemon was accessed.
+
+This confirms a specific failure mode, not the behavior of every full-disk or
+crash scenario. In this case the library's partition flush logs an encoding
+failure instead of returning it, and its normal close path can remove the WAL.
+Capturing the log alone therefore does not prove that acknowledged history can
+be recovered. The owner subsequently selected SQLite for the initial store;
+the approved pause, warning and retry behavior still needs verification.
+
+### SQLite Metrics Persistence Foundation
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`ca69169` with the changes uncommitted during these checks. A separate SQLite
+metrics database can atomically insert and query numeric container observations,
+retain missing fields, reopen, and logically delete observations before a
+specified cutoff. It is not connected to the application or Docker. The owner
+selected SQLite for the initial one-hour implementation; TimescaleDB and a
+migration path are future possibilities, not implemented.
+
+- `go test -race -count=1 ./internal/metrics ./internal/runtime`: passed.
+  Tests include reopening, missing versus zero, time boundaries, duplicate
+  transaction rollback, concurrent calls, unsupported schemas, cancellation,
+  and retry after a simulated SQLite page-limit failure.
+- `PLAYWRIGHT_PORT=18334 make check QUIET=1`: passed Go race tests, vet and
+  build, Node, HTTP and browser tests, asset verification and contracts.
+- `make docs`, `make check-docs` and `git diff --check`: passed.
+
+The page-limit test is not a real filesystem-full, WAL-write or crash-recovery
+test. Logical deletion does not guarantee filesystem space is returned. No
+one-hour expiry scheduler, storage-budget accounting, early eviction, warning,
+write-pause/retry mechanism, event/state storage, collection, migration,
+performance measurement or live Docker test is verified by this slice.
+
+Review of `3304849` found that a Docker memory value above SQLite's signed
+integer range rejected the entire batch. The follow-up stores memory values as
+decimal text and migrates version-one rows transactionally. Focused race tests
+cover the full unsigned range, reopening and migration. This does not resolve
+the storage-budget or collector gaps listed above.
+
+The follow-up also adds unwired persistence for discrete container state and
+observed lifecycle/health events, and a bounded read-only Docker event stream.
+`go test -race -count=1 ./internal/runtime ./internal/metrics` passed with
+mock HTTP responses, idle-stream cancellation, persistence, invalid records,
+ordering and reopen tests. The event stream does not reconcile snapshots,
+reconnect, replay, deduplicate or enforce scope, and has not been tested against
+a real daemon. State snapshots do not establish continuous state between
+observations. Event/state retention and budget accounting are not implemented.
+An initial full check encountered two Firefox fixture setup timeouts; the
+focused Firefox component suite subsequently passed, followed by
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs`, and `make check-docs`.
+
+### Synthetic SQLite One-Hour Measurement
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`aed51d0`, with the measurement test uncommitted. The command
+`CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 -run '^TestSyntheticHourSQLiteCapacity$' -v ./internal/metrics`
+passed. It writes one-hour synthetic observations containing seven numeric
+values per container, batching each simulated minute into one SQLite
+transaction, and checks every observation after close and reopen. No Docker
+daemon was accessed.
+
+| Containers | Observations | File lengths at end of ingestion | Database file length after close |
+| ---: | ---: | ---: | ---: |
+| 1 | 3,600 | 3,382,336 bytes | 954,368 bytes |
+| 5 | 18,000 | 7,565,560 bytes | 4,542,464 bytes |
+| 25 | 90,000 | 26,628,256 bytes | 22,814,720 bytes |
+| 50 | 180,000 | 49,698,184 bytes | 45,305,856 bytes |
+
+The ingestion column sums database, WAL and shared-memory file lengths; neither
+it nor the after-close size represents peak or allocated disk usage. Generated
+values and minute-sized transactions do not model real workloads, one-second
+commits or a collector's CPU, memory, daemon or filesystem overhead. This
+measurement does not test eviction, physical disk exhaustion, crash recovery or
+set preset budgets. Two earlier attempts were interrupted because they were
+too slow; their temporary test data was inspected and removed.
+
+### SQLite Migration And Retention Primitives
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`1ce627c`, with changes uncommitted during these checks. Review found that the
+version-one and version-two schema migrations were nested under new-database
+creation: existing databases retained their older schema. The earlier
+version-one test checked only that an old sample could be read, not that the
+schema actually advanced. The corrected migration and tests exercise both
+upgrade paths and the resulting event, state and full-width memory writes.
+
+The unwired store now supports a transactional cutoff across sample, event and
+state records, logical SQLite file-length accounting and an explicit WAL
+checkpoint that reports blocking readers. `go test -race -count=1
+./internal/metrics ./internal/runtime` passed, including a forced transaction
+failure with rollback, exact-cutoff preservation, reopen, file accounting and
+blocked-checkpoint retry.
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs`, `make check-docs` and
+`git diff --check` also passed.
+
+An additional unwired oldest-first sample eviction operation returns its
+removed time range and keeps event history intact. `go test -race -count=1
+./internal/metrics ./internal/runtime` passed ordering, tied timestamps,
+reopen, empty store and injected-transaction-failure checks. This is logical
+deletion only: it does not by itself recover disk space or warn users.
+
+These are not a scheduled one-hour retention implementation or a budget
+controller. Logical deletion can leave allocated database pages behind; file
+lengths are not atomic snapshots or filesystem block counts. Filesystem-full
+recovery, earliest-first pressure eviction, warning and write pause/retry,
+collector startup and shutdown, and Docker integration remain unverified.
+
+### Durable Sample-Eviction Summary
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`c209dcf` with changes uncommitted during these checks. Schema version 4 records
+a cumulative sample-eviction count and the oldest and newest removed sample
+timestamps in the same transaction as each nonempty eviction. The bounds do not
+describe a continuous gap or identify affected containers. The summary persists
+across normal expiry and reopen; it cannot reconstruct prior evictions in
+version 3 or earlier. No acknowledgement or automatic clearing policy is
+implemented.
+
+The focused metrics and runtime race tests cover reopen, concurrent evictions,
+schema-version-3 migration, injected delete and summary-write failures, and
+count overflow: `go test -race -count=1 ./internal/metrics ./internal/runtime`
+passed. `PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and
+`make check-docs` passed. These checks do not establish crash or physical-disk-full
+recovery. The store remains unwired: it has no user-facing warning, budget
+controller, write pause/retry, scheduled retention or collector.
+
+### SQLite Page-Reuse Probe
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`b6fe3c6` with changes uncommitted during these checks. The focused real-SQLite
+test `go test -race -count=1 -run
+'TestDeletedPagesCanBeReusedWithoutShrinkingDatabase|TestPageUsageReportsCancellationAndClose'
+-v ./internal/metrics` passed. With 5,000 synthetic samples and a simulated
+SQLite page-count limit, oldest-first deletion of 4,000 retained the event and
+the remaining samples. After a successful WAL checkpoint, the database still
+measured 983,040 logical bytes, but 184 of its 240 4,096-byte pages were on
+SQLite's freelist. Inserting 2,000 new samples reused pages without increasing
+the database page count; the freelist fell to 90 pages and the WAL grew to
+428,512 logical bytes before its checkpoint. The eviction itself had produced
+a 795,192-byte WAL before its checkpoint. The resulting samples and
+eviction summary survived reopening.
+`go test -race -count=1 ./internal/metrics ./internal/runtime`,
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
+passed for the page-accounting change.
+
+This is one synthetic workload, not a budget recommendation. SQLite freelist
+pages are reusable within the database, not reclaimed filesystem space; WAL
+growth can exceed the proposed 10% headroom even when reusable pages exist.
+These measurements do not establish peak, allocated-block usage, physical
+disk-full recovery, an eviction batch size or a safe resume rule. The new
+page-accounting method is an unwired observation, not budget enforcement.
+
+In a separate synthetic store with the same sample shape and 40 oldest-first
+batches of 100, checkpointing between batches, the largest WAL observed after
+a batch was 70,072 bytes; the database remained 983,040 bytes. The event and
+page cap in the first probe were not included in this second store. This is
+not a worst-case bound: real rows, indexes, readers, other writers and storage
+errors can change the result, and checkpointing each batch has a cost. Run the
+opt-in probe with `CMP_METRICS_SQLITE_EVICTION_PROBE=1 go test -race -count=1
+-run '^TestBoundedEvictionCheckpointProbe$' -v ./internal/metrics`.
+
+### Managed Metrics Store Foundation
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`0d26687` with changes uncommitted during these checks. A separate managed
+store now owns a SQLite connection with exclusive locking, serializes its
+read/write/maintenance calls and closes after in-flight work. The caller must
+schedule maintenance, including when idle, and supply the storage limit.
+Maintenance expires samples, events and states strictly older than one hour,
+checkpoints the WAL, and calculates active logical usage by subtracting
+reusable database pages from the lengths of the database and sidecars. It
+attempts at most one 128-sample oldest-first pressure eviction per call. The
+eviction summary and a pressure gate commit atomically with deletion. A
+subsequent attempt is blocked if active usage has not decreased; the gate
+survives reopening. If total file length reaches the limit, it pauses rather
+than treating reusable pages as returned filesystem space. Status reports the
+last pause and cumulative eviction record; writes that commit before subsequent
+maintenance fails return a distinct committed-write error. Commit failures
+report an unknown write outcome rather than promising a rollback; callers must
+reconcile before retrying.
+
+Focused Go race tests exercise retention boundaries for all three record types,
+ordering and recovery under synthetic pressure, no-progress behavior across
+reopen, transactional gate and deletion failures, cancellation, concurrent
+writes, shutdown, version-four migration, and a competing writer in a separate
+process. SQLite `max_page_count` simulates a full database and subsequent
+retry; it is not a physical filesystem-full test.
+Deferred-constraint failures test the unknown-outcome error and subsequent
+maintenance for sample, event and state commits. An in-process latch now keeps
+maintenance and subsequent writes paused until the caller acknowledges that
+the uncertain batch was reconciled. At that revision the latch was not persisted
+across restart.
+`go test -race -count=1 ./internal/metrics ./internal/runtime`,
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
+passed.
+
+This path is not yet connected to app startup, settings, a scheduler, collector
+or user-facing status. It is not a hard quota, does not verify physical disk
+availability, and its WAL peaks, checkpoint overhead, crash behavior and
+high-frequency multi-container throughput are not established. The cumulative
+eviction summary is not a precise per-container gap or a user warning. Normal
+expiry and transactions can temporarily grow the WAL beyond the limit. The
+underlying raw store remains an unwired primitive, not a bypass for a future
+collector. LIVE-003 remains partially implemented and unverified.
+
+### Metrics Settings And Maintenance Scheduling
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`64580e4` with changes uncommitted during these checks. Application schema
+version 4 adds an initially empty metrics-settings table; its absence of a row
+means disabled and unconfigured. Settings enforce the approved preset scopes
+and intervals, require an explicit storage budget, and reject stale updates.
+Saving settings does not start collection or alter metrics history. Tests cover
+version-3 migration, preservation of discovery data, default-off, reopen,
+concurrent update rejection and validation.
+
+An unwired maintenance loop immediately runs the managed store's maintenance,
+reports every attempt, and retries on a caller-supplied interval until
+cancellation. A SQLite integration test verifies idle one-hour expiry; a
+deterministic test exercises a failed attempt, recovery and shutdown. It does
+not start automatically and is not the Docker collector. The settings UI,
+app lifecycle integration, freshness and gap reporting remain unimplemented.
+`go test -race -count=1 -run
+'TestMaintenance|TestScheduledMaintenance|TestSettings|TestConcurrentSettings|TestOpenDatabaseMigrates'
+./internal/metrics ./internal/auth`, `PLAYWRIGHT_PORT=18334 make check QUIET=1`,
+`make docs` and `make check-docs` passed.
+
+### Read-Only Container Sampling
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`c4bfd86` with changes uncommitted during these checks. A read-only Docker
+inspection request validates full container identity and returns discrete
+state, health and start time. A missing Docker config object yields unknown
+health rather than an assumed absent health check. A single-owner sampler inspects before and after each
+running stats request and discards its baseline on a failed or changed
+observation. It does not infer zero for stopped containers. Rates require an
+explicit continuity assertion from its caller as well as a matching nonzero
+start time; matching start times alone cannot prove no intervening pause or
+event-stream gap.
+
+The focused race tests exercise healthy/unknown/no-health-check states,
+malformed responses and IDs, stopped containers, failed requests, reset and
+instance change. An integration test uses a mock read-only Unix Docker socket,
+the real runtime client and the managed SQLite store to persist and retrieve
+state and samples. It does not implement scope selection, event-stream
+reconciliation, app startup, settings UI, collector freshness or user warnings.
+No live Docker test or throughput measurement was performed.
+`go test -race -count=1 ./internal/runtime ./internal/metrics`,
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
+passed.
+
+### Durable Managed Write Guard
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`c4d92e4` with changes uncommitted during these checks. Schema version 6 adds
+a pending-write marker. The managed store records the batch kind and start
+time before each write, and marks the pending write committed atomically with
+its samples, events or states. A surviving marker pauses maintenance and writes
+after reopening until explicitly acknowledged. Tests cover a prepared marker,
+a committed marker, real deferred-constraint commit failures for all three
+batch kinds, a committed event followed by failed marker cleanup, and the
+version-five migration. These use close and reopen and injected SQLite failures,
+not power-loss testing or a physical full filesystem.
+
+The marker is not a batch payload or replay identity. It cannot alone recover
+events, deduplicate a replay, or identify an interrupted batch after the marker
+has already been cleared. The collector, event continuity and recovery policy
+remain unimplemented. This adds extra SQLite transactions; throughput at the
+target sampling rates has not been measured. Collection remains off.
+
+`go test -race -count=1 ./internal/metrics ./internal/runtime`,
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
+passed.
+
+### Metrics Preference Settings Page
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`34f3dd8` with changes uncommitted during verification. The authenticated
+Settings page saves preset or custom metrics preferences and an explicit byte
+target, using revision checks to reject stale saves. It cannot turn collection
+on and states that collection is unavailable. The page does not create
+`metrics.db` or start Docker collection.
+
+HTTP tests cover anonymous and forced-password-change gates, CSRF, forged enable
+fields, stale saves, validation, preset and custom values, and database reopen.
+Desktop and mobile browser coverage exercises the form without JavaScript,
+keyboard submission, touch focus, persisted values and horizontal overflow.
+The wizard, enable/disable control, running collector, pressure warning and
+history remain unimplemented.
+
+`go test -race -count=1 ./internal/web ./cmd/server`,
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
+passed. The first targeted browser attempt timed out while the web-server Go
+build was still starting; subsequent targeted and full browser runs passed.
+
+## Inventory Column Customizer
+
+2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,
+based on `2480184` with the column customizer changes uncommitted during these
+checks. The Projects view and the shared Containers list panel expose the same
+browser-local column controls. The identifying column stays visible; without
+JavaScript, all columns remain visible. This does not implement metrics or logs.
+
+- `go test -race ./internal/web ./tests/ui-fixture`: passed.
+- `PLAYWRIGHT_PORT=18334 npx playwright test tests/e2e/components.spec.js tests/e2e/home.spec.js --project=chromium --project=mobile-chromium`:
+  passed 23 tests with one intentional bootstrap skip before the final test
+  additions.
+- `PLAYWRIGHT_PORT=18334 make check QUIET=1`: passed Go race tests, vet and
+  build, Node, HTTP and desktop/mobile browser tests, asset verification and
+  contract structure checks. Browser tests exercise the populated shared list
+  fixture, real project rows, keyboard, simulated touch, reload, restore,
+  blocked browser storage, htmx reinitialization and no-JavaScript behavior.
+- `make docs`, `make check-docs` and `git diff --check`: passed.
+
+Real container rows were not exercised against a Docker daemon for this UI
+change; the populated shared list fixture covers the same table component.
+At `193500f`, a review found that replacing the customizer's options inside
+an htmx swap left event handlers referring to the removed controls. The fix
+uses the current controls and preserves the in-page selection when browser
+storage is unavailable. Focused Chromium and mobile Chromium tests cover the
+partial swap; `PLAYWRIGHT_PORT=18334 make check QUIET=1` passed with the fix.
+
+## Opt-In Metrics Collector
+
+2026-11-23, Linux development container, branch `spike/docker-metrics-storage`,
+based on `802b209` with implementation changes uncommitted during verification.
+The authenticated Settings page now controls a persisted opt-in collector.
+Disabled mode does not open `metrics.db` or access Docker. Enabled collection
+uses the one-hour managed SQLite store, targets the selected interval, caps
+concurrent per-container observations at eight, saves discrete states/samples,
+and observes lifecycle/health events from a reconnecting Docker event stream.
+Activated scope resolves Compose project names and matches Docker project
+labels, including shared names; leaving scope retains history but drops rate
+baselines. Rates remain unavailable unless event continuity and container
+identity are stable. Identical event replay keys are deduplicated and their
+identities expire atomically with the one-hour event records.
+
+Pending write markers carry a committed bit atomically with batch records. On
+reopen, the collector reconciles and clears a marker without replaying the
+batch. The Settings page reports collector health and cumulative sample
+evictions with timestamp bounds that are not claimed to represent a continuous
+gap. Because default-off mode does not reopen the metrics store, a prior
+eviction warning is not rediscovered after a restart until collection is
+enabled.
+
+Temporary SQLite and mock Unix Docker sockets cover opt-out/no database
+creation, collector start/stop on settings changes, shared-name scope,
+sample/state/event persistence, duplicate event replay, rate continuity,
+eviction status and transactional recovery. Authenticated HTTP tests cover
+session/CSRF gates, validation, stale settings and refusing opt-in without a
+configured Docker socket. Browser tests cover profile-to-Custom transitions,
+preset resets, storage-limit edits, keyboard/touch use and mobile overflow.
+
+- `go test -race -count=1 ./internal/metrics ./internal/runtime ./internal/web ./cmd/server`:
+  passed.
+- `PLAYWRIGHT_PORT=18334 npx playwright test tests/e2e/home.spec.js --project=chromium --project=mobile-chromium`:
+  passed 9 tests with one intentional mobile bootstrap skip.
+- `PLAYWRIGHT_PORT=18334 make check QUIET=1`: passed Go race tests, vet, build,
+  Node, HTTP and desktop/mobile browser tests, asset verification and contract
+  structure checks.
+- `make docs`, `make check-docs` and `git diff --check`: passed.
+
+No live Docker daemon, throughput, physical disk-full, abrupt power-loss,
+Windows/macOS or hosted CI verification was performed. The approved zero
+inference from a known stopped state remains unimplemented pending metric and
+time-boundary rules. The overview chart slice below does not add a per-container
+gap ledger, dedicated Containers observability view, timeline event markers/list,
+historical logs, preset sizing recommendations or TimescaleDB. SQLite deletion
+does not impose a hard physical disk quota.
+
+## Dashboard Charts And Shared Time Selection
+
+2026-11-23, Linux development container. The authenticated overview displays
+per-container CPU percentage, Docker raw memory usage, and network receive and
+transmit rates from the active managed SQLite store. It selects the latest
+recorded observation in each 30-second display bucket (at most 120 points per
+container across the last hour), preserves missing buckets as gaps, and does not
+combine values across containers or change retained samples. Dashboard project
+content is a summary linking to the detailed Projects view.
+
+The reusable SVG chart shows hover values, a keyboard-operable data table and
+shared selected-time cursors. Clicking or using the arrow keys emits
+`observability:timechange` with `detail.time` as Unix milliseconds; the overview
+charts listen to the same event. This supports a future timeline consumer, but
+does not implement a timeline or claim that clicking adjusts one that is not
+present.
+
+- Focused storage, collector, dashboard serialization, discovery and runtime
+  handler tests passed.
+- `PLAYWRIGHT_PORT=18334 make check QUIET=1`: passed Go race tests, vet, build,
+  Node, HTTP, desktop/Firefox/WebKit/mobile browser tests, asset verification and
+  contract structure checks.
+- `make docs`, `make check-docs` and `git diff --check`: passed.
+
+No live Docker-backed dashboard collection or platform-specific verification
+was performed. Collection remains opt-in; disabled and unavailable states were
+covered without opening the metrics database from dashboard reads.

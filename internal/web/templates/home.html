@@ -55,14 +55,14 @@
       <form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="text-button" type="submit">Sign out</button></form>
     </div>
   </header>
-  <div class="console-body{{if ne .View "dashboard"}} inventory-layout{{end}}">
+  <div class="console-body{{if eq .View "settings"}} settings-layout{{else if ne .View "dashboard"}} inventory-layout{{end}}">
     <nav class="console-rail" aria-label="Main navigation" id="main-navigation">
       <a class="rail-item{{if eq .View "dashboard"}} selected{{end}}" href="/" {{if eq .View "dashboard"}}aria-current="page"{{end}} aria-label="Overview" title="Overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h7V3H3v10Zm0 8h7v-5H3v5Zm11 0h7V11h-7v10Zm0-18v5h7V3h-7Z"/></svg><span class="rail-label">Overview</span></a>
       <a class="rail-item{{if eq .View "projects"}} selected{{end}}" href="/projects" {{if eq .View "projects"}}aria-current="page"{{end}} aria-label="Compose projects" title="Compose projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4zM6 7h12M8 4h8"/></svg><span class="rail-label">Compose projects</span></a>
       <a class="rail-item{{if eq .View "containers"}} selected{{end}}" href="/containers" {{if eq .View "containers"}}aria-current="page"{{end}} aria-label="Containers" title="Containers"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 4v10l-8 4-8-4V7l8-4Zm-8 4 8 4 8-4m-8 4v10"/></svg><span class="rail-label">Containers</span></a>
       <button class="rail-item unavailable" type="button" disabled title="Resources unavailable" aria-label="Resources unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 2 3.6 3 8 3s8-1 8-3V6M4 12c0 2 3.6 3 8 3s8-1 8-3"/></svg><span class="rail-label">Resources</span></button>
       <button class="rail-item unavailable" type="button" disabled title="Activity unavailable" aria-label="Activity unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-7 4 14 3-7h4"/></svg><span class="rail-label">Activity</span></button>
-      <button class="rail-item unavailable" type="button" disabled title="Settings unavailable" aria-label="Settings unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/><circle cx="12" cy="12" r="7"/></svg><span class="rail-label">Settings</span></button>
+      <a class="rail-item{{if eq .View "settings"}} selected{{end}}" href="/settings" {{if eq .View "settings"}}aria-current="page"{{end}} title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/><circle cx="12" cy="12" r="7"/></svg><span class="rail-label">Settings</span></a>
       <button class="rail-toggle" type="button" data-rail-toggle aria-controls="main-navigation" aria-expanded="false" aria-label="Expand navigation" title="Expand navigation" hidden><span aria-hidden="true">&#187;</span><span class="rail-label">Collapse navigation</span></button>
       <span class="rail-notice" data-rail-notice role="status" hidden></span>
     </nav>
@@ -102,30 +102,28 @@
       <section class="host-section">
         <h3>Engine integration</h3>
         <p>{{.RuntimeMessage}}</p>
-        <form action="/#workspace-title" method="get">
+        <form action="/projects#projects-list-title" method="get">
           <button class="quiet-button" name="runtime" value="1" type="submit">Refresh Docker status</button>
         </form>
         <p>Snapshots are read-only. Logs, metrics and operations are not connected.</p>
       </section>
       </details>
     </aside>
-    {{else}}
+    {{else if ne .View "settings"}}
     {{template "inventory-filters" .}}
     {{end}}
     <main class="console-main">
       {{if eq .View "dashboard"}}
       <div class="workspace-toolbar">
         <div><h1>System status</h1><p>Local instance / Overview</p></div>
-        <span class="toolbar-pill">Cluster metrics <span>Unavailable</span></span>
+        <span class="toolbar-pill">Metrics <span>{{.MetricsStatus}}</span></span>
       </div>
       <div class="telemetry-section">
-        {{template "chart-panel" .Activity}}
-        <div class="timeline"><span>Activity history unavailable</span><span>Now</span></div>
+        {{range .Charts}}{{template "chart-panel" .}}{{end}}
       </div>
       <div class="resource-grid">
         <section class="resource-section"><div class="section-heading"><h2>Discovered stacks</h2><span>{{len .Projects}} discovered</span></div>
-          {{if .Projects}}<div class="stack-grid">{{range .Projects}}<a class="stack-tile" href="/projects" title="{{.Path}}"><span class="resource-icon" aria-hidden="true">&#9636;</span><span>{{.Path}}</span></a>{{end}}</div>
-          {{else}}<div class="resource-placeholder"><span class="resource-icon">&#9636;</span><span>No projects discovered</span></div>{{end}}
+          <div class="resource-placeholder"><span class="resource-icon" aria-hidden="true">&#9636;</span><span>{{len .Projects}} {{if eq (len .Projects) 1}}project{{else}}projects{{end}} discovered</span><a href="/projects">View project details</a></div>
         </section>
         <section class="resource-section"><div class="section-heading"><h2>Top resource containers</h2><span>Unavailable</span></div>
           <div class="resource-placeholder"><span class="resource-icon">&#9633;</span><span>Container metrics are not available</span></div>
@@ -137,39 +135,12 @@
       <div class="health-grid">
         {{range .Metrics}}{{template "metric-panel" .}}{{end}}
       </div>
-      <section class="workspace-panel" aria-labelledby="workspace-title">
-        <div class="panel-heading"><div><h2 id="workspace-title">Compose projects</h2><p>Availability reflects the last successful scan for each root, not live status. Docker actions are not connected.</p></div><span class="panel-count">{{len .Projects}} PROJECTS</span></div>
-        <div class="discovery-content">
-        {{if .Projects}}
-        <ul class="project-list">
-          {{range .Projects}}
-          <li class="project-row">
-            <div class="project-details"><strong>{{.Path}}</strong>
-              <p>{{.DiscoveryStatus}} &middot; {{.ActivationStatus}}</p>
-              {{if ne .Root $.Root}}<p>Outside the current discovery root; save its root to activate.</p>{{end}}
-              {{if .ResolutionError}}<p class="project-error">{{.ResolutionError}}</p>{{end}}
-              {{if .RuntimeError}}<p>{{.RuntimeError}}</p>{{end}}
-              {{if .RuntimeName}}
-              <p>Docker project: {{.RuntimeName}}</p>
-              {{if .Containers}}<ul>{{range .Containers}}<li>{{if .Name}}{{.Name}}{{else}}{{.Service}}{{end}}: {{.State}}</li>{{end}}</ul>
-              {{else}}<p>No matching containers in this snapshot.</p>{{end}}
-              {{end}}
-            </div>
-            {{if not .Active}}<form action="/discovery/activate" method="post">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="path" value="{{.Path}}">
-              <button class="quiet-button" type="submit" {{if or (not .Available) .ResolutionError (ne .Root $.Root)}}disabled{{end}}>Activate</button>
-            </form>{{end}}
-          </li>
-          {{end}}
-        </ul>
-        {{else}}<div class="empty-state"><span class="empty-glyph" aria-hidden="true">&#9636;</span><h3>No projects discovered</h3><p>Save a root and request a scan to list projects.</p></div>{{end}}
-        </div>
-      </section>
       {{else if eq .View "projects"}}
       {{template "projects-page" .}}
       {{else if eq .View "containers"}}
       {{template "containers-page" .}}
+      {{else if eq .View "settings"}}
+      {{template "metrics-settings" .}}
       {{end}}
       <footer class="dashboard-footer"><span>Application online</span><a href="/healthz">Health</a></footer>
     </main>

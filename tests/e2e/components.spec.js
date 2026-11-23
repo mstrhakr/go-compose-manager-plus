@@ -24,6 +24,43 @@ test('renders chart series, gaps, data table and explicit empty/error states', a
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('charts expose hover values and synchronize pointer and keyboard time selection', async ({ page }, testInfo) => {
+  const first = page.locator('.chart-panel').filter({ has: page.getByRole('heading', { name: 'Activity', exact: true }) });
+  const second = page.locator('.chart-panel').filter({ has: page.getByRole('heading', { name: 'Empty chart' }) });
+  await second.locator('[data-chart]').evaluate(element => {
+    element.dataset.chartSeries = JSON.stringify({
+      min: 0, max: 100, xMin: 1, xMax: 4, selectedTime: 4,
+      series: [{ label: 'Second chart', color: 'green', points: [{ x: 1, y: 10 }, { x: 4, y: 90 }] }],
+    });
+    element.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
+  });
+  await page.evaluate(() => {
+    window.chartTimes = [];
+    document.addEventListener('observability:timechange', event => window.chartTimes.push(event.detail.time));
+  });
+  const svg = first.locator('svg');
+  await svg.hover({ position: { x: 200, y: 40 } });
+  await expect(first.locator('.chart-tooltip')).toContainText('CPU:');
+  await expect(first.locator('.chart-tooltip')).toContainText('Memory:');
+  const bounds = await svg.boundingBox();
+  const center = { x: bounds.width / 2, y: bounds.height / 2 };
+  if (testInfo.project.name === 'mobile-chromium') {
+    await svg.tap({ position: center });
+  } else {
+    await svg.click({ position: center });
+  }
+  await expect.poll(() => page.evaluate(() => window.chartTimes.length)).toBeGreaterThan(0);
+  const firstCursor = first.locator('.chart-cursor');
+  const secondCursor = second.locator('.chart-cursor');
+  await expect(firstCursor).toHaveAttribute('x1', await secondCursor.getAttribute('x1'));
+  await page.evaluate(() => document.dispatchEvent(new CustomEvent('observability:timechange', { detail: { time: 3 } })));
+  await expect(firstCursor).toHaveAttribute('x1', await secondCursor.getAttribute('x1'));
+  await svg.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(() => page.evaluate(() => window.chartTimes.length)).toBeGreaterThan(1);
+  await expect(firstCursor).toHaveAttribute('x1', await secondCursor.getAttribute('x1'));
+});
+
 test('selection is scoped, keyboard operable and handles disabled rows', async ({ page }, testInfo) => {
   const projects = page.locator('[data-select-list]').filter({ has: page.getByRole('heading', { name: 'Projects', exact: true }) });
   const other = page.locator('[data-select-list]').filter({ has: page.getByRole('heading', { name: 'Other resources' }) });
@@ -48,6 +85,73 @@ test('selection is scoped, keyboard operable and handles disabled rows', async (
     await projects.getByLabel('Select Beta').tap();
     await expect(projects.getByText('1 selected')).toBeVisible();
   }
+});
+
+test('column preferences apply to headings and cells, persist and restore', async ({ page }, testInfo) => {
+  const list = page.locator('[data-column-manager="projects-title"]');
+  const editor = list.locator('[data-column-controls]');
+  await editor.locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await expect(editor.getByLabel('Name', { exact: true })).toBeDisabled();
+  if (testInfo.project.name === 'mobile-chromium') {
+    await editor.getByLabel('Status', { exact: true }).tap();
+  } else {
+    await editor.getByLabel('Status', { exact: true }).uncheck();
+  }
+  await expect(list.locator('[data-column="Status"]')).toHaveCount(4);
+  for (const cell of await list.locator('[data-column="Status"]').all()) await expect(cell).toBeHidden();
+  await expect(page.locator('[data-column-manager="other-title"]').getByRole('columnheader', { name: 'Status' })).toBeVisible();
+  await expect(list.getByLabel('Select Alpha')).toBeVisible();
+  await page.reload();
+  await expect(list.locator('[data-column="Status"]').first()).toBeHidden();
+  await list.locator('tbody').evaluate(element => {
+    const row = element.firstElementChild.cloneNode(true);
+    row.querySelector('[data-column="Status"]').hidden = false;
+    element.append(row);
+    element.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
+  });
+  await expect(list.locator('[data-column="Status"]').last()).toBeHidden();
+  await editor.locator('summary').click();
+  await editor.getByRole('button', { name: 'Restore defaults' }).click();
+  await expect(list.getByRole('columnheader', { name: 'Status' })).toBeVisible();
+  await page.reload();
+  await expect(list.getByRole('columnheader', { name: 'Status' })).toBeVisible();
+});
+
+test('column controls report blocked browser storage but remain usable', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'localStorage', {
+      get() { throw new DOMException('Storage blocked', 'SecurityError'); },
+    });
+  });
+  await page.reload();
+  const list = page.locator('[data-column-manager="projects-title"]');
+  await list.locator('[data-column-controls] summary').click();
+  await expect(list.getByRole('status')).toContainText('Column preferences could not be loaded');
+  await list.getByLabel('Status', { exact: true }).uncheck();
+  await expect(list.locator('[data-column="Status"]').first()).toBeHidden();
+  await expect(list.getByRole('status')).toContainText('Column preferences could not be saved');
+  await list.locator('tbody').evaluate(element => element.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true })));
+  await expect(list.locator('[data-column="Status"]').first()).toBeHidden();
+});
+
+test('column controls survive a partial swap of their options and restore button', async ({ page }) => {
+  const list = page.locator('[data-column-manager="projects-title"]');
+  const editor = list.locator('[data-column-controls]');
+  await editor.locator('summary').click();
+  await editor.getByLabel('Status', { exact: true }).uncheck();
+  await editor.locator('.column-customizer-panel').evaluate(panel => {
+    panel.innerHTML = panel.innerHTML;
+    panel.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
+  });
+  await expect(editor.getByLabel('Status', { exact: true })).not.toBeChecked();
+  await editor.getByLabel('Status', { exact: true }).check();
+  await expect(list.getByRole('columnheader', { name: 'Status' })).toBeVisible();
+  await editor.getByLabel('Status', { exact: true }).uncheck();
+  await editor.getByRole('button', { name: 'Restore defaults' }).click();
+  await expect(list.getByRole('columnheader', { name: 'Status' })).toBeVisible();
+  await page.reload();
+  await expect(list.getByRole('columnheader', { name: 'Status' })).toBeVisible();
 });
 
 test('reinitializes swapped components and handles zero selectable entries', async ({ page }) => {
@@ -125,6 +229,7 @@ test('native item checkboxes remain usable without JavaScript', async ({ browser
     await page.getByLabel('Select Alpha').check();
     await expect(page.getByLabel('Select Alpha')).toBeChecked();
     await expect(page.getByLabel('Select all Projects')).toBeHidden();
+    for (const control of await page.locator('[data-column-controls]').all()) await expect(control).toBeHidden();
     await expect(page.getByText('No observations.').first()).toBeVisible();
     await expect(page.locator('noscript > .chart-message').first()).toBeVisible();
   } finally {

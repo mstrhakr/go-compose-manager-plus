@@ -102,37 +102,136 @@ list, which belongs on the Projects page. Metrics collection is opt-in: a Docker
 socket configuration alone must not enable background metrics collection. The
 owner wants a Settings page that lets the user choose whether to collect for
 all running containers or only containers associated with activated stacks.
-Collection scope is separate from view filters and has disk-use consequences;
-association ambiguity and scope-change behavior remain open.
+Collection scope is separate from view filters and has disk-use consequences.
+When a container leaves collection scope because of deactivation or a settings
+change, stop collecting new samples for it but retain existing samples until
+normal expiry or storage pressure removes them. For activated-stack collection, associate
+containers by resolved Compose project name and Docker project label, as in
+LIVE-002. If multiple discovered folders resolve to the same project name,
+collect that Docker project's containers when at least one matching folder is
+activated. Make the shared identity clear; this association is not evidence that
+an activated folder owns the containers.
 
 The owner wants an opt-in setup wizard with Low, Medium, High and Custom
 profiles, with the underlying collection and retention options available in
-Settings. Low and Medium select containers associated with activated stacks;
-High selects all running containers. Changing an individual preset option
-switches the profile to Custom. Exact settings, any automatic tuning, preset defaults, confirmation
-and data-retention effects when changing settings remain to be decided.
+Settings. Each preset configures the whole metrics feature, including its
+storage limit; the setup wizard shows an adjustable limit, with suggested
+defaults informed by measurement. Individual changes select Custom. Preset
+values and sizing measurements are not yet established. These are
+performance-oriented modes, not a claim that every mode is lightweight.
+Low and Medium select containers associated with activated stacks;
+High selects all running containers. For the initial single-resolution history,
+Low targets one sample every 15 seconds, Medium every 5 seconds and High every
+1 second, with a one-hour history window for each. These are targets, not a
+guarantee that Docker supplies samples on schedule. Actual resource costs are
+not yet measured. In this initial
+single-resolution version, samples older than one hour may expire without being
+downsampled; the UI must clearly describe the one-hour history limit. This
+exception does not approve discarding raw data before scheduled downsampling
+once longer-term tiers are implemented. Automatic tuning, preset defaults,
+confirmation and data-retention effects when changing settings remain open.
 
-The selected storage direction is tstorage for metrics while SQLite remains
-the application-state store. Netdata-style historical retention and a
-UniFi-inspired display are design goals, not approval of a particular retention
-duration, aggregation, disk limit or visual implementation. The owner wants
+For the first collection slice, the owner selected per-container CPU utilization,
+memory usage and limit, network receive/transmit byte rates, and block read/write
+byte rates. Show running and health-check state, including no health check and
+unknown states. Capture observed start, stop, exit, restart, OOM and health
+changes as timeline events, and report collector freshness, missing samples,
+errors and shortened history. Label the memory usage definition; derive rates
+from valid counter deltas. Missing values, counter resets and disconnected
+periods are gaps, not zeroes. Docker event replay is limited, so event history
+cannot be assumed complete after a disconnect. Metric availability, details of
+recovery and per-platform support require verification.
+
+The owner subsequently clarified that a known container state, such as stopped,
+can justify zero rather than a missing value. Which metrics qualify and how
+observation and disconnection boundaries constrain that inference remain to be
+specified; a missing observation alone is not proof of a stopped state.
+
+The initial observability view defaults to the last hour, with a timeline whose
+selected time is reflected across the charts, inspired by the owner's reference
+view. The owner wants event markers on the timeline and an event list for
+context. The owner also wants historical logs alongside relevant usage and other
+context at the selected time, so an incident can be investigated in one view.
+Log sources, retention, access, synchronization and unavailable states remain
+to be defined; this direction does not imply logs are collected or retained.
+Chart rendering may reduce displayed points independently of retained raw
+resolution. Longer ranges and custom timeframes are future advanced options;
+their retention, zoom resolution and display behavior remain to be designed.
+Use a reusable preset-selection and customization UI structure suitable for
+other feature settings, rather than duplicating an observability-specific
+pattern. Future features' actual options and behavior require their own decisions.
+
+The owner selected SQLite for the initial one-hour metrics implementation,
+separate from application state, after the tstorage failure probe. A future
+optional TimescaleDB backend is a possibility, not an implemented feature or
+an approval of its retention limits. Longer SQLite limits and differences
+between backends require evidence and a later decision. Netdata-style historical retention and a
+UniFi-inspired display are design goals, not approval of a longer-term
+retention duration, aggregation, disk limit or visual implementation. The owner wants
 the storage budget managed toward approximately 90% usage, reserving roughly
-10% as working headroom. Downsampling should happen before eligible raw data is
-removed; configurations known to prevent that should be rejected. This is a
-target rather than a guarantee against storage exhaustion. Exact accounting,
-compatibility validation and exceptional exhaustion behavior remain open.
+10% as working headroom. For later tiered retention, downsampling should happen
+before eligible raw data is removed; configurations known to prevent that
+should be rejected. This is a
+target rather than a guarantee against storage exhaustion. For the initial
+single-resolution version, if the metrics store reaches its limit before normal
+expiry, remove the oldest metrics early and clearly warn that history was
+shortened. If space cannot be recovered, pause metric writes, clearly report the
+problem and retry when space is available; the rest of the app remains usable.
+Exact accounting and compatibility validation remain open.
 A reusable column
 customizer is also requested for inventory views. These directions do not
 authorize Compose mutations or imply that unavailable metrics are zero.
 
-**Approval:** Owner selected the opt-in collection boundary and the above
-product and storage directions on 2026-11-22. Sampling, supported metrics,
-collection edge cases, remaining preset behavior,
-retention/downsampling, resource budgets,
+**Approval:** Owner selected the opt-in collection boundary, initial preset
+sampling targets, first collection scope and the above product and storage
+directions on 2026-11-22. Other metrics, collection edge cases, remaining preset behavior,
+longer-term retention/downsampling, resource budgets,
 recovery and presentation details remain unresolved. The storage dependency's
 fitness and operational characteristics still need evaluation.
 
-**Enforcement:** Not implemented or verified.
+**Enforcement:** The reusable column customizer is implemented for the Projects
+and Containers inventory views; preferences are browser-local and the
+identifying column remains visible. An authenticated Settings page persists
+Low, Medium, High and Custom preferences, an explicit storage target and a
+default-off collection opt-in. The application collector opens the separate
+SQLite store and contacts Docker only while opted in. It samples selected
+containers read-only, persists discrete state and metric records, and captures
+observed lifecycle/health events. Activated scope uses resolved Compose project
+names and Docker project labels; leaving scope drops baselines and keeps history.
+The single-process event stream reconnects after disconnects, event fingerprints
+make identical replays idempotent and expire with their one-hour event records,
+and rate fields remain unavailable unless event-stream continuity and container
+identity are stable. Missing observations are not inferred as zero; the approved
+inference from a specific known state (such as stopped) remains unimplemented
+pending its metric and time-boundary rules.
+
+The collector is connected to app startup/shutdown and reports its enabled,
+cycle, event-stream and failure status on the authenticated Settings page.
+Maintenance expires the one-hour window and retries storage recovery while the
+rest of the app remains available. Cumulative early sample evictions are shown
+as a shortened-history warning with timestamp bounds that are explicitly not a
+continuous-gap claim. Durable pending-write markers are reconciled from their
+atomic committed bit without replaying the interrupted batch. While collection
+is disabled, the default-off collector does not reopen the metrics database;
+after a process restart, stored eviction history is therefore not rediscovered
+until collection is enabled again.
+Collection targets are not schedule guarantees. The overview dashboard now reads
+the opted-in SQLite history and plots per-container CPU, raw memory usage, and
+network receive/transmit rates. For display only, it selects the latest recorded
+sample in each 30-second bucket; it does not combine container values or alter
+retained samples, and missing buckets remain gaps. Memory is labeled as Docker's
+raw usage, not the cache-adjusted CLI value. These charts cover the last hour
+and report when collection is disabled, starting, paused or has no observations.
+Chart clicks and keyboard selection dispatch the shared
+`observability:timechange` event with a Unix-millisecond timestamp; all dashboard
+charts move their selected-time cursor together. A future timeline can use this
+event contract, but no timeline, event markers/list, persisted per-container gap
+ledger, hard filesystem quota or measured preset sizing/throughput is implemented.
+Historical logs and TimescaleDB remain unimplemented. Platform behavior,
+live-Docker recovery and physical disk-full behavior remain unverified. A
+test-only Docker/tstorage feasibility spike is recorded in
+[verification](../verification.md#docker-metrics-storage-proof-of-concept); it
+does not implement these behaviors.
 
 ## Dependencies
 

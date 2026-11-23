@@ -14,7 +14,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 3
+const schemaVersion = 4
 
 var (
 	ErrBootstrapComplete = errors.New("initial administrator is already provisioned")
@@ -150,9 +150,34 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES (3)`); err != nil {
 			return fmt.Errorf("record database schema version: %w", err)
 		}
+		currentVersion = 3
+	}
+	if currentVersion == 3 {
+		if err := migrateV4(ctx, tx); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES (4)`); err != nil {
+			return fmt.Errorf("record database schema version: %w", err)
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit application database migration: %w", err)
+	}
+	return nil
+}
+
+func migrateV4(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE metrics_settings (
+		id INTEGER PRIMARY KEY CHECK (id = 1),
+		enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+		profile TEXT NOT NULL CHECK (profile IN ('low', 'medium', 'high', 'custom')),
+		scope TEXT NOT NULL CHECK (scope IN ('activated', 'all')),
+		interval_ns INTEGER NOT NULL CHECK (interval_ns > 0),
+		storage_limit_bytes INTEGER NOT NULL CHECK (storage_limit_bytes > 0),
+		revision INTEGER NOT NULL CHECK (revision > 0)
+	)`)
+	if err != nil {
+		return fmt.Errorf("apply database migration v4: %w", err)
 	}
 	return nil
 }

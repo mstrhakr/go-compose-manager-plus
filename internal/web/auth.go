@@ -16,19 +16,22 @@ import (
 	"github.com/justinas/nosurf"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/metrics"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 )
 
 const maxFormBytes = 8192
 
 type authServer struct {
-	manager        *auth.Manager
-	discovery      *discovery.Store
-	pages          *template.Template
-	publicURL      *url.URL
-	trustedProxies []netip.Prefix
-	logger         *slog.Logger
-	docker         *runtime.Client
+	manager         *auth.Manager
+	discovery       *discovery.Store
+	metricsSettings *metrics.SettingsStore
+	collector       dashboardMetricsCollector
+	pages           *template.Template
+	publicURL       *url.URL
+	trustedProxies  []netip.Prefix
+	logger          *slog.Logger
+	docker          *runtime.Client
 }
 
 func (server *authServer) registerRoutes(mux *http.ServeMux) {
@@ -40,6 +43,8 @@ func (server *authServer) registerRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /{$}", server.requireUser(false, http.HandlerFunc(server.dashboard)))
 	mux.Handle("GET /projects", server.requireUser(false, http.HandlerFunc(server.projectsPage)))
 	mux.Handle("GET /containers", server.requireUser(false, http.HandlerFunc(server.containersPage)))
+	mux.Handle("GET /settings", server.requireUser(false, http.HandlerFunc(server.metricsSettingsPage)))
+	mux.Handle("POST /settings/metrics", server.requireUser(false, http.HandlerFunc(server.saveMetricsSettings)))
 	mux.Handle("POST /discovery/root", server.requireUser(false, http.HandlerFunc(server.saveRoot)))
 	mux.Handle("POST /discovery/scan", server.requireUser(false, http.HandlerFunc(server.scanProjects)))
 	mux.Handle("POST /discovery/activate", server.requireUser(false, http.HandlerFunc(server.activateProject)))
@@ -186,7 +191,7 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 		views = append(views, projectView{Project: project, DisplayName: filepath.Base(project.Path)})
 	}
 	requested := r.URL.Query().Get("runtime") == "1" || view == "projects" || view == "containers"
-	containerList := listPanel{ID: "containers-title", Title: "Containers", Columns: []string{"Name", "State", "Compose project", "Service"}, Empty: "No containers found in this snapshot."}
+	containerList := listPanel{ID: "containers-title", Title: "Containers", Customize: true, Columns: []string{"Name", "State", "Compose project", "Service"}, Empty: "No containers found in this snapshot."}
 	var containers []runtime.Container
 	runtimeMessage := "Docker integration pending. Container status, logs, and operations are not connected."
 	runtimeState := "Not configured"
@@ -274,9 +279,14 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 			{Label: "Observability"},
 		}}
 	}
-	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, Filters: filters, SubviewNav: subviews,
+	var charts []chartPanel
+	var metricsStatus string
+	if view == "dashboard" {
+		charts, metricsStatus = server.dashboardCharts(r.Context())
+	}
+	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, ProjectColumns: listPanel{ID: "projects-title", Title: "Projects", Columns: []string{"Project", "Discovery", "Activation", "Containers"}}, Filters: filters, SubviewNav: subviews,
 		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: views, RuntimeMessage: runtimeMessage, RuntimeState: runtimeState,
-		Activity: chartPanel{ID: "activity-title", Title: "Container activity", Status: "Unavailable", EmptyTitle: "Runtime metrics unavailable", EmptyDetail: "No live activity is being collected."},
+		Charts: charts, MetricsStatus: metricsStatus,
 		Metrics: []metricPanel{
 			{ID: "restart-title", Title: "Container restart & OOM rate", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
 			{ID: "health-title", Title: "Stack health & readiness", Status: "Unavailable", Value: "--", Detail: "No runtime data"},

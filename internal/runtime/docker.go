@@ -13,6 +13,7 @@ import (
 )
 
 const maxResponseBytes = 16 << 20
+const dockerResponseHeaderTimeout = 5 * time.Second
 
 type Container struct {
 	ID      string
@@ -28,7 +29,8 @@ type Snapshot struct {
 }
 
 type Client struct {
-	http *http.Client
+	http   *http.Client
+	stream *http.Client
 }
 
 func NewClient(socket string) *Client {
@@ -36,15 +38,17 @@ func NewClient(socket string) *Client {
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", socket)
 		},
-		DisableCompression: true,
+		DisableCompression:    true,
+		ResponseHeaderTimeout: dockerResponseHeaderTimeout,
+	}
+	noRedirect := func(*http.Request, []*http.Request) error {
+		return errors.New("Docker API redirect refused")
 	}
 	return &Client{http: &http.Client{
-		Transport: transport,
-		Timeout:   5 * time.Second,
-		CheckRedirect: func(*http.Request, []*http.Request) error {
-			return errors.New("Docker API redirect refused")
-		},
-	}}
+		Transport:     transport,
+		Timeout:       5 * time.Second,
+		CheckRedirect: noRedirect,
+	}, stream: &http.Client{Transport: transport, CheckRedirect: noRedirect}}
 }
 
 // Snapshot uses only the Docker Engine container-list endpoint.
