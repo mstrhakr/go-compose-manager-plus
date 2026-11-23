@@ -150,7 +150,8 @@
         <div><h1>Container observability</h1><p>Containers / Observability · last hour</p></div>
         <span class="toolbar-pill">Collection <span>{{.MetricsStatus}}</span></span>
       </div>
-      <section class="timeline-panel" data-timeline data-start="{{.Timeline.Start}}" data-end="{{.Timeline.End}}" data-selected="{{.Timeline.SelectedTime}}" aria-labelledby="observability-timeline-title">
+      <div class="observability-timeline" data-timeline data-start="{{.Timeline.Start}}" data-end="{{.Timeline.End}}" data-selected="{{.Timeline.SelectedTime}}">
+      <section class="timeline-panel" aria-labelledby="observability-timeline-title">
         <div class="section-heading">
           <div><h2 id="observability-timeline-title">Last-hour timeline</h2><p class="timeline-message" data-timeline-message>{{.Timeline.Message}}</p></div>
           <span class="toolbar-pill timeline-status">{{.Timeline.Status}}</span>
@@ -175,6 +176,7 @@
         </ol>
         {{else}}<p class="timeline-empty">No recorded events for this hour.</p>{{end}}
       </section>
+      </div>
       <div class="telemetry-section">
         {{range .Charts}}{{template "chart-panel" .}}{{end}}
       </div>

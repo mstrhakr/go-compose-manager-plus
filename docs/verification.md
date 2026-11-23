@@ -940,6 +940,16 @@ platform-specific or historical-log behavior was verified. The event display
 limit does not establish a retention policy; the broader LIVE-003 contract
 remains partially implemented and unverified.
 
+PR review follow-up keeps event-row selection inside the shared timeline
+boundary and preserves exact millisecond timestamps from chart/event selections
+while the range slider continues using one-second keyboard steps. The selected
+event row and marker expose their current state, and fractional milliseconds
+remain visible in the selected-time label. Browser regressions exercise the
+rendered authenticated page layout and non-second-aligned chart/event times.
+The focused timeline tests passed in Chromium, Firefox, WebKit and mobile
+Chromium; the authenticated rendered-page interaction passed in Chromium, with
+the other projects intentionally skipped by the single-bootstrap-account guard.
+
 ## Automatic Documentation Publishing
 
 2026-11-23, Linux development container, branch `feat/settings-metrics-ui`,

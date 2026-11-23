@@ -105,22 +105,32 @@ test('timeline markers and keyboard selection stay synchronized with every chart
     await chart.evaluate(element => {
       element.dataset.chartSeries = JSON.stringify({
         min: 0, max: 10, xMin: 1000, xMax: 4000, selectedTime: 4000,
-        series: [{ label: 'CPU', color: 'blue', points: [{ x: 1000, y: 1 }, { x: 4000, y: 8 }] }],
+        series: [{ label: 'CPU', color: 'blue', points: [
+          { x: 1000, y: 1 }, { x: 2000, y: 3 }, { x: 3000, y: 5 },
+          { x: 3750, y: 7 }, { x: 4000, y: 8 },
+        ] }],
       });
       element.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
     });
   }
   await page.evaluate(() => {
-    const timeline = document.createElement('section');
-    timeline.innerHTML = `<div data-timeline data-start="1000" data-end="4000" data-selected="4000">
+    const timeline = document.createElement('div');
+    timeline.className = 'observability-timeline';
+    timeline.dataset.timeline = '';
+    timeline.dataset.start = '1000';
+    timeline.dataset.end = '4000';
+    timeline.dataset.selected = '4000';
+    timeline.innerHTML = `<section class="timeline-panel">
       <label for="timeline-fixture">Selected time <output data-timeline-output for="timeline-fixture">Initial</output></label>
       <input id="timeline-fixture" type="range" min="1000" max="4000" step="1000" value="4000" data-timeline-slider aria-label="Selected time in the last hour">
       <button type="button" data-timeline-marker data-timeline-select="2000" data-position="33.333" aria-label="Start event"></button>
-      <button type="button" data-timeline-select="2000" aria-label="Select event at 2000"></button>
-    </div>`;
-    const component = timeline.firstElementChild;
-    document.body.append(component);
-    component.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
+    </section>
+    <section class="timeline-events">
+      <button type="button" class="timeline-event" data-timeline-select="2000" aria-label="Select event at 2000">Start event</button>
+      <button type="button" class="timeline-event" data-timeline-select="3750" aria-label="Select event at 3750">Restart event</button>
+    </section>`;
+    document.body.append(timeline);
+    timeline.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
   });
   const timeline = page.locator('[data-timeline]');
   const slider = timeline.getByLabel('Selected time in the last hour');
@@ -133,8 +143,28 @@ test('timeline markers and keyboard selection stay synchronized with every chart
     await timeline.getByRole('button', { name: 'Start event' }).click();
   }
   await expect(slider).toHaveValue('2000');
+  await expect(timeline.getByRole('button', { name: 'Select event at 2000' })).toHaveAttribute('aria-current', 'time');
   const cursors = await charts.evaluateAll(elements => elements.map(element => element.querySelector('.chart-cursor').getAttribute('x1')));
   expect(new Set(cursors).size).toBe(1);
+
+  const restartEvent = timeline.getByRole('button', { name: 'Select event at 3750' });
+  if (testInfo.project.name === 'mobile-chromium') await restartEvent.tap();
+  else await restartEvent.click();
+  await expect(slider).toHaveValue('4000');
+  await expect(timeline).toHaveAttribute('data-selected', '3750');
+  await expect(timeline.getByRole('button', { name: 'Select event at 3750' })).toHaveAttribute('aria-current', 'time');
+  await expect(charts.nth(0).locator('svg')).toHaveAttribute('aria-valuenow', '3750');
+  await charts.nth(0).locator('svg').focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(timeline).toHaveAttribute('data-selected', '3000');
+
+  if (testInfo.project.name === 'mobile-chromium') await restartEvent.tap();
+  else await restartEvent.click();
+  await expect(timeline).toHaveAttribute('data-selected', '3750');
+  await slider.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(slider).toHaveValue('3000');
+  await expect(timeline).toHaveAttribute('data-selected', '3000');
 
   const svg = charts.nth(0).locator('svg');
   const bounds = await svg.boundingBox();
@@ -146,7 +176,9 @@ test('timeline markers and keyboard selection stay synchronized with every chart
   }
   await expect(slider).toHaveValue('3000');
   const chartTime = await svg.getAttribute('aria-valuenow');
-  expect(chartTime).toBe('3000');
+  expect(Number(chartTime)).toBeGreaterThanOrEqual(2997);
+  expect(Number(chartTime)).toBeLessThanOrEqual(3000);
+  await expect(timeline).toHaveAttribute('data-selected', chartTime);
   await slider.focus();
   await page.keyboard.press('ArrowLeft');
   await expect(slider).toHaveValue('2000');

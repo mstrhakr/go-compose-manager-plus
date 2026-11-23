@@ -324,19 +324,27 @@
     const end = Number(timeline.dataset.end);
     if (!slider || !output || !Number.isFinite(start) || !Number.isFinite(end) || start >= end) return;
     const step = Number(slider.step) || 1000;
-    const format = time => new Date(time).toLocaleString(undefined, {
-      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit',
-    });
+    const format = time => {
+      const label = new Date(time).toLocaleString(undefined, {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit',
+      });
+      const milliseconds = ((Math.round(time) % 1000) + 1000) % 1000;
+      return milliseconds ? `${label}.${String(milliseconds).padStart(3, '0')}` : label;
+    };
     const setTime = time => {
-      const bounded = Math.max(start, Math.min(end, time));
-      slider.value = String(Math.round(bounded));
-      const selected = Number(slider.value);
+      const selected = Math.round(Math.max(start, Math.min(end, time)));
+      const sliderTime = Math.max(start, Math.min(end,
+        start + Math.round((selected - start) / step) * step));
+      slider.value = String(sliderTime);
       timeline.dataset.selected = String(selected);
       output.value = format(selected);
       output.textContent = output.value;
       slider.setAttribute('aria-valuetext', output.value);
       for (const marker of timeline.querySelectorAll('[data-timeline-select]')) {
-        const selectedMarker = Math.abs(Number(marker.dataset.timelineSelect) - selected) <= step / 2;
+        const eventTime = Number(marker.dataset.timelineSelect);
+        const selectedMarker = marker.hasAttribute('data-timeline-marker')
+          ? Math.abs(eventTime - selected) <= step / 2
+          : eventTime === selected;
         if (selectedMarker) marker.setAttribute('aria-current', 'time');
         else marker.removeAttribute('aria-current');
       }
@@ -358,10 +366,10 @@
       if (!button || !timeline.contains(button)) return;
       const time = Number(button.dataset.timelineSelect);
       if (!Number.isFinite(time)) return;
-      setTime(time);
+      const selected = setTime(time);
       timeline.dispatchEvent(new CustomEvent('observability:timechange', {
         bubbles: true,
-        detail: { time: Math.round(Number(slider.value)) },
+        detail: { time: selected },
       }));
     });
     timelineSelections.set(timeline, setTime);

@@ -117,6 +117,41 @@ test('first login forces password setup before protected dashboard and works on 
     try {
       await interactiveContext.addCookies(await context.cookies());
       const interactivePage = await interactiveContext.newPage();
+      await interactivePage.goto('/containers/observability');
+      const timeline = interactivePage.locator('[data-timeline]');
+      const eventTime = await timeline.evaluate(element => {
+        const selected = Number(element.dataset.start) + 3750;
+        const marker = document.createElement('button');
+        marker.type = 'button';
+        marker.className = 'timeline-marker';
+        marker.dataset.timelineSelect = String(selected);
+        marker.dataset.timelineMarker = '';
+        marker.dataset.position = '1';
+        marker.setAttribute('aria-label', 'Restart marker');
+        element.querySelector('.timeline-track').append(marker);
+        const empty = element.querySelector('.timeline-empty');
+        empty?.remove();
+        const list = document.createElement('ol');
+        list.className = 'timeline-event-list';
+        const item = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'timeline-event';
+        button.dataset.timelineSelect = String(selected);
+        button.setAttribute('aria-label', 'Select rendered restart event');
+        button.textContent = 'Restarted';
+        item.append(button);
+        list.append(item);
+        element.querySelector('.timeline-events').append(list);
+        return selected;
+      });
+      await timeline.getByRole('button', { name: 'Restart marker' }).click();
+      await expect(timeline.getByRole('button', { name: 'Select rendered restart event' })).toHaveAttribute('aria-current', 'time');
+      await expect(timeline).toHaveAttribute('data-selected', String(eventTime));
+      await timeline.getByRole('button', { name: 'Select rendered restart event' }).click();
+      await expect(timeline.getByRole('slider', { name: 'Selected time in the last hour' })).toHaveValue(String(eventTime + 250));
+      await expect(timeline).toHaveAttribute('data-selected', String(eventTime));
+
       await interactivePage.goto('/settings');
       await interactivePage.getByText('Low', { exact: true }).click();
       await expect(interactivePage.locator('[data-metrics-custom-options]')).toBeHidden();
