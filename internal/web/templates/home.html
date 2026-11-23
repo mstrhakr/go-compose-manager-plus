@@ -126,8 +126,14 @@
         <div><h1>System status</h1><p>Local instance / Overview</p></div>
         <span class="toolbar-pill">Metrics <span>{{.MetricsStatus}}</span></span>
       </div>
-      <div class="telemetry-section">
-        {{range .Charts}}{{template "chart-panel" .}}{{end}}
+      <div class="dashboard-chart-switcher">
+        <fieldset class="dashboard-chart-options">
+          <legend class="visually-hidden">Dashboard metric</legend>
+          <label><input class="visually-hidden" type="radio" name="dashboard-metric" value="cpu" checked><span>CPU</span></label>
+          <label><input class="visually-hidden" type="radio" name="dashboard-metric" value="memory"><span>Memory</span></label>
+          <label><input class="visually-hidden" type="radio" name="dashboard-metric" value="network"><span>Network</span></label>
+        </fieldset>
+        {{range .Charts}}<div class="dashboard-chart-view" data-dashboard-chart="{{.ID}}">{{template "chart-panel" .}}</div>{{end}}
       </div>
       <p class="inventory-footnote">Collected-container totals, not host measurements. Latest samples per 30-second bucket may differ in time; incomplete totals remain gaps. CPU can exceed 100%; memory is Docker raw usage.</p>
       <div class="resource-grid">

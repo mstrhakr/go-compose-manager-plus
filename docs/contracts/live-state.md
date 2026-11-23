@@ -302,6 +302,10 @@ does not implement these behaviors.
   be toggled individually without changing the plot's layout.
 - The overview shows aggregate collected-container metrics rather than
   per-container metric lines; per-container charts remain in Observability.
+  On 2026-11-23 the owner requested one main Overview chart with switchable
+  CPU, memory and network views, following the supplied dashboard recording.
+  Network keeps receive and transmit together. Switching changes presentation
+  only, not collection, samples, selected-time synchronization or the hour range.
   Missing observations remain gaps, and container totals are not presented as
   host-level measurements. The wide dashboard is designed for the owner's
   1440p reference screenshots and remains usable without overflow at smaller

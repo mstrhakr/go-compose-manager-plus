@@ -92,9 +92,11 @@ test('first login forces password setup before protected dashboard and works on 
     for (const name of ['Resources unavailable', 'Activity unavailable']) {
       await expect(page.getByRole('button', { name })).toBeDisabled();
     }
-    for (const name of ['CPU across collected containers', 'Raw memory across collected containers', 'Network throughput across collected containers']) {
+    for (const [metric, name] of [['CPU', 'CPU across collected containers'], ['Memory', 'Raw memory across collected containers'], ['Network', 'Network throughput across collected containers']]) {
+      await page.locator('.dashboard-chart-options').getByText(metric, { exact: true }).click();
       await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
     }
+    await page.locator('.dashboard-chart-options').getByText('CPU', { exact: true }).click();
     await expect(page.getByText('Host-level resource metrics are not collected', { exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'CPU by container', exact: true })).toHaveCount(0);
     await expect(page.getByText('No metrics are being collected.', { exact: false }).first()).toBeVisible();
@@ -291,9 +293,9 @@ test('first login forces password setup before protected dashboard and works on 
       for (const width of [1440, 1024, 901, 900, 621, 620]) {
         await themedPage.setViewportSize({ width, height: 900 });
         expect(await themedPage.evaluate(() => {
-          const charts = [...document.querySelectorAll('.chart-panel')];
+          const charts = [...document.querySelectorAll('.chart-panel')].filter(chart => chart.getBoundingClientRect().width > 0);
           return document.documentElement.scrollWidth <= window.innerWidth &&
-            charts.length === 3 && charts.every(chart => chart.getBoundingClientRect().width > 0);
+            charts.length === 1;
         })).toBe(true);
       }
       await themedPage.setViewportSize({ width: 1440, height: 520 });

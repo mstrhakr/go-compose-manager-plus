@@ -1019,3 +1019,31 @@ publication remains available with its explicit confirmation.
 The GitHub Actions workflow itself has not yet run on the updated default
 branch. A successful CI-triggered Pages deployment therefore remains to be
 confirmed after merge.
+
+## Switchable Overview Chart
+
+2026-11-23, Linux development container, branch
+`feat/dashboard-aggregate-overview`, based on `79df7ef` with these changes
+uncommitted during verification. Overview displays one chart at a time with
+CPU, memory and network selectors; network retains receive/transmit together.
+Native radio controls support keyboard, pointer and touch selection, including
+display switching without JavaScript. Collection, aggregation, last-hour range
+and selected-time synchronization are unchanged; Observability retains its
+per-container views.
+
+- Focused authenticated and synthetic dashboard browser tests passed.
+- `make check QUIET=1`: Go vet/race tests/build, Node and HTTP tests passed;
+  browser validation initially failed two existing Firefox fixture-navigation
+  hooks. New switcher cases passed in all four browser projects.
+- Both Firefox failures passed a targeted rerun; subsequent
+  `make test-e2e QUIET=1` passed the complete browser suite.
+- `make check-assets check-contracts QUIET=1`: passed.
+- `make docs && make check-docs`: passed; updated documentation also passed
+  `make check-docs` and `git diff --check`.
+- Fresh 2560x1440 light/dark screenshots were generated from current-hour,
+  explicitly labeled synthetic samples and inspected locally.
+
+No live Docker workload, host telemetry, native mobile device, container build
+or new security scan was exercised for this presentation-only slice. Existing
+unavailable-resource placeholders and raw chart-number formatting remain;
+this does not claim complete UniFi visual alignment.

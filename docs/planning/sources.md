@@ -128,6 +128,11 @@ opened from a selected list item, with separate detail, activity and settings
 views. A similar project/container panel is a future UI direction; the examples
 do not approve Compose action effects or additional management policies.
 
+On 2026-11-23 the owner requested a single Overview chart with switchable metric
+display, following the supplied dashboard recording. The bounded presentation
+uses CPU, memory and combined network receive/transmit views over unchanged
+last-hour aggregate samples; Observability retains separate per-container charts.
+
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose
 project name, even for copies resolving to the same name. This is runtime

@@ -38,7 +38,9 @@ Node unit tests use the built-in runner; HTTP and browser tests use Playwright.<
 <code>npx playwright test tests/e2e/dashboard-preview.spec.js --project=chromium</code>.
 This test renders the real dashboard templates and aggregate-chart builders
 using clearly labeled synthetic container observations for the current last
-hour. It generates new timestamps on every run, includes sample gaps and a
+hour. The Overview selector switches a single visible chart between CPU,
+memory and combined network receive/transmit. It generates new timestamps on
+every run, includes sample gaps and a
 load spike, and writes light/dark 2560×1440 screenshots under
 <code>test-results/dashboard-synthetic-*.png</code>. Preview data uses temporary
 test state only; it does not seed the running application's database or enable

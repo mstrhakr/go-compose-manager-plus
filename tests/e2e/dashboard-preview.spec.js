@@ -41,6 +41,23 @@ test('synthetic dashboard renders current metrics and interactive aggregates', a
     await charts.nth(2).locator('.chart-cursor').getAttribute('x1'));
   await svg.hover({ position: { x: 100, y: 40 } });
   await expect(cpu.locator('.chart-tooltip')).toContainText('Collected container total');
+  await page.getByRole('radio', { name: 'CPU', exact: true }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('radio', { name: 'Memory', exact: true })).toBeChecked();
+  await expect(charts.nth(1)).toBeVisible();
+  await expect(cpu).toBeHidden();
+  const networkOption = page.getByRole('radio', { name: 'Network', exact: true });
+  if (testInfo.project.name === 'mobile-chromium') {
+    await page.getByText('Network', { exact: true }).tap();
+  } else {
+    await page.getByText('Network', { exact: true }).click();
+  }
+  await expect(networkOption).toBeChecked();
+  await expect(charts.nth(2)).toBeVisible();
+  await expect(charts.nth(1)).toBeHidden();
+  await expect(page.locator('.dashboard-chart-view:visible')).toHaveCount(1);
+  const networkData = await charts.nth(2).evaluate(element => JSON.parse(element.dataset.chartSeries));
+  expect(networkData.series.map(series => series.label)).toEqual(['Receive', 'Transmit']);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   if (testInfo.project.name === 'chromium') {
