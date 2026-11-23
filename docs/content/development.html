@@ -84,7 +84,8 @@ to a future collector; it does not reconnect or replay events itself.
 The foundation does not start collection, enforce one-hour expiry or a storage
 budget, or implement migration to TimescaleDB. A caller can atomically delete
 sample, event and state records before a cutoff, inspect SQLite file lengths,
-and attempt a WAL checkpoint. These are unwired primitives, not a budget
+attempt a WAL checkpoint, and remove batches of oldest samples. These are
+unwired primitives, not a budget
 controller. Deleting SQLite rows does not by itself guarantee disk space is
 returned; file lengths do not measure allocated blocks or peak usage.</p>
 <p>To measure one synthetic hour of SQLite samples for 1, 5, 25 and 50

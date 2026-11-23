@@ -574,6 +574,12 @@ blocked-checkpoint retry.
 `PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs`, `make check-docs` and
 `git diff --check` also passed.
 
+An additional unwired oldest-first sample eviction operation returns its
+removed time range and keeps event history intact. `go test -race -count=1
+./internal/metrics ./internal/runtime` passed ordering, tied timestamps,
+reopen, empty store and injected-transaction-failure checks. This is logical
+deletion only: it does not by itself recover disk space or warn users.
+
 These are not a scheduled one-hour retention implementation or a budget
 controller. Logical deletion can leave allocated database pages behind; file
 lengths are not atomic snapshots or filesystem block counts. Filesystem-full
