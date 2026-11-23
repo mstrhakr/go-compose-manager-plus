@@ -193,9 +193,9 @@ fitness and operational characteristics still need evaluation.
 and Containers inventory views; preferences are browser-local and the
 identifying column remains visible. Application collection, historical logs
 and history are not implemented. Unwired SQLite sample, event and state
-persistence provides transactional cutoff deletion, file-length accounting
-and a persistent summary of sample evictions, but does not schedule a one-hour
-window, enforce the storage budget or display a shortened-history warning.
+persistence provides transactional cutoff deletion, file-length and reusable-page
+accounting, and a persistent summary of sample evictions, but does not schedule
+a one-hour window, enforce the storage budget or display a shortened-history warning.
 Read-only Docker stats and event-stream foundations exist but are not connected
 to a collector or UI. A
 test-only, single-container Docker stats/tstorage feasibility spike is recorded

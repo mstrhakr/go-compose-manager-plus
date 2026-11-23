@@ -1,11 +1,37 @@
 package metrics
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math"
 	"os"
 )
+
+type PageUsage struct {
+	PageSize      int64
+	Pages         int64
+	ReusablePages int64
+}
+
+// PageUsage reports SQLite's current logical database pages. Reusable pages
+// remain part of the database file; they are not free filesystem space.
+func (s *Store) PageUsage(ctx context.Context) (PageUsage, error) {
+	var usage PageUsage
+	err := s.db.QueryRowContext(ctx, `SELECT
+		(SELECT page_size FROM pragma_page_size),
+		(SELECT page_count FROM pragma_page_count),
+		(SELECT freelist_count FROM pragma_freelist_count)`).
+		Scan(&usage.PageSize, &usage.Pages, &usage.ReusablePages)
+	if err != nil {
+		return PageUsage{}, fmt.Errorf("inspect metrics database pages: %w", err)
+	}
+	if usage.PageSize <= 0 || usage.Pages < 0 || usage.ReusablePages < 0 ||
+		usage.ReusablePages > usage.Pages || usage.Pages > math.MaxInt64/usage.PageSize {
+		return PageUsage{}, errors.New("invalid metrics database page accounting")
+	}
+	return usage, nil
+}
 
 type FileUsage struct {
 	Database int64

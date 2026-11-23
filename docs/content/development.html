@@ -84,7 +84,9 @@ to a future collector; it does not reconnect or replay events itself.
 The foundation does not start collection, enforce one-hour expiry or a storage
 budget, or implement migration to TimescaleDB. A caller can atomically delete
 sample, event and state records before a cutoff, inspect SQLite file lengths,
-attempt a WAL checkpoint, and remove batches of oldest samples. Each nonempty
+inspect logical database page counts and reusable pages, attempt a WAL
+checkpoint, and remove batches of oldest samples. Reusable pages are still in
+the database file; reusing them can require additional WAL space. Each nonempty
 sample eviction atomically updates a persistent cumulative count and timestamp
 bounds; the bounds do not imply a continuous gap, and evictions made before
 schema version 4 cannot be reconstructed. This record is not a user-facing
@@ -99,6 +101,11 @@ containers without Docker, run:</p>
 every observation after reopening, and reports file lengths at the end of
 ingestion and after closing. These are not peak sizes or a realtime benchmark;
 they do not establish storage limits or disk-full recovery.</p>
+<p>To measure checkpointed sample-eviction WAL sizes in a synthetic local store,
+run:</p>
+<pre><code>CMP_METRICS_SQLITE_EVICTION_PROBE=1 go test -race -count=1 \
+  -run '^TestBoundedEvictionCheckpointProbe$' -v ./internal/metrics</code></pre>
+<p>The observed sizes are not worst-case bounds or safe budget defaults.</p>
 <h2>UI components</h2>
 <p>Reusable server-rendered metric, chart and list panels are defined in
 <code>internal/web/templates/partials/components.html</code>, with their Go

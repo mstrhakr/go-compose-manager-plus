@@ -605,6 +605,41 @@ passed. `PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and
 recovery. The store remains unwired: it has no user-facing warning, budget
 controller, write pause/retry, scheduled retention or collector.
 
+### SQLite Page-Reuse Probe
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`b6fe3c6` with changes uncommitted during these checks. The focused real-SQLite
+test `go test -race -count=1 -run
+'TestDeletedPagesCanBeReusedWithoutShrinkingDatabase|TestPageUsageReportsCancellationAndClose'
+-v ./internal/metrics` passed. With 5,000 synthetic samples and a simulated
+SQLite page-count limit, oldest-first deletion of 4,000 retained the event and
+the remaining samples. After a successful WAL checkpoint, the database still
+measured 983,040 logical bytes, but 184 of its 240 4,096-byte pages were on
+SQLite's freelist. Inserting 2,000 new samples reused pages without increasing
+the database page count; the freelist fell to 90 pages and the WAL grew to
+428,512 logical bytes before its checkpoint. The eviction itself had produced
+a 795,192-byte WAL before its checkpoint. The resulting samples and
+eviction summary survived reopening.
+`go test -race -count=1 ./internal/metrics ./internal/runtime`,
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
+passed for the page-accounting change.
+
+This is one synthetic workload, not a budget recommendation. SQLite freelist
+pages are reusable within the database, not reclaimed filesystem space; WAL
+growth can exceed the proposed 10% headroom even when reusable pages exist.
+These measurements do not establish peak, allocated-block usage, physical
+disk-full recovery, an eviction batch size or a safe resume rule. The new
+page-accounting method is an unwired observation, not budget enforcement.
+
+In a separate synthetic store with the same sample shape and 40 oldest-first
+batches of 100, checkpointing between batches, the largest WAL observed after
+a batch was 70,072 bytes; the database remained 983,040 bytes. The event and
+page cap in the first probe were not included in this second store. This is
+not a worst-case bound: real rows, indexes, readers, other writers and storage
+errors can change the result, and checkpointing each batch has a cost. Run the
+opt-in probe with `CMP_METRICS_SQLITE_EVICTION_PROBE=1 go test -race -count=1
+-run '^TestBoundedEvictionCheckpointProbe$' -v ./internal/metrics`.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,
