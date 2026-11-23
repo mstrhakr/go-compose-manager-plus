@@ -98,9 +98,13 @@ test('custom attestations require the generic attest action', () => {
   assert.deepEqual(workflowErrors({ jobs: { attest: { steps: [step] } } }), []);
 });
 
-test('Dependabot groups minor and patch version and security updates per ecosystem, not majors', async () => {
+test('Dependabot groups minor and patch version and security updates per manifest, not majors', async () => {
   const config = parse(await readFile(new URL('../../.github/dependabot.yml', import.meta.url), 'utf8'));
-  assert.deepEqual(config.updates.map(update => update['package-ecosystem']).sort(), ['docker', 'github-actions', 'gomod', 'npm']);
+  const scopes = config.updates
+    .map(update => `${update['package-ecosystem']}:${update.directory}`)
+    .sort();
+  assert.deepEqual(scopes, ['docker:/', 'github-actions:/', 'gomod:/', 'gomod:/docs', 'npm:/']);
+  assert.equal(new Set(scopes).size, scopes.length);
   for (const update of config.updates) {
     assert.equal(update.schedule.interval, 'weekly');
     const groups = Object.values(update.groups);
