@@ -285,8 +285,9 @@ tag, which is not yet published; the `dev` tag is available for testing.
   releases use Release Please PRs, full validation and environment approval.
 - Initial downloads: Linux/Windows x64, macOS x64/ARM64. Images: Linux x64.
 - Downloads include checksums/provenance; image tags separate dev/beta/RC/normal.
-- Pages requires `PUBLISH_DOCS=true`, Pages configured for GitHub Actions, and
-  a manual default-branch run with explicit publication confirmation.
+- Pages requires `PUBLISH_DOCS=true` and Pages configured for GitHub Actions.
+  Successful CI on default-branch pushes publishes only when docs change;
+  manual default-branch publication remains available with explicit confirmation.
 - Contributor pages and contracts remain excluded unless
   `PUBLISH_DEVELOPMENT_DOCS=true` and `PUBLISH_CONTRACTS=true`, respectively.
 - **A private repository can still have a public Pages site.** Review content

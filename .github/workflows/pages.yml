@@ -1,6 +1,9 @@
 name: Publish documentation (opt-in)
 
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
   workflow_dispatch:
     inputs:
       confirm_publication:
@@ -17,8 +20,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  source:
+    if: vars.PUBLISH_DOCS == 'true' && ((github.event_name == 'workflow_dispatch' && inputs.confirm_publication && github.ref_name == github.event.repository.default_branch) || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == github.event.repository.default_branch && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.path == '.github/workflows/ci.yml'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.source.outputs.publish }}
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: source
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SOURCE_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          PUBLISH_CONTRACTS: ${{ vars.PUBLISH_CONTRACTS }}
+        run: |
+          node --input-type=module -e '
+          import {execFileSync} from "node:child_process";
+          import {appendFileSync} from "node:fs";
+          import {classify} from "./scripts/ci.mjs";
+          const sha=process.env.SOURCE_SHA;
+          if(!/^[a-f0-9]{40}$/.test(sha))throw new Error("Invalid documentation source revision");
+          const current=execFileSync("git",["rev-parse","origin/"+process.env.GITHUB_REF_NAME],{encoding:"utf8"}).trim();
+          if(sha!==current)throw new Error("Documentation source is no longer the current branch revision");
+          const parents=execFileSync("git",["show","-s","--format=%P",sha],{encoding:"utf8"}).trim().split(/\s+/).filter(Boolean);
+          const paths=parents.length
+            ? execFileSync("git",["diff","--name-only","-z",parents[0],sha],{encoding:"utf8"}).split("\0").filter(Boolean)
+            : execFileSync("git",["diff-tree","--root","--no-commit-id","--name-only","-r","-z",sha],{encoding:"utf8"}).split("\0").filter(Boolean);
+          const changes=classify(paths);
+          const docs=changes.docs||(process.env.PUBLISH_CONTRACTS==="true"&&changes.contracts);
+          appendFileSync(process.env.GITHUB_OUTPUT,`sha=${sha}\npublish=${process.env.EVENT_NAME==="workflow_dispatch"||docs}\n`);
+          '
+
   build:
-    if: vars.PUBLISH_DOCS == 'true' && inputs.confirm_publication && github.ref_name == github.event.repository.default_branch
+    needs: source
+    if: needs.source.outputs.publish == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -27,6 +69,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.source.outputs.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:

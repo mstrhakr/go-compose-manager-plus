@@ -73,8 +73,9 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 .metrics-custom-options[hidden] { display: none; }
 .metrics-profile-picker:has(input[value="custom"]:checked) + .metrics-custom-options[hidden] { display: block; }
 .metrics-storage-setting label { display: block; margin: 0 0 6px; font-size: 11px; font-weight: 650; }
-.metrics-storage-input { display: grid; grid-template-columns: minmax(0, 1fr) 92px; gap: 6px; }
-.metrics-storage-input input, .metrics-storage-input select { min-width: 0; min-height: 42px; padding: 7px; color: var(--text); background: var(--raised); border: 1px solid var(--border); border-radius: 4px; }
+.metrics-storage-input { position: relative; min-width: 0; }
+.metrics-storage-input input { width: 100%; min-width: 0; min-height: 42px; padding: 7px 5.5rem 7px 10px; color: var(--text); background: var(--raised); border: 1px solid var(--border); border-radius: 4px; }
+.metrics-storage-input select { position: absolute; top: 50%; right: 6px; width: 4.25rem; min-width: 4rem; min-height: 30px; padding: 3px 4px 3px 8px; transform: translateY(-50%); color: var(--text); background: var(--raised); border: 0; border-left: 1px solid var(--border); border-radius: 0; }
 .metrics-opt-in { margin-top: 4px !important; }
 .metrics-opt-in { display: flex; align-items: center; gap: .6rem; }
 .metrics-opt-in input { width: auto; min-height: auto; }

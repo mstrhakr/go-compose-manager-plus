@@ -195,10 +195,11 @@ refinement: settings-category navigation is distinct from the main application
 navigation; Low, Medium and High hide Custom-only scope and interval controls,
 while Custom reveals them; and the storage target remains available with B, KB,
 MB and GB input units. These units use decimal multiples (1 KB = 1,000 bytes)
-and persist as an exact whole-byte limit. For charts with many series, retain
-all series and keep the chart layout bounded, with individually switchable
-series. These presentation and input-format decisions do not change collection,
-retention or storage-pressure behavior.
+and persist as an exact whole-byte limit. The unit selector is embedded at the
+right end of the storage input and defaults to MB for initial setup. For charts
+with many series, retain all series and keep the chart layout bounded, with
+individually switchable series. These presentation and input-format decisions
+do not change collection, retention or storage-pressure behavior.
 
 **Enforcement:** The reusable column customizer is implemented for the Projects
 and Containers inventory views; preferences are browser-local and the
@@ -272,7 +273,9 @@ does not implement these behaviors.
 - Preset profiles hide Custom-only scope and interval controls; selecting
   Custom reveals them. Editing an individual setting selects Custom.
 - Storage targets accept B, KB, MB and GB, convert using decimal units to exact
-  whole bytes, and reject invalid or overflowing amounts without saving.
+  whole bytes, default to MB for initial setup, and reject invalid or
+  overflowing amounts without saving. The unit selector appears within the
+  right end of the input.
 - Large chart legends stay bounded; every series remains discoverable and can
   be toggled individually without changing the plot's layout.
 

@@ -101,6 +101,12 @@ test('first login forces password setup before protected dashboard and works on 
     await expect(page.getByRole('navigation', { name: 'Settings categories' }).getByRole('link', { name: 'Metrics' })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByText('Disabled; no background metrics collection', { exact: false })).toBeVisible();
     await expect(page.locator('[data-metrics-custom-options]')).toBeHidden();
+    await expect(page.getByLabel('Storage unit')).toHaveValue('MB');
+    const storageBounds = await page.getByLabel('Storage target').boundingBox();
+    const unitBounds = await page.getByLabel('Storage unit').boundingBox();
+    expect(unitBounds.x).toBeGreaterThan(storageBounds.x + storageBounds.width - unitBounds.width - 12);
+    expect(unitBounds.y + unitBounds.height / 2).toBeGreaterThan(storageBounds.y);
+    expect(unitBounds.y + unitBounds.height / 2).toBeLessThan(storageBounds.y + storageBounds.height);
     const interactiveContext = await browser.newContext({ baseURL });
     try {
       await interactiveContext.addCookies(await context.cookies());
@@ -151,7 +157,7 @@ test('first login forces password setup before protected dashboard and works on 
       const touchPage = await touchContext.newPage();
       await touchPage.goto('/settings');
       await expect(touchPage.getByRole('radio', { name: 'Custom' })).toBeChecked();
-      await touchPage.getByLabel('Storage target').tap();
+      await touchPage.getByLabel('Storage target').tap({ position: { x: 20, y: 20 } });
       await expect(touchPage.getByLabel('Storage target')).toBeFocused();
       expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     } finally {

@@ -86,6 +86,16 @@ test('workflow policy rejects dangerous scopes, mutable actions, and shell inter
   ] } } }, 'validate.yml'), []);
 });
 
+test('documentation publication waits for successful main CI and requires docs changes', async () => {
+  const pages = parse(await readFile(new URL('../../.github/workflows/pages.yml', import.meta.url), 'utf8'));
+  assert.deepEqual(workflowErrors(pages, 'pages.yml'), []);
+  const unsafe = structuredClone(pages);
+  unsafe.on.workflow_run.workflows = ['Dev image (opt-in)'];
+  unsafe.jobs.source.steps.find(step => step.id === 'source').run = 'echo publish';
+  assert.ok(workflowErrors(unsafe, 'pages.yml').some(error => error.includes('completed CI')));
+  assert.ok(workflowErrors(unsafe, 'pages.yml').some(error => error.includes('require documentation changes')));
+});
+
 test('repository setup preserves existing template status', () => {
   assert.equal(Object.hasOwn(repositorySettings, 'is_template'), false);
   assert.equal(repositorySettings.has_issues, true);
