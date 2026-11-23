@@ -45,6 +45,13 @@ the selected intervals are targets, not measured freshness guarantees.
 The owner approved expiry without downsampling after one hour for this initial
 single-resolution version, provided the UI explains its history limit. This
 does not supersede the later tiered-retention downsampling direction.
+After considering a 24-hour raw window, the owner confirmed one hour only for
+the initial raw layer, with longer retention to be built on top later. Low,
+Medium and High are performance-oriented settings, not a claim that High is
+lightweight. The initial observability view should default to the last hour and
+use a timeline synchronized with the charts; longer ranges and custom
+timeframes are future advanced options. Display aggregation is distinct from
+the retained sampling resolution.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

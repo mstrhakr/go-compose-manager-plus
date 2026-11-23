@@ -107,17 +107,25 @@ association ambiguity and scope-change behavior remain open.
 
 The owner wants an opt-in setup wizard with Low, Medium, High and Custom
 profiles, with the underlying collection and retention options available in
-Settings. Low and Medium select containers associated with activated stacks;
+Settings. These are performance-oriented modes, not a claim that every mode is
+lightweight. Low and Medium select containers associated with activated stacks;
 High selects all running containers. For the initial single-resolution history,
 Low targets one sample every 15 seconds, Medium every 5 seconds and High every
 1 second, with a one-hour history window for each. These are targets, not a
-guarantee that Docker supplies samples on schedule. In this initial
+guarantee that Docker supplies samples on schedule. Actual resource costs are
+not yet measured. In this initial
 single-resolution version, samples older than one hour may expire without being
 downsampled; the UI must clearly describe the one-hour history limit. This
 exception does not approve discarding raw data before scheduled downsampling
 once longer-term tiers are implemented. Changing an individual
 preset option switches the profile to Custom. Automatic tuning, preset defaults,
 confirmation and data-retention effects when changing settings remain open.
+
+The initial observability view defaults to the last hour, with a timeline whose
+selected time is reflected across the charts, inspired by the owner's reference
+view. Chart rendering may reduce displayed points independently of retained raw
+resolution. Longer ranges and custom timeframes are future advanced options;
+their retention, zoom resolution and display behavior remain to be designed.
 
 The selected storage direction is tstorage for metrics while SQLite remains
 the application-state store. Netdata-style historical retention and a

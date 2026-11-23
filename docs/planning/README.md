@@ -242,7 +242,11 @@ The initial single-resolution window is one hour, with target sample intervals
 of 15 seconds for Low, 5 seconds for Medium and 1 second for High. Longer-term
 tiers and other preset details are undecided. For this initial version, samples
 older than one hour may expire without downsampling, with the limit made clear
-in the UI. Scope edge cases, retention,
+in the UI. The initial observability view defaults to the last hour and uses a
+timeline synchronized with the charts. Longer ranges and custom timeframes are
+future advanced options; display aggregation does not determine stored
+resolution. Presets are performance-oriented, but their actual costs are
+unmeasured. Scope edge cases, retention,
 resource limits and presentation details remain to be decided and
 verified; see [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views).
 
