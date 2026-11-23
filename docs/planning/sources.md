@@ -83,6 +83,11 @@ The selected timeline should correlate charts with event markers and an event
 list. Missing observations, counter resets and disconnected periods are gaps;
 Docker event replay cannot guarantee complete history. Logs and additional
 integrations remain later work, not part of this approval.
+The owner subsequently clarified that missing values should be zero when a
+known state supports it, for example when a container is stopped, and requested
+that lifecycle events appear on the timeline and some charts. The exact
+metric/state and time-boundary rules remain to be refined; this is not approval
+to turn unknown or disconnected periods into zero.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

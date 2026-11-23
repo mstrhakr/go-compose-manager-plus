@@ -469,6 +469,25 @@ five-second snapshot timeout is not a streaming implementation or proof of the
 one-second target. Retention enforcement, safe eviction and recovery remain
 unimplemented.
 
+### tstorage Partition Write Failure Probe
+
+Linux development container, branch `spike/docker-metrics-storage`, baseline
+`4b3862d`. A temporary, subsequently removed race-enabled Go test inserted one
+point into a temporary tstorage v0.3.6 database with an unbuffered WAL. It
+simulated an exhausted data file by linking the test partition's `data` file to
+`/dev/full`, without filling the filesystem. `Close` logged a no-space error
+but returned nil. After removing the simulated failed partition's data link and
+metadata, reopening did not recover the point from the WAL. The test passed in
+the sense that it reproduced this failure, not that storage met the contract.
+No Docker daemon was accessed.
+
+This confirms a specific failure mode, not the behavior of every full-disk or
+crash scenario. In this case the library's partition flush logs an encoding
+failure instead of returning it, and its normal close path can remove the WAL.
+Capturing the log alone therefore does not prove that acknowledged history can
+be recovered. The selected storage direction needs a safe resolution before a
+collector can claim the approved pause, warning and retry behavior.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,

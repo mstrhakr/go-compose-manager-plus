@@ -142,6 +142,11 @@ periods are gaps, not zeroes. Docker event replay is limited, so event history
 cannot be assumed complete after a disconnect. Metric availability, details of
 recovery and per-platform support require verification.
 
+The owner subsequently clarified that a known container state, such as stopped,
+can justify zero rather than a missing value. Which metrics qualify and how
+observation and disconnection boundaries constrain that inference remain to be
+specified; a missing observation alone is not proof of a stopped state.
+
 The initial observability view defaults to the last hour, with a timeline whose
 selected time is reflected across the charts, inspired by the owner's reference
 view. The owner wants event markers on the timeline and an event list for
