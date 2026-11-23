@@ -192,10 +192,10 @@ fitness and operational characteristics still need evaluation.
 **Enforcement:** The reusable column customizer is implemented for the Projects
 and Containers inventory views; preferences are browser-local and the
 identifying column remains visible. Application collection, historical logs
-and history are not implemented. An unwired SQLite sample persistence foundation
-does not yet enforce a one-hour window or the storage budget. A read-only Docker stats snapshot and
-observation conversion foundation exists but is not connected to a collector
-or UI. A
+and history are not implemented. Unwired SQLite sample, event and state
+persistence does not yet enforce a one-hour window or the storage budget.
+Read-only Docker stats and event-stream foundations exist but are not connected
+to a collector or UI. A
 test-only, single-container Docker stats/tstorage feasibility spike is recorded
 in [verification](../verification.md#docker-metrics-storage-proof-of-concept);
 it does not implement settings, retention tiers or this requirement.

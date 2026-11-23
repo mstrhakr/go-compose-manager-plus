@@ -68,6 +68,84 @@ func TestSamplesPersistExpireAndPreserveMissing(t *testing.T) {
 	}
 }
 
+func TestFullUnsignedMemoryRangePersists(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	store, err := Open(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := strings.Repeat("a", 64)
+	base := time.Date(2026, 11, 22, 21, 0, 0, 0, time.UTC)
+	usage, limit := uint64(math.MaxInt64)+1, uint64(math.MaxUint64)
+	sample := Sample{ContainerID: id, Observation: runtime.Observations{
+		Time: base, MemoryUsageBytes: &usage, MemoryLimitBytes: &limit,
+	}}
+	if err := store.Insert(ctx, []Sample{sample}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err = Open(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	got, err := store.Select(ctx, id, base, base.Add(time.Second), 1)
+	if err != nil || !reflect.DeepEqual(got, []Sample{sample}) {
+		t.Fatalf("reopened unsigned metrics = %#v, error = %v", got, err)
+	}
+}
+
+func TestVersionOneMigrationPreservesSamples(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	db, err := sql.Open("sqlite", filepath.Join(dir, "metrics.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{
+		`CREATE TABLE samples (
+			container_id TEXT NOT NULL, observed_ns INTEGER NOT NULL, cpu_percent REAL,
+			memory_usage_bytes INTEGER, memory_limit_bytes INTEGER, network_rx_bytes_per_sec REAL,
+			network_tx_bytes_per_sec REAL, block_read_bytes_per_sec REAL, block_write_bytes_per_sec REAL,
+			PRIMARY KEY(container_id, observed_ns)) WITHOUT ROWID`,
+		`CREATE INDEX samples_time ON samples(observed_ns)`,
+		`PRAGMA user_version = 1`,
+	} {
+		if _, err := db.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	id := strings.Repeat("a", 64)
+	base := time.Date(2026, 11, 22, 21, 0, 0, 0, time.UTC)
+	if _, err := db.ExecContext(ctx, `INSERT INTO samples(container_id, observed_ns, memory_usage_bytes) VALUES (?, ?, ?)`, id, base.UnixNano(), int64(math.MaxInt64)); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err := Open(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	got, err := store.Select(ctx, id, base, base.Add(time.Second), 1)
+	if err != nil || len(got) != 1 || got[0].Observation.MemoryUsageBytes == nil ||
+		*got[0].Observation.MemoryUsageBytes != uint64(math.MaxInt64) || got[0].Observation.MemoryLimitBytes != nil {
+		t.Fatalf("migrated samples = %#v, error = %v", got, err)
+	}
+}
+
 func TestInsertValidationAndAtomicity(t *testing.T) {
 	ctx := context.Background()
 	store, err := Open(ctx, t.TempDir())
@@ -93,13 +171,12 @@ func TestInsertValidationAndAtomicity(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(got, []Sample{sample}) {
 		t.Fatalf("failed batch was not rolled back: %#v, %v", got, err)
 	}
-	nan, neg, large := math.NaN(), -1.0, uint64(math.MaxInt64)+1
+	nan, neg := math.NaN(), -1.0
 	for _, invalid := range []Sample{
 		{ContainerID: "bad", Observation: sample.Observation},
 		{ContainerID: id},
 		{ContainerID: id, Observation: runtime.Observations{Time: base, CPUPercent: &nan}},
 		{ContainerID: id, Observation: runtime.Observations{Time: base, BlockReadBytesPerSec: &neg}},
-		{ContainerID: id, Observation: runtime.Observations{Time: base, MemoryLimitBytes: &large}},
 		{ContainerID: id, Observation: runtime.Observations{Time: time.Date(2400, 1, 1, 0, 0, 0, 0, time.UTC)}},
 	} {
 		if err := store.Insert(ctx, []Sample{invalid}); err == nil {
@@ -218,7 +295,7 @@ func TestOpenRejectsUnknownSchema(t *testing.T) {
 		name string
 		sql  string
 	}{
-		{"newer version", `PRAGMA user_version = 2`},
+		{"newer version", `PRAGMA user_version = 4`},
 		{"unversioned database", `CREATE TABLE unrelated (id INTEGER)`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

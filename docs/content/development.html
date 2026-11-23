@@ -77,8 +77,12 @@ counters, resets and changing interface/device sets produce unavailable rates
 instead of zero; platform support remains unverified.</p>
 <p>The unwired SQLite metrics persistence foundation stores observations in a
 separate <code>metrics.db</code>, preserving unavailable fields as SQL NULL.
-It does not start collection, enforce one-hour expiry or a storage budget, or
-implement event history or migration to TimescaleDB. Deleting SQLite rows does
+Memory values use decimal text to retain the full unsigned Docker counter range.
+It can also persist observed event and state records, but does not collect them
+or infer state between snapshots. A read-only Docker event stream is available
+to a future collector; it does not reconnect or replay events itself.
+The foundation does not start collection, enforce one-hour expiry or a storage
+budget, or implement migration to TimescaleDB. Deleting SQLite rows does
 not by itself guarantee disk space is returned; the database's WAL and other
 files must be considered in a future storage-pressure design.</p>
 <h2>UI components</h2>

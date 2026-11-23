@@ -11,13 +11,14 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 1
+const schemaVersion = 3
 
 type Sample struct {
 	ContainerID string
@@ -118,6 +119,62 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			if _, err := tx.ExecContext(ctx, statement); err != nil {
 				return fmt.Errorf("create metrics schema: %w", err)
 			}
+			version = 1
+		}
+		if version == 1 {
+			for _, statement := range []string{
+				`CREATE TABLE samples_v2 (
+					container_id TEXT NOT NULL,
+					observed_ns INTEGER NOT NULL,
+					cpu_percent REAL,
+					memory_usage_bytes TEXT,
+					memory_limit_bytes TEXT,
+					network_rx_bytes_per_sec REAL,
+					network_tx_bytes_per_sec REAL,
+					block_read_bytes_per_sec REAL,
+					block_write_bytes_per_sec REAL,
+					PRIMARY KEY (container_id, observed_ns)
+				) WITHOUT ROWID`,
+				`INSERT INTO samples_v2 SELECT container_id, observed_ns, cpu_percent,
+					CAST(memory_usage_bytes AS TEXT), CAST(memory_limit_bytes AS TEXT),
+					network_rx_bytes_per_sec, network_tx_bytes_per_sec,
+					block_read_bytes_per_sec, block_write_bytes_per_sec FROM samples`,
+				`DROP TABLE samples`,
+				`ALTER TABLE samples_v2 RENAME TO samples`,
+				`CREATE INDEX samples_time ON samples(observed_ns)`,
+				`PRAGMA user_version = 2`,
+			} {
+				if _, err := tx.ExecContext(ctx, statement); err != nil {
+					return fmt.Errorf("migrate metrics schema to version 2: %w", err)
+				}
+				version = 2
+			}
+			if version == 2 {
+				for _, statement := range []string{
+					`CREATE TABLE container_events (
+						sequence INTEGER PRIMARY KEY,
+						container_id TEXT NOT NULL,
+						observed_ns INTEGER NOT NULL,
+						kind TEXT NOT NULL,
+						health TEXT NOT NULL
+					)`,
+					`CREATE INDEX container_events_time ON container_events(observed_ns, sequence)`,
+					`CREATE INDEX container_events_container_time ON container_events(container_id, observed_ns, sequence)`,
+					`CREATE TABLE container_states (
+						container_id TEXT NOT NULL,
+						observed_ns INTEGER NOT NULL,
+						state TEXT NOT NULL,
+						health TEXT NOT NULL,
+						PRIMARY KEY (container_id, observed_ns)
+					) WITHOUT ROWID`,
+					`CREATE INDEX container_states_time ON container_states(observed_ns)`,
+					`PRAGMA user_version = 3`,
+				} {
+					if _, err := tx.ExecContext(ctx, statement); err != nil {
+						return fmt.Errorf("migrate metrics schema to version 3: %w", err)
+					}
+				}
+			}
 		}
 	}
 	if err := tx.Commit(); err != nil {
@@ -157,12 +214,25 @@ func validate(sample Sample) (int64, error) {
 			return 0, errors.New("metric must be finite and nonnegative")
 		}
 	}
-	for _, value := range []*uint64{o.MemoryUsageBytes, o.MemoryLimitBytes} {
-		if value != nil && *value > math.MaxInt64 {
-			return 0, errors.New("memory metric exceeds SQLite integer range")
-		}
-	}
 	return timestamp(o.Time)
+}
+
+func sqliteUint(value *uint64) any {
+	if value == nil {
+		return nil
+	}
+	return strconv.FormatUint(*value, 10)
+}
+
+func parseUint(value sql.NullString) (*uint64, error) {
+	if !value.Valid {
+		return nil, nil
+	}
+	parsed, err := strconv.ParseUint(value.String, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid stored unsigned metric: %w", err)
+	}
+	return &parsed, nil
 }
 
 // Insert atomically writes a batch. Duplicate container/timestamp pairs fail
@@ -190,7 +260,7 @@ func (s *Store) Insert(ctx context.Context, samples []Sample) error {
 	defer stmt.Close()
 	for i, sample := range samples {
 		o := sample.Observation
-		if _, err := stmt.ExecContext(ctx, sample.ContainerID, times[i], o.CPUPercent, o.MemoryUsageBytes, o.MemoryLimitBytes,
+		if _, err := stmt.ExecContext(ctx, sample.ContainerID, times[i], o.CPUPercent, sqliteUint(o.MemoryUsageBytes), sqliteUint(o.MemoryLimitBytes),
 			o.NetworkRxBytesPerSec, o.NetworkTxBytesPerSec, o.BlockReadBytesPerSec, o.BlockWriteBytesPerSec); err != nil {
 			return fmt.Errorf("insert metric sample %d: %w", i, err)
 		}
@@ -204,19 +274,9 @@ func (s *Store) Insert(ctx context.Context, samples []Sample) error {
 // Select reads observations in ascending order in the half-open interval.
 // Callers must bound the interval and limit to suit their use.
 func (s *Store) Select(ctx context.Context, id string, start, end time.Time, limit int) ([]Sample, error) {
-	if err := validateID(id); err != nil {
+	from, to, err := historyRange(id, start, end, limit)
+	if err != nil {
 		return nil, err
-	}
-	from, err := timestamp(start)
-	if err != nil {
-		return nil, fmt.Errorf("invalid start: %w", err)
-	}
-	to, err := timestamp(end)
-	if err != nil {
-		return nil, fmt.Errorf("invalid end: %w", err)
-	}
-	if from >= to || limit < 1 {
-		return nil, errors.New("invalid metric interval or limit")
 	}
 	rows, err := s.db.QueryContext(ctx, `SELECT observed_ns, cpu_percent, memory_usage_bytes, memory_limit_bytes,
 		network_rx_bytes_per_sec, network_tx_bytes_per_sec, block_read_bytes_per_sec, block_write_bytes_per_sec
@@ -230,9 +290,16 @@ func (s *Store) Select(ctx context.Context, id string, start, end time.Time, lim
 	for rows.Next() {
 		var ns int64
 		var o runtime.Observations
-		if err := rows.Scan(&ns, &o.CPUPercent, &o.MemoryUsageBytes, &o.MemoryLimitBytes,
+		var usage, limit sql.NullString
+		if err := rows.Scan(&ns, &o.CPUPercent, &usage, &limit,
 			&o.NetworkRxBytesPerSec, &o.NetworkTxBytesPerSec, &o.BlockReadBytesPerSec, &o.BlockWriteBytesPerSec); err != nil {
 			return nil, fmt.Errorf("read metric sample: %w", err)
+		}
+		if o.MemoryUsageBytes, err = parseUint(usage); err != nil {
+			return nil, fmt.Errorf("read metric memory usage: %w", err)
+		}
+		if o.MemoryLimitBytes, err = parseUint(limit); err != nil {
+			return nil, fmt.Errorf("read metric memory limit: %w", err)
 		}
 		o.Time = time.Unix(0, ns).UTC()
 		result = append(result, Sample{ContainerID: id, Observation: o})

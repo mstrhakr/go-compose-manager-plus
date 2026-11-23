@@ -232,8 +232,9 @@ This work does not require completing Git, metrics history or every queue varian
 
 On 2026-11-22 the owner selected opt-in per-container metrics and historical
 views as the next direction, including real dashboard charts, a summary-focused
-dashboard and a reusable inventory column customizer. The owner selected
-tstorage for metric history while retaining SQLite for application state, with
+dashboard and a reusable inventory column customizer. The owner initially selected
+tstorage for metric history, then selected a separate SQLite metrics database
+after a write-failure probe, with
 low-power-friendly presets and a custom setup wizard as a goal. Collection scope
 is configurable in Settings between all running containers and containers
 associated with activated stacks: Low and Medium select activated stacks and

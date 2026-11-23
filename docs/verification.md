@@ -485,8 +485,8 @@ This confirms a specific failure mode, not the behavior of every full-disk or
 crash scenario. In this case the library's partition flush logs an encoding
 failure instead of returning it, and its normal close path can remove the WAL.
 Capturing the log alone therefore does not prove that acknowledged history can
-be recovered. The selected storage direction needs a safe resolution before a
-collector can claim the approved pause, warning and retry behavior.
+be recovered. The owner subsequently selected SQLite for the initial store;
+the approved pause, warning and retry behavior still needs verification.
 
 ### SQLite Metrics Persistence Foundation
 
@@ -511,6 +511,24 @@ test. Logical deletion does not guarantee filesystem space is returned. No
 one-hour expiry scheduler, storage-budget accounting, early eviction, warning,
 write-pause/retry mechanism, event/state storage, collection, migration,
 performance measurement or live Docker test is verified by this slice.
+
+Review of `3304849` found that a Docker memory value above SQLite's signed
+integer range rejected the entire batch. The follow-up stores memory values as
+decimal text and migrates version-one rows transactionally. Focused race tests
+cover the full unsigned range, reopening and migration. This does not resolve
+the storage-budget or collector gaps listed above.
+
+The follow-up also adds unwired persistence for discrete container state and
+observed lifecycle/health events, and a bounded read-only Docker event stream.
+`go test -race -count=1 ./internal/runtime ./internal/metrics` passed with
+mock HTTP responses, idle-stream cancellation, persistence, invalid records,
+ordering and reopen tests. The event stream does not reconcile snapshots,
+reconnect, replay, deduplicate or enforce scope, and has not been tested against
+a real daemon. State snapshots do not establish continuous state between
+observations. Event/state retention and budget accounting are not implemented.
+An initial full check encountered two Firefox fixture setup timeouts; the
+focused Firefox component suite subsequently passed, followed by
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs`, and `make check-docs`.
 
 ## Inventory Column Customizer
 
