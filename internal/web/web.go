@@ -32,7 +32,8 @@ type pageData struct {
 	RuntimeMessage       string
 	RuntimeState         string
 	Notice               string
-	Activity             chartPanel
+	Charts               []chartPanel
+	MetricsStatus        string
 	Metrics              []metricPanel
 	Containers           listPanel
 	ProjectColumns       listPanel

@@ -102,7 +102,7 @@
       <section class="host-section">
         <h3>Engine integration</h3>
         <p>{{.RuntimeMessage}}</p>
-        <form action="/#workspace-title" method="get">
+        <form action="/projects#projects-list-title" method="get">
           <button class="quiet-button" name="runtime" value="1" type="submit">Refresh Docker status</button>
         </form>
         <p>Snapshots are read-only. Logs, metrics and operations are not connected.</p>
@@ -116,16 +116,14 @@
       {{if eq .View "dashboard"}}
       <div class="workspace-toolbar">
         <div><h1>System status</h1><p>Local instance / Overview</p></div>
-        <span class="toolbar-pill">Cluster metrics <span>Unavailable</span></span>
+        <span class="toolbar-pill">Metrics <span>{{.MetricsStatus}}</span></span>
       </div>
       <div class="telemetry-section">
-        {{template "chart-panel" .Activity}}
-        <div class="timeline"><span>Activity history unavailable</span><span>Now</span></div>
+        {{range .Charts}}{{template "chart-panel" .}}{{end}}
       </div>
       <div class="resource-grid">
         <section class="resource-section"><div class="section-heading"><h2>Discovered stacks</h2><span>{{len .Projects}} discovered</span></div>
-          {{if .Projects}}<div class="stack-grid">{{range .Projects}}<a class="stack-tile" href="/projects" title="{{.Path}}"><span class="resource-icon" aria-hidden="true">&#9636;</span><span>{{.Path}}</span></a>{{end}}</div>
-          {{else}}<div class="resource-placeholder"><span class="resource-icon">&#9636;</span><span>No projects discovered</span></div>{{end}}
+          <div class="resource-placeholder"><span class="resource-icon" aria-hidden="true">&#9636;</span><span>{{len .Projects}} {{if eq (len .Projects) 1}}project{{else}}projects{{end}} discovered</span><a href="/projects">View project details</a></div>
         </section>
         <section class="resource-section"><div class="section-heading"><h2>Top resource containers</h2><span>Unavailable</span></div>
           <div class="resource-placeholder"><span class="resource-icon">&#9633;</span><span>Container metrics are not available</span></div>
@@ -137,35 +135,6 @@
       <div class="health-grid">
         {{range .Metrics}}{{template "metric-panel" .}}{{end}}
       </div>
-      <section class="workspace-panel" aria-labelledby="workspace-title">
-        <div class="panel-heading"><div><h2 id="workspace-title">Compose projects</h2><p>Availability reflects the last successful scan for each root, not live status. Docker actions are not connected.</p></div><span class="panel-count">{{len .Projects}} PROJECTS</span></div>
-        <div class="discovery-content">
-        {{if .Projects}}
-        <ul class="project-list">
-          {{range .Projects}}
-          <li class="project-row">
-            <div class="project-details"><strong>{{.Path}}</strong>
-              <p>{{.DiscoveryStatus}} &middot; {{.ActivationStatus}}</p>
-              {{if ne .Root $.Root}}<p>Outside the current discovery root; save its root to activate.</p>{{end}}
-              {{if .ResolutionError}}<p class="project-error">{{.ResolutionError}}</p>{{end}}
-              {{if .RuntimeError}}<p>{{.RuntimeError}}</p>{{end}}
-              {{if .RuntimeName}}
-              <p>Docker project: {{.RuntimeName}}</p>
-              {{if .Containers}}<ul>{{range .Containers}}<li>{{if .Name}}{{.Name}}{{else}}{{.Service}}{{end}}: {{.State}}</li>{{end}}</ul>
-              {{else}}<p>No matching containers in this snapshot.</p>{{end}}
-              {{end}}
-            </div>
-            {{if not .Active}}<form action="/discovery/activate" method="post">
-              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-              <input type="hidden" name="path" value="{{.Path}}">
-              <button class="quiet-button" type="submit" {{if or (not .Available) .ResolutionError (ne .Root $.Root)}}disabled{{end}}>Activate</button>
-            </form>{{end}}
-          </li>
-          {{end}}
-        </ul>
-        {{else}}<div class="empty-state"><span class="empty-glyph" aria-hidden="true">&#9636;</span><h3>No projects discovered</h3><p>Save a root and request a scan to list projects.</p></div>{{end}}
-        </div>
-      </section>
       {{else if eq .View "projects"}}
       {{template "projects-page" .}}
       {{else if eq .View "containers"}}

@@ -177,7 +177,7 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	if response.Code != http.StatusSeeOther {
 		t.Fatalf("scan = %d", response.Code)
 	}
-	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
 	if !strings.Contains(response.Body.String(), "Inactive") || !strings.Contains(response.Body.String(), html.EscapeString(project)) {
 		t.Fatalf("discovered project missing: %s", response.Body.String())
 	}
@@ -193,7 +193,7 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	if response.Code != http.StatusSeeOther {
 		t.Fatalf("activation = %d", response.Code)
 	}
-	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
 	if !strings.Contains(response.Body.String(), "Active") || !strings.Contains(response.Body.String(), "No Compose operation was performed") {
 		t.Fatalf("activation not reflected: %s", response.Body.String())
 	}
@@ -205,7 +205,7 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	}
 	token = tokenFromBody(t, response.Body.String())
 	perform(handler, http.MethodPost, "/discovery/scan", url.Values{}, cookies, token)
-	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
 	if !strings.Contains(response.Body.String(), "unable to scan") || !strings.Contains(response.Body.String(), "Available") || !strings.Contains(response.Body.String(), "Active") {
 		t.Fatalf("failed scan did not preserve state: %s", response.Body.String())
 	}
@@ -223,7 +223,7 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	}
 	token = tokenFromBody(t, response.Body.String())
 	perform(handler, http.MethodPost, "/discovery/scan", url.Values{}, cookies, token)
-	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
 	if !strings.Contains(response.Body.String(), "Unavailable") || !strings.Contains(response.Body.String(), "Active") {
 		t.Fatalf("missing project not retained: %s", response.Body.String())
 	}
@@ -232,13 +232,13 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	}
 	token = tokenFromBody(t, response.Body.String())
 	perform(handler, http.MethodPost, "/discovery/scan", url.Values{}, cookies, token)
-	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
 	if !strings.Contains(response.Body.String(), "Available") || !strings.Contains(response.Body.String(), "Active") {
 		t.Fatalf("restored project not active: %s", response.Body.String())
 	}
 	laterToken := tokenFromBody(t, response.Body.String())
 	perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {t.TempDir()}}, cookies, laterToken)
-	response = perform(handler, http.MethodGet, "/", nil, cookies, "")
+	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
 	if !strings.Contains(response.Body.String(), "Outside the current discovery root") || !strings.Contains(response.Body.String(), `disabled>Activate</button>`) {
 		t.Fatalf("previous-root activation should be disabled: %s", response.Body.String())
 	}
@@ -333,11 +333,11 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	if calls.Load() != 0 {
 		t.Fatal("normal dashboard or discovery reached Docker")
 	}
-	response = perform(handler, http.MethodGet, "/?runtime=1", nil, cookies, "")
+	response = perform(handler, http.MethodGet, "/projects?runtime=1", nil, cookies, "")
 	body := response.Body.String()
-	if response.Code != http.StatusOK || strings.Count(body, "Docker project: shared") != 2 ||
-		strings.Count(body, "&lt;script&gt;: running") != 2 ||
-		!strings.Contains(body, "Unavailable &middot; Inactive") ||
+	if response.Code != http.StatusOK || strings.Count(body, "Docker project: <strong>shared</strong>") != 2 ||
+		strings.Count(body, "&lt;script&gt;") != 2 ||
+		!strings.Contains(body, ">Unavailable</span>") || !strings.Contains(body, ">Inactive</span>") ||
 		strings.Count(body, "No matching containers in this snapshot.") != 1 ||
 		strings.Count(body, "Runtime status unknown: unable to resolve Compose inputs.") != 1 || calls.Load() != 1 {
 		t.Fatalf("snapshot: code=%d calls=%d body=%s", response.Code, calls.Load(), body)

@@ -215,11 +215,21 @@ atomic committed bit without replaying the interrupted batch. While collection
 is disabled, the default-off collector does not reopen the metrics database;
 after a process restart, stored eviction history is therefore not rediscovered
 until collection is enabled again.
-Collection targets are not schedule guarantees. There is no chart/timeline UI,
-persisted per-container gap ledger, hard filesystem quota or measured preset
-sizing/throughput. Historical logs and TimescaleDB remain unimplemented.
-Platform behavior, live-Docker recovery and physical disk-full behavior remain
-unverified. A test-only Docker/tstorage feasibility spike is recorded in
+Collection targets are not schedule guarantees. The overview dashboard now reads
+the opted-in SQLite history and plots per-container CPU, raw memory usage, and
+network receive/transmit rates. For display only, it selects the latest recorded
+sample in each 30-second bucket; it does not combine container values or alter
+retained samples, and missing buckets remain gaps. Memory is labeled as Docker's
+raw usage, not the cache-adjusted CLI value. These charts cover the last hour
+and report when collection is disabled, starting, paused or has no observations.
+Chart clicks and keyboard selection dispatch the shared
+`observability:timechange` event with a Unix-millisecond timestamp; all dashboard
+charts move their selected-time cursor together. A future timeline can use this
+event contract, but no timeline, event markers/list, persisted per-container gap
+ledger, hard filesystem quota or measured preset sizing/throughput is implemented.
+Historical logs and TimescaleDB remain unimplemented. Platform behavior,
+live-Docker recovery and physical disk-full behavior remain unverified. A
+test-only Docker/tstorage feasibility spike is recorded in
 [verification](../verification.md#docker-metrics-storage-proof-of-concept); it
 does not implement these behaviors.
 

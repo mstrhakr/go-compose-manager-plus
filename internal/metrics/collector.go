@@ -37,6 +37,8 @@ type Collector struct {
 	projects projectReader
 	docker   *runtime.Client
 	logger   *slog.Logger
+	storeMu  sync.RWMutex
+	store    *ManagedStore
 	mu       sync.RWMutex
 	status   CollectorStatus
 }
@@ -157,10 +159,16 @@ func (c *Collector) collect(ctx context.Context, settings Settings) error {
 	if err != nil {
 		return fmt.Errorf("open managed metrics store: %w", err)
 	}
+	c.storeMu.Lock()
+	c.store = store
+	c.storeMu.Unlock()
 	defer func() {
+		c.storeMu.Lock()
+		c.store = nil
 		if err := store.Close(); err != nil {
 			c.logger.Error("close managed metrics store", "error", err)
 		}
+		c.storeMu.Unlock()
 	}()
 	pending, err := store.ReconcilePendingWrite(ctx)
 	if err != nil {
@@ -252,6 +260,15 @@ func (c *Collector) collect(ctx context.Context, settings Settings) error {
 			}
 		}
 	}
+}
+
+func (c *Collector) SelectChartSeries(ctx context.Context, start, end time.Time, bucket time.Duration) ([]ContainerChartSeries, error) {
+	c.storeMu.RLock()
+	defer c.storeMu.RUnlock()
+	if c.store == nil {
+		return nil, nil
+	}
+	return c.store.SelectChartSeries(ctx, start, end, bucket)
 }
 
 func (c *Collector) collectCycle(ctx context.Context, settings Settings, store *ManagedStore, continuity *eventContinuity, samplers map[string]*Sampler, previousCycleOK *bool, previousGeneration *uint64) error {

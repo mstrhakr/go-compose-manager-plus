@@ -149,7 +149,13 @@ intervals, Custom controls, and collection status. Settings use revision
 checks to reject stale updates. Saving settings while disabled does not open
 the metrics database or access Docker. The collector uses the persisted
 opt-in after restart and closes on disable or application shutdown. The setup
-wizard, charts, synchronized timeline and historical logs remain unimplemented.</p>
+wizard, per-container charts in the Containers observability view, synchronized
+timeline and historical logs remain unimplemented. The overview dashboard reads
+the opted-in SQLite history and displays per-container CPU, Docker raw memory
+usage and network receive/transmit rates for the last hour. It selects the latest
+stored sample per 30-second display bucket without combining containers or
+changing retained samples; missing buckets stay gaps. Disabled and unavailable
+states are explicit.</p>
 <p>To measure one synthetic hour of SQLite samples for 1, 5, 25 and 50
 containers without Docker, run:</p>
 <pre><code>CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 \
@@ -181,10 +187,16 @@ has a label, a color from <code>blue</code>, <code>amber</code>,
 strictly increasing numeric <code>x</code> and numeric or null <code>y</code>.
 Values must lie within the shared range; null separates lines. Callers must
 choose consistent units, meaningful labels, and an appropriate range. The
-component does not fetch, aggregate, timestamp, or interpret data; chart
-freshness and authority remain the caller's responsibility. The chart includes
-a keyboard-accessible data table, an empty state and an explicit invalid-data
-error. With JavaScript disabled it reports that chart data cannot be displayed.</p>
+component does not fetch or aggregate data; chart freshness and authority remain
+the caller's responsibility. Optional <code>xMin</code>, <code>xMax</code> and
+<code>selectedTime</code> are numeric milliseconds when using timestamps. Charts
+listen for <code>observability:timechange</code> events with
+<code>detail.time</code> as a Unix-millisecond timestamp; chart clicks and
+keyboard selection dispatch that event, allowing a timeline to synchronize
+without coupling the component to one. Hover shows nearby series values, and
+arrow keys move between recorded timestamps. The chart includes a data table,
+an empty state and an explicit invalid-data error. With JavaScript disabled it
+reports that chart data cannot be displayed.</p>
 <p>List panels render semantic tables and optional native checkboxes; enable
 <code>Selectable</code> only when a consumer needs selection. Local enhancement
 provides a scoped select-all checkbox, count and a bubbling

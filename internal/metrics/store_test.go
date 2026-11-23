@@ -68,6 +68,74 @@ func TestSamplesPersistExpireAndPreserveMissing(t *testing.T) {
 	}
 }
 
+func TestChartSeriesKeepsContainerReadingsAndBucketGaps(t *testing.T) {
+	ctx := context.Background()
+	store, err := Open(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	start := time.Date(2026, 11, 22, 21, 0, 0, 0, time.UTC)
+	first, second := strings.Repeat("a", 64), strings.Repeat("b", 64)
+	cpu1, cpu2, rx := 12.0, 18.0, 64.0
+	mem1, mem2 := uint64(1024), uint64(2048)
+	samples := []Sample{
+		{ContainerID: first, Observation: runtime.Observations{Time: start.Add(100 * time.Millisecond), CPUPercent: &cpu1, MemoryUsageBytes: &mem1}},
+		{ContainerID: first, Observation: runtime.Observations{Time: start.Add(900 * time.Millisecond), CPUPercent: &cpu2, MemoryUsageBytes: &mem2, NetworkRxBytesPerSec: &rx}},
+		{ContainerID: first, Observation: runtime.Observations{Time: start.Add(2 * time.Second)}},
+		{ContainerID: second, Observation: runtime.Observations{Time: start.Add(1500 * time.Millisecond), NetworkTxBytesPerSec: &rx}},
+	}
+	if err := store.Insert(ctx, samples); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := store.SelectChartSeries(ctx, start, start.Add(3*time.Second), time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got[0].ContainerID != first || got[1].ContainerID != second {
+		t.Fatalf("series = %#v", got)
+	}
+	if len(got[0].Points) != 3 || got[0].Points[0].CPUPercent == nil || *got[0].Points[0].CPUPercent != cpu2 ||
+		got[0].Points[0].MemoryUsageBytes == nil || *got[0].Points[0].MemoryUsageBytes != float64(mem2) ||
+		got[0].Points[0].NetworkRxBytesPerSec == nil || *got[0].Points[0].NetworkRxBytesPerSec != rx {
+		t.Fatalf("first container's selected reading = %#v", got[0].Points)
+	}
+	if got[0].Points[1].CPUPercent != nil || got[0].Points[1].MemoryUsageBytes != nil ||
+		got[0].Points[2].Time != samples[2].Observation.Time {
+		t.Fatalf("first container gap or later reading = %#v", got[0].Points)
+	}
+	if got[1].Points[0].CPUPercent != nil || got[1].Points[1].NetworkTxBytesPerSec == nil ||
+		*got[1].Points[1].NetworkTxBytesPerSec != rx || got[1].Points[2].NetworkTxBytesPerSec != nil {
+		t.Fatalf("second container readings = %#v", got[1].Points)
+	}
+}
+
+func TestSelectChartSeriesRejectsUnboundedRanges(t *testing.T) {
+	ctx := context.Background()
+	store, err := Open(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	start := time.Date(2026, 11, 22, 21, 0, 0, 0, time.UTC)
+	for _, test := range []struct {
+		name   string
+		end    time.Time
+		bucket time.Duration
+	}{
+		{name: "over one hour", end: start.Add(time.Hour + time.Second), bucket: time.Minute},
+		{name: "too many buckets", end: start.Add(time.Hour), bucket: time.Second},
+		{name: "nonpositive bucket", end: start.Add(time.Minute), bucket: 0},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := store.SelectChartSeries(ctx, start, test.end, test.bucket); err == nil {
+				t.Fatal("expected invalid chart range error")
+			}
+		})
+	}
+}
+
 func TestFullUnsignedMemoryRangePersists(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()

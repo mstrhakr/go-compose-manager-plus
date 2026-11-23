@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"time"
 
@@ -26,6 +27,19 @@ var ErrWriteOutcomeUnknown = errors.New("metrics write commit outcome is unknown
 type Sample struct {
 	ContainerID string
 	Observation runtime.Observations
+}
+
+type ChartPoint struct {
+	Time                 time.Time
+	CPUPercent           *float64
+	MemoryUsageBytes     *float64
+	NetworkRxBytesPerSec *float64
+	NetworkTxBytesPerSec *float64
+}
+
+type ContainerChartSeries struct {
+	ContainerID string
+	Points      []ChartPoint
 }
 
 type Store struct {
@@ -398,6 +412,100 @@ func (s *Store) Select(ctx context.Context, id string, start, end time.Time, lim
 		return nil, fmt.Errorf("read metric samples: %w", err)
 	}
 	return result, nil
+}
+
+// SelectChartSeries returns at most one recorded observation per container and
+// display bucket. It does not combine values across containers; missing buckets
+// remain nil and display selection does not alter retained samples.
+func (s *Store) SelectChartSeries(ctx context.Context, start, end time.Time, bucket time.Duration) ([]ContainerChartSeries, error) {
+	from, err := timestamp(start)
+	if err != nil {
+		return nil, fmt.Errorf("invalid chart start: %w", err)
+	}
+	to, err := timestamp(end)
+	if err != nil {
+		return nil, fmt.Errorf("invalid chart end: %w", err)
+	}
+	rangeDuration := end.Sub(start)
+	if from >= to || rangeDuration <= 0 || rangeDuration > time.Hour || bucket <= 0 {
+		return nil, errors.New("invalid chart range or bucket")
+	}
+	bucketNS := int64(bucket)
+	rangeNS := int64(rangeDuration)
+	if bucketNS <= 0 || (rangeNS-1)/bucketNS+1 > 120 {
+		return nil, errors.New("chart range exceeds 120 buckets")
+	}
+	bucketCount := int((rangeNS-1)/bucketNS + 1)
+	rows, err := s.db.QueryContext(ctx, `WITH ranked AS (
+		SELECT container_id, observed_ns,
+			((observed_ns - ?) / ?) AS bucket_index,
+			cpu_percent, CAST(memory_usage_bytes AS REAL) AS memory_usage_bytes,
+			network_rx_bytes_per_sec, network_tx_bytes_per_sec,
+			ROW_NUMBER() OVER (
+				PARTITION BY container_id, ((observed_ns - ?) / ?)
+				ORDER BY observed_ns DESC
+			) AS sample_rank
+		FROM samples
+		WHERE observed_ns >= ? AND observed_ns < ?
+	)
+	SELECT container_id, bucket_index, observed_ns, cpu_percent, memory_usage_bytes,
+		network_rx_bytes_per_sec, network_tx_bytes_per_sec
+	FROM ranked WHERE sample_rank = 1
+	ORDER BY container_id, bucket_index`, from, bucketNS, from, bucketNS, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("query chart metrics: %w", err)
+	}
+	defer rows.Close()
+	type containerBuckets struct {
+		id     string
+		points []ChartPoint
+	}
+	seriesByID := make(map[string]*containerBuckets)
+	for rows.Next() {
+		var id string
+		var index int
+		var ns int64
+		var point ChartPoint
+		var cpu, memory, rx, tx sql.NullFloat64
+		if err := rows.Scan(&id, &index, &ns, &cpu, &memory, &rx, &tx); err != nil {
+			return nil, fmt.Errorf("read chart metrics: %w", err)
+		}
+		series := seriesByID[id]
+		if series == nil {
+			points := make([]ChartPoint, bucketCount)
+			for i := range points {
+				points[i].Time = start.Add(time.Duration(i) * bucket)
+			}
+			series = &containerBuckets{id: id, points: points}
+			seriesByID[id] = series
+		}
+		point.Time = time.Unix(0, ns).UTC()
+		point.CPUPercent = nullableFloat(cpu)
+		point.MemoryUsageBytes = nullableFloat(memory)
+		point.NetworkRxBytesPerSec = nullableFloat(rx)
+		point.NetworkTxBytesPerSec = nullableFloat(tx)
+		if index < 0 || index >= len(series.points) {
+			return nil, errors.New("chart query returned an invalid bucket")
+		}
+		series.points[index] = point
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read chart metrics: %w", err)
+	}
+	result := make([]ContainerChartSeries, 0, len(seriesByID))
+	for _, series := range seriesByID {
+		result = append(result, ContainerChartSeries{ContainerID: series.id, Points: series.points})
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ContainerID < result[j].ContainerID })
+	return result, nil
+}
+
+func nullableFloat(value sql.NullFloat64) *float64 {
+	if !value.Valid {
+		return nil
+	}
+	result := value.Float64
+	return &result
 }
 
 // ExpireBefore removes samples strictly before the cutoff, not the cutoff itself.

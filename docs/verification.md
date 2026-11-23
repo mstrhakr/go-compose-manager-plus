@@ -844,6 +844,35 @@ preset resets, storage-limit edits, keyboard/touch use and mobile overflow.
 No live Docker daemon, throughput, physical disk-full, abrupt power-loss,
 Windows/macOS or hosted CI verification was performed. The approved zero
 inference from a known stopped state remains unimplemented pending metric and
-time-boundary rules. Charts, synchronized timeline, persisted per-container gap
-history, historical logs, preset sizing recommendations and TimescaleDB remain
-unimplemented. SQLite deletion does not impose a hard physical disk quota.
+time-boundary rules. The overview chart slice below does not add a per-container
+gap ledger, dedicated Containers observability view, timeline event markers/list,
+historical logs, preset sizing recommendations or TimescaleDB. SQLite deletion
+does not impose a hard physical disk quota.
+
+## Dashboard Charts And Shared Time Selection
+
+2026-11-23, Linux development container. The authenticated overview displays
+per-container CPU percentage, Docker raw memory usage, and network receive and
+transmit rates from the active managed SQLite store. It selects the latest
+recorded observation in each 30-second display bucket (at most 120 points per
+container across the last hour), preserves missing buckets as gaps, and does not
+combine values across containers or change retained samples. Dashboard project
+content is a summary linking to the detailed Projects view.
+
+The reusable SVG chart shows hover values, a keyboard-operable data table and
+shared selected-time cursors. Clicking or using the arrow keys emits
+`observability:timechange` with `detail.time` as Unix milliseconds; the overview
+charts listen to the same event. This supports a future timeline consumer, but
+does not implement a timeline or claim that clicking adjusts one that is not
+present.
+
+- Focused storage, collector, dashboard serialization, discovery and runtime
+  handler tests passed.
+- `PLAYWRIGHT_PORT=18334 make check QUIET=1`: passed Go race tests, vet, build,
+  Node, HTTP, desktop/Firefox/WebKit/mobile browser tests, asset verification and
+  contract structure checks.
+- `make docs`, `make check-docs` and `git diff --check`: passed.
+
+No live Docker-backed dashboard collection or platform-specific verification
+was performed. Collection remains opt-in; disabled and unavailable states were
+covered without opening the metrics database from dashboard reads.

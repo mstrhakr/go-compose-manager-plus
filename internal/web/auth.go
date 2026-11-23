@@ -279,9 +279,14 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 			{Label: "Observability"},
 		}}
 	}
+	var charts []chartPanel
+	var metricsStatus string
+	if view == "dashboard" {
+		charts, metricsStatus = server.dashboardCharts(r.Context())
+	}
 	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, ProjectColumns: listPanel{ID: "projects-title", Title: "Projects", Columns: []string{"Project", "Discovery", "Activation", "Containers"}}, Filters: filters, SubviewNav: subviews,
 		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: views, RuntimeMessage: runtimeMessage, RuntimeState: runtimeState,
-		Activity: chartPanel{ID: "activity-title", Title: "Container activity", Status: "Unavailable", EmptyTitle: "Runtime metrics unavailable", EmptyDetail: "No live activity is being collected."},
+		Charts: charts, MetricsStatus: metricsStatus,
 		Metrics: []metricPanel{
 			{ID: "restart-title", Title: "Container restart & OOM rate", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
 			{ID: "health-title", Title: "Stack health & readiness", Status: "Unavailable", Value: "--", Detail: "No runtime data"},

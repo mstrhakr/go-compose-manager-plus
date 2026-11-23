@@ -362,3 +362,49 @@ func TestCollectorRunOptInPersistsEventsAndStopsOnDisable(t *testing.T) {
 		t.Fatalf("replayed events = %#v, %v", events, err)
 	}
 }
+
+func TestCollectorChartReadsUseOnlyActiveManagedStore(t *testing.T) {
+	ctx := context.Background()
+	collector := &Collector{}
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	got, err := collector.SelectChartSeries(ctx, now.Add(-time.Minute), now, 30*time.Second)
+	if err != nil || got != nil {
+		t.Fatalf("inactive chart read = %#v, error = %v", got, err)
+	}
+
+	store, err := OpenManaged(ctx, t.TempDir(), 1024*1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := strings.Repeat("a", 64)
+	cpu := 35.0
+	if err := store.Insert(ctx, now, []Sample{{
+		ContainerID: id, Observation: runtime.Observations{Time: now.Add(-20 * time.Second), CPUPercent: &cpu},
+	}}); err != nil {
+		_ = store.Close()
+		t.Fatal(err)
+	}
+	collector.storeMu.Lock()
+	collector.store = store
+	collector.storeMu.Unlock()
+	got, err = collector.SelectChartSeries(ctx, now.Add(-time.Minute), now, 30*time.Second)
+	if err != nil || len(got) != 1 || got[0].ContainerID != id || len(got[0].Points) != 2 ||
+		got[0].Points[1].CPUPercent == nil || *got[0].Points[1].CPUPercent != cpu {
+		collector.storeMu.Lock()
+		collector.store = nil
+		collector.storeMu.Unlock()
+		_ = store.Close()
+		t.Fatalf("active chart read = %#v, error = %v", got, err)
+	}
+	collector.storeMu.Lock()
+	collector.store = nil
+	if err := store.Close(); err != nil {
+		collector.storeMu.Unlock()
+		t.Fatal(err)
+	}
+	collector.storeMu.Unlock()
+	got, err = collector.SelectChartSeries(ctx, now.Add(-time.Minute), now, 30*time.Second)
+	if err != nil || got != nil {
+		t.Fatalf("post-close chart read = %#v, error = %v", got, err)
+	}
+}

@@ -24,6 +24,43 @@ test('renders chart series, gaps, data table and explicit empty/error states', a
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('charts expose hover values and synchronize pointer and keyboard time selection', async ({ page }, testInfo) => {
+  const first = page.locator('.chart-panel').filter({ has: page.getByRole('heading', { name: 'Activity', exact: true }) });
+  const second = page.locator('.chart-panel').filter({ has: page.getByRole('heading', { name: 'Empty chart' }) });
+  await second.locator('[data-chart]').evaluate(element => {
+    element.dataset.chartSeries = JSON.stringify({
+      min: 0, max: 100, xMin: 1, xMax: 4, selectedTime: 4,
+      series: [{ label: 'Second chart', color: 'green', points: [{ x: 1, y: 10 }, { x: 4, y: 90 }] }],
+    });
+    element.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true }));
+  });
+  await page.evaluate(() => {
+    window.chartTimes = [];
+    document.addEventListener('observability:timechange', event => window.chartTimes.push(event.detail.time));
+  });
+  const svg = first.locator('svg');
+  await svg.hover({ position: { x: 200, y: 40 } });
+  await expect(first.locator('.chart-tooltip')).toContainText('CPU:');
+  await expect(first.locator('.chart-tooltip')).toContainText('Memory:');
+  const bounds = await svg.boundingBox();
+  const center = { x: bounds.width / 2, y: bounds.height / 2 };
+  if (testInfo.project.name === 'mobile-chromium') {
+    await svg.tap({ position: center });
+  } else {
+    await svg.click({ position: center });
+  }
+  await expect.poll(() => page.evaluate(() => window.chartTimes.length)).toBeGreaterThan(0);
+  const firstCursor = first.locator('.chart-cursor');
+  const secondCursor = second.locator('.chart-cursor');
+  await expect(firstCursor).toHaveAttribute('x1', await secondCursor.getAttribute('x1'));
+  await page.evaluate(() => document.dispatchEvent(new CustomEvent('observability:timechange', { detail: { time: 3 } })));
+  await expect(firstCursor).toHaveAttribute('x1', await secondCursor.getAttribute('x1'));
+  await svg.focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(() => page.evaluate(() => window.chartTimes.length)).toBeGreaterThan(1);
+  await expect(firstCursor).toHaveAttribute('x1', await secondCursor.getAttribute('x1'));
+});
+
 test('selection is scoped, keyboard operable and handles disabled rows', async ({ page }, testInfo) => {
   const projects = page.locator('[data-select-list]').filter({ has: page.getByRole('heading', { name: 'Projects', exact: true }) });
   const other = page.locator('[data-select-list]').filter({ has: page.getByRole('heading', { name: 'Other resources' }) });
