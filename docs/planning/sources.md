@@ -52,6 +52,11 @@ lightweight. The initial observability view should default to the last hour and
 use a timeline synchronized with the charts; longer ranges and custom
 timeframes are future advanced options. Display aggregation is distinct from
 the retained sampling resolution.
+For the initial single-resolution version, the owner chose early removal of
+the oldest metrics with a clear warning when the metrics store reaches its
+limit before normal expiry, rather than stopping collection as the first
+response. How to account for and enforce the limit and what happens if space
+cannot be recovered remain open.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose
