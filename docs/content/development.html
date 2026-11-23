@@ -81,8 +81,8 @@ Memory values use decimal text to retain the full unsigned Docker counter range.
 It can also persist observed event and state records, but does not collect them
 or infer state between snapshots. A read-only Docker event stream is available
 to a future collector; it does not reconnect or replay events itself.
-The foundation does not start collection, enforce one-hour expiry or a storage
-budget, or implement migration to TimescaleDB. A caller can atomically delete
+The foundation does not start collection, schedule one-hour expiry or implement
+migration to TimescaleDB. A caller can atomically delete
 sample, event and state records before a cutoff, inspect SQLite file lengths,
 inspect logical database page counts and reusable pages, attempt a WAL
 checkpoint, and remove batches of oldest samples. Reusable pages are still in
@@ -90,9 +90,25 @@ the database file; reusing them can require additional WAL space. Each nonempty
 sample eviction atomically updates a persistent cumulative count and timestamp
 bounds; the bounds do not imply a continuous gap, and evictions made before
 schema version 4 cannot be reconstructed. This record is not a user-facing
-warning and does not report event or state loss. These are unwired primitives,
-not a budget controller. Deleting SQLite rows does not by itself guarantee disk
-space is returned; file lengths do not measure allocated blocks or peak usage.</p>
+warning and does not report event or state loss.</p>
+<p>An unwired <code>ManagedStore</code> serializes reads, writes and maintenance
+under an exclusive SQLite lock. Its caller supplies a byte limit and schedules
+maintenance, including when collection is idle. Maintenance expires records
+older than one hour and attempts bounded oldest-sample eviction at a 90% active
+logical-usage target. Its durable pressure gate prevents repeated eviction
+when no measurable progress is made, including after reopening. It reports
+paused writes and a cumulative eviction summary, but does not display warnings
+or schedule retries itself. A write can succeed before subsequent maintenance
+fails; callers must distinguish <code>ErrWriteCommitted</code> and not retry
+that committed batch. The implementation checkpoints frequently and its cost
+at target sampling rates is unmeasured.</p>
+<p>This is not a hard disk quota: SQLite deletion does not itself shrink the
+database, file lengths are not allocated blocks or peak usage, WAL and
+transactions can exceed the target, and physical filesystem-full recovery is
+unverified. If file length itself reaches the limit, maintenance pauses rather
+than assuming row deletion will reclaim filesystem space. An eviction that
+does not reduce active usage also pauses until accounting conditions change or
+the configured limit increases. No application collector uses this path yet.</p>
 <p>To measure one synthetic hour of SQLite samples for 1, 5, 25 and 50
 containers without Docker, run:</p>
 <pre><code>CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 \

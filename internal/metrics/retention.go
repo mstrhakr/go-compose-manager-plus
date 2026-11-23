@@ -24,6 +24,10 @@ type EvictedSamples struct {
 // and container ID, and atomically records the cumulative eviction history.
 // It does not infer that deleting rows returns disk space.
 func (s *Store) EvictOldestSamples(ctx context.Context, limit int) (EvictedSamples, error) {
+	return s.evictOldestSamples(ctx, limit, nil)
+}
+
+func (s *Store) evictOldestSamples(ctx context.Context, limit int, activeBytes *int64) (EvictedSamples, error) {
 	if limit < 1 {
 		return EvictedSamples{}, errors.New("eviction limit must be positive")
 	}
@@ -63,6 +67,19 @@ func (s *Store) EvictOldestSamples(ctx context.Context, limit int) (EvictedSampl
 			oldest_ns = min(oldest_ns, excluded.oldest_ns),
 			newest_ns = max(newest_ns, excluded.newest_ns)`, count, oldest, newest); err != nil {
 		return EvictedSamples{}, fmt.Errorf("record sample eviction: %w", err)
+	}
+	if activeBytes != nil {
+		result, err := tx.ExecContext(ctx, `UPDATE pressure_gate SET active_bytes = ? WHERE id = 1`, *activeBytes)
+		if err != nil {
+			return EvictedSamples{}, fmt.Errorf("record metrics pressure gate: %w", err)
+		}
+		updated, err := result.RowsAffected()
+		if err != nil {
+			return EvictedSamples{}, fmt.Errorf("count metrics pressure gate updates: %w", err)
+		}
+		if updated != 1 {
+			return EvictedSamples{}, errors.New("metrics pressure gate is missing")
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return EvictedSamples{}, fmt.Errorf("commit sample eviction: %w", err)

@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 4
+const schemaVersion = 5
 
 type Sample struct {
 	ContainerID string
@@ -33,6 +33,10 @@ type Store struct {
 // Open uses a separate database from application state. It does not start
 // collection or enforce a storage budget.
 func Open(ctx context.Context, dataDir string) (*Store, error) {
+	return open(ctx, dataDir, false)
+}
+
+func open(ctx context.Context, dataDir string, exclusive bool) (*Store, error) {
 	if dataDir == "" {
 		return nil, errors.New("metrics data directory is required")
 	}
@@ -72,6 +76,15 @@ func Open(ctx context.Context, dataDir string) (*Store, error) {
 	} {
 		if _, err := db.ExecContext(ctx, statement); err != nil {
 			return fail(fmt.Errorf("configure metrics database: %w", err))
+		}
+	}
+	if exclusive {
+		var mode string
+		if err := db.QueryRowContext(ctx, `PRAGMA locking_mode = EXCLUSIVE`).Scan(&mode); err != nil {
+			return fail(fmt.Errorf("reserve metrics database: %w", err))
+		}
+		if mode != "exclusive" {
+			return fail(fmt.Errorf("metrics database refused exclusive locking: %s", mode))
 		}
 	}
 	if err := initialize(ctx, db); err != nil {
@@ -191,6 +204,21 @@ func initialize(ctx context.Context, db *sql.DB) error {
 		} {
 			if _, err := tx.ExecContext(ctx, statement); err != nil {
 				return fmt.Errorf("migrate metrics schema to version 4: %w", err)
+			}
+		}
+		version = 4
+	}
+	if version == 4 {
+		for _, statement := range []string{
+			`CREATE TABLE pressure_gate (
+				id INTEGER PRIMARY KEY CHECK (id = 1),
+				active_bytes INTEGER CHECK (active_bytes IS NULL OR active_bytes >= 0)
+			)`,
+			`INSERT INTO pressure_gate (id, active_bytes) VALUES (1, NULL)`,
+			`PRAGMA user_version = 5`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 5: %w", err)
 			}
 		}
 	}

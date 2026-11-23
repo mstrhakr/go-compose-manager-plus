@@ -640,6 +640,43 @@ errors can change the result, and checkpointing each batch has a cost. Run the
 opt-in probe with `CMP_METRICS_SQLITE_EVICTION_PROBE=1 go test -race -count=1
 -run '^TestBoundedEvictionCheckpointProbe$' -v ./internal/metrics`.
 
+### Managed Metrics Store Foundation
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`0d26687` with changes uncommitted during these checks. A separate managed
+store now owns a SQLite connection with exclusive locking, serializes its
+read/write/maintenance calls and closes after in-flight work. The caller must
+schedule maintenance, including when idle, and supply the storage limit.
+Maintenance expires samples, events and states strictly older than one hour,
+checkpoints the WAL, and calculates active logical usage by subtracting
+reusable database pages from the lengths of the database and sidecars. It
+attempts at most one 128-sample oldest-first pressure eviction per call. The
+eviction summary and a pressure gate commit atomically with deletion. A
+subsequent attempt is blocked if active usage has not decreased; the gate
+survives reopening. If total file length reaches the limit, it pauses rather
+than treating reusable pages as returned filesystem space. Status reports the
+last pause and cumulative eviction record; writes that commit before subsequent
+maintenance fails return a distinct committed-write error.
+
+Focused Go race tests exercise retention boundaries for all three record types,
+ordering and recovery under synthetic pressure, no-progress behavior across
+reopen, transactional gate and deletion failures, cancellation, concurrent
+writes, shutdown, version-four migration, and a competing writer in a separate
+process. SQLite `max_page_count` simulates a full database and subsequent
+retry; it is not a physical filesystem-full test.
+`go test -race -count=1 ./internal/metrics ./internal/runtime`,
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
+passed.
+
+This path is not yet connected to app startup, settings, a scheduler, collector
+or user-facing status. It is not a hard quota, does not verify physical disk
+availability, and its WAL peaks, checkpoint overhead, crash behavior and
+high-frequency multi-container throughput are not established. The cumulative
+eviction summary is not a precise per-container gap or a user warning. Normal
+expiry and transactions can temporarily grow the WAL beyond the limit. The
+underlying raw store remains an unwired primitive, not a bypass for a future
+collector. LIVE-003 remains partially implemented and unverified.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,
