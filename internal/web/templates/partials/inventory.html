@@ -47,6 +47,7 @@
 <aside class="host-sidebar inventory-sidebar" id="inventory-filters" aria-label="Inventory filters">
   <details class="sidebar-disclosure inventory-filter-disclosure" open>
   <summary class="sidebar-toggle" id="inventory-filter-toggle"><span class="sidebar-collapse-label">Collapse filters</span><span class="sidebar-expand-label">Expand filters</span></summary>
+  <div class="sidebar-content" tabindex="0" role="region" aria-label="Inventory filter content">
   {{template "view-navigation" .SubviewNav}}
   <div class="filter-heading"><h2 id="filter-title">Filters</h2><a href="{{.Filters.Path}}">Clear filters</a></div>
   <form action="{{.Filters.Path}}" method="get">
@@ -70,6 +71,7 @@
     <p class="inventory-filter-note">Applying filters refreshes the read-only Docker snapshot. Counts reflect all {{.View}}, before filtering.</p>
   </form>
   <a class="inventory-overview-link" href="/">Discovery settings &amp; overview</a>
+  </div>
   </details>
 </aside>
 {{end}}

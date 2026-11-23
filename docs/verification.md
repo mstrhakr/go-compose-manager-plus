@@ -904,6 +904,29 @@ No host-level data source or live Docker collection was added or verified.
 Aggregate totals are derived from independently recorded container samples and
 are not simultaneous host measurements.
 
+## Fixed Desktop Shell And Independent Scrolling
+
+2026-11-23, Linux development container, branch
+`feat/dashboard-aggregate-overview`, based on `3362254`. The desktop shell keeps
+navigation and side panels in place while the main pane scrolls. Scrollable
+sidebar contents and Settings navigation retain access at short viewport
+heights; panel collapse and reopen controls remain available. At 900 CSS pixels
+and below, the existing compact layout retains document scrolling.
+
+- `PATH=/config/.local/bin:$PATH make check QUIET=1`: passed Go race tests,
+  vet, build, Node, HTTP, browser, asset and contract checks.
+- `PATH=/config/.local/bin:$PATH make docs`, `make check-docs`, and
+  `make check-security`: passed documentation builds/link checks and npm/Go
+  vulnerability scans.
+- The authenticated Chromium flow tests independent pane scrolling, keyboard
+  and wheel input, Settings navigation and collapse/reopen. The full browser
+  suite includes compact-layout touch interactions; its duplicate authenticated
+  bootstrap flow is intentionally skipped in other browser projects.
+
+The requested right-side project/container details panel is a future direction;
+it and Compose actions were not implemented or verified in this slice. Native
+mobile browsers and the development-image rebuild were not tested.
+
 ## Metrics Settings And Large Chart Usability
 
 2026-11-23, Linux development container, branch `feat/settings-metrics-ui`,

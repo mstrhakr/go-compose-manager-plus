@@ -285,6 +285,11 @@ does not implement these behaviors.
 
 ### Approved Presentation Cases
 
+- On 2026-11-23 the owner requested fixed navigation and side panels with
+  independent content scrolling and internal sidebar scrolling. This alignment
+  uses a viewport-height desktop shell above 900 CSS pixels; compact layouts
+  retain natural page scrolling and existing disclosure controls. The breakpoint
+  is an implementation choice, not an owner-approved exact widget dimension.
 - Settings navigation is separate from the selected category's content and
   remains usable on desktop, narrow screens, keyboard and touch.
 - Preset profiles hide Custom-only scope and interval controls; selecting
@@ -365,3 +370,11 @@ through 620 pixels; the full browser suite includes mobile Chromium. These
 checks do not add or verify a host telemetry source, live Docker collection,
 physical disk-full recovery, platform-specific behavior or measured resource
 costs.
+
+The desktop shell's independent main/sidebar scrolling was exercised on Linux
+on 2026-11-23. `make check QUIET=1`, `make docs && make check-docs`, and
+`make check-security` passed with a persistent `/config` toolchain supplied
+through `PATH`. The authenticated Chromium flow checks main and sidebar
+scrolling, keyboard and wheel interaction, Settings navigation, and
+collapse/reopen controls; compact-layout touch behavior is covered in that
+flow. This does not verify native mobile browsers or approve future actions.

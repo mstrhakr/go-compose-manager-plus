@@ -70,6 +70,7 @@
     <aside class="host-sidebar" aria-label="Host panel">
       <details class="sidebar-disclosure" open>
       <summary class="sidebar-toggle"><span class="sidebar-collapse-label">Collapse host panel</span><span class="sidebar-expand-label">Expand host panel</span></summary>
+      <div class="sidebar-content" tabindex="0" role="region" aria-label="Host panel content">
       {{template "view-navigation" .SubviewNav}}
       <div class="host-title"><span class="host-icon" aria-hidden="true"><i></i><i></i><b></b></span><h2 id="host-context-title">Local instance</h2></div>
       <div class="topology" aria-label="Discovery summary"><span><b>&#9636;</b> {{len .Projects}} {{if eq (len .Projects) 1}}project{{else}}projects{{end}}</span><span> / </span><span>Docker: {{.RuntimeState}}</span></div>
@@ -97,7 +98,7 @@
       <section class="host-section">
         <h3>Resource allocation</h3>
         <dl class="detail-list compact"><div><dt>CPU usage</dt><dd>Unavailable</dd></div><div><dt>Memory usage</dt><dd>Unavailable</dd></div><div><dt>Storage</dt><dd>Unavailable</dd></div></dl>
-        <p>Live metrics pending.</p>
+        <p>Host-level metrics are not collected.</p>
       </section>
       <section class="host-section">
         <h3>Engine integration</h3>
@@ -105,8 +106,9 @@
         <form action="/projects#projects-list-title" method="get">
           <button class="quiet-button" name="runtime" value="1" type="submit">Refresh Docker status</button>
         </form>
-        <p>Snapshots are read-only. Logs, metrics and operations are not connected.</p>
+        <p>Snapshots are read-only. Container metrics are opt-in; logs and operations are not connected.</p>
       </section>
+      </div>
       </details>
     </aside>
     {{else if eq .View "observability"}}
@@ -118,7 +120,7 @@
     {{else if ne .View "settings"}}
     {{template "inventory-filters" .}}
     {{end}}
-    <main class="console-main">
+    <main class="console-main" tabindex="0">
       {{if eq .View "dashboard"}}
       <div class="workspace-toolbar">
         <div><h1>System status</h1><p>Local instance / Overview</p></div>
@@ -127,6 +129,7 @@
       <div class="telemetry-section">
         {{range .Charts}}{{template "chart-panel" .}}{{end}}
       </div>
+      <p class="inventory-footnote">Collected-container totals, not host measurements. Latest samples per 30-second bucket may differ in time; incomplete totals remain gaps. CPU can exceed 100%; memory is Docker raw usage.</p>
       <div class="resource-grid">
         <section class="resource-section"><div class="section-heading"><h2>Discovered stacks</h2><span>{{len .Projects}} discovered</span></div>
           <div class="resource-placeholder"><span class="resource-icon" aria-hidden="true">&#9636;</span><span>{{len .Projects}} {{if eq (len .Projects) 1}}project{{else}}projects{{end}} discovered</span><a href="/projects">View project details</a></div>

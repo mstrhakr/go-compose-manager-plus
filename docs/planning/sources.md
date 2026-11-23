@@ -117,6 +117,17 @@ security/collection decision. The overview's responsive presentation is
 verified at 2560×1440 and narrower desktop/mobile widths; see the
 [verification record](../verification.md#aggregate-overview-dashboard-presentation).
 
+On 2026-11-23 the owner clarified that UniFi keeps navigation and sidebars fixed,
+allows internal sidebar scrolling, and scrolls only the main content. This
+supplies the next bounded shell-alignment requirement; screenshots alone did
+not establish scroll ownership or exact CSS dimensions. Desktop pane scrolling
+is implemented independently of compact-layout page scrolling.
+
+The owner also supplied a recording and examples of a right-side details panel
+opened from a selected list item, with separate detail, activity and settings
+views. A similar project/container panel is a future UI direction; the examples
+do not approve Compose action effects or additional management policies.
+
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose
 project name, even for copies resolving to the same name. This is runtime

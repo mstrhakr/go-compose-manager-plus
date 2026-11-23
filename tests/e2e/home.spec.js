@@ -296,6 +296,52 @@ test('first login forces password setup before protected dashboard and works on 
             charts.length === 3 && charts.every(chart => chart.getBoundingClientRect().width > 0);
         })).toBe(true);
       }
+      await themedPage.setViewportSize({ width: 1440, height: 520 });
+      const scrollBehavior = await themedPage.evaluate(() => {
+        const main = document.querySelector('.console-main');
+        const sidebar = document.querySelector('.host-sidebar');
+        const rail = document.querySelector('.console-rail');
+        const sidebarTop = sidebar.getBoundingClientRect().top;
+        const railTop = rail.getBoundingClientRect().top;
+        main.scrollTop = main.scrollHeight;
+        const sidebarContent = sidebar.querySelector('.sidebar-content');
+        sidebarContent.scrollTop = sidebarContent.scrollHeight;
+        return {
+          documentFits: document.documentElement.scrollHeight <= window.innerHeight,
+          mainScrolls: main.scrollTop > 0,
+          sidebarScrolls: sidebarContent.scrollTop > 0,
+          windowStaysPut: window.scrollY === 0,
+          sidebarStaysPut: sidebar.getBoundingClientRect().top === sidebarTop,
+          railStaysPut: rail.getBoundingClientRect().top === railTop,
+        };
+      });
+      expect(scrollBehavior).toEqual({
+        documentFits: true,
+        mainScrolls: true,
+        sidebarScrolls: true,
+        windowStaysPut: true,
+        sidebarStaysPut: true,
+        railStaysPut: true,
+      });
+      const mainPane = themedPage.locator('.console-main');
+      const sidebarPane = themedPage.getByRole('region', { name: 'Host panel content' });
+      await mainPane.evaluate(element => { element.scrollTop = 0; });
+      await mainPane.focus();
+      await themedPage.keyboard.press('PageDown');
+      await expect.poll(() => mainPane.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+      await sidebarPane.evaluate(element => { element.scrollTop = 0; });
+      await sidebarPane.hover();
+      await themedPage.mouse.wheel(0, 300);
+      await expect.poll(() => sidebarPane.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+      expect(await themedPage.evaluate(() => window.scrollY)).toBe(0);
+      await themedPage.goto('/settings');
+      const settingsNav = themedPage.getByRole('navigation', { name: 'Settings categories' });
+      const settingsTop = (await settingsNav.boundingBox()).y;
+      const settingsMain = themedPage.locator('.console-main');
+      await settingsMain.evaluate(element => { element.scrollTop = element.scrollHeight; });
+      expect(await settingsMain.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+      expect((await settingsNav.boundingBox()).y).toBeCloseTo(settingsTop, 0);
+      await themedPage.goto('/');
       await themedPage.setViewportSize({ width: 2560, height: 1440 });
       await themedPage.screenshot({ path: 'test-results/auth-dashboard-dark.png', fullPage: true });
       const hostPanel = themedPage.locator('.sidebar-disclosure');
