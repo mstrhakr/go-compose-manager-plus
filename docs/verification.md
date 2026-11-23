@@ -421,6 +421,30 @@ These observations do not establish that the approved early-eviction, one-hour
 history, warning or recovery behaviors can be enforced. A safe design and
 targeted tests are needed before enabling collection.
 
+### Synthetic One-Hour Storage Measurement
+
+2026-11-22, Linux x86_64 development container, branch
+`spike/docker-metrics-storage`, based on `a3b010d`. An opt-in synthetic test
+inserted six generated metrics per container at one-second timestamps for one
+hour, using five-minute tstorage partitions, an unbuffered WAL and 64-character
+container labels. No Docker daemon was accessed.
+`CMP_METRICS_CAPACITY_TEST=1 go test -race -count=1 -run '^TestSyntheticHourCapacity$' -v ./internal/metricspoc`
+passed and verified the count of every series after closing and reopening:
+
+| Containers | Scalar points | Bytes at end of ingestion | Bytes after close |
+| ---: | ---: | ---: | ---: |
+| 1 | 21,600 | 588,824 | 208,971 |
+| 5 | 108,000 | 2,938,242 | 1,037,813 |
+| 25 | 540,000 | 14,686,381 | 5,183,340 |
+| 50 | 1,080,000 | 29,371,640 | 10,365,393 |
+
+These are individual file lengths observed in one accelerated run, not peak
+disk use or allocated filesystem blocks. The data values are synthetic and
+compressibility, WAL and partition behavior depend on workload; this does not
+measure Docker overhead, process memory, realtime collection, deletion,
+filesystem exhaustion, crash recovery or the production storage design.
+The results do not set preset budgets or validate oldest-first eviction.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,

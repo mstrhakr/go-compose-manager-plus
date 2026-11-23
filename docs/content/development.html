@@ -60,6 +60,14 @@ tstorage directory. It does not create, start or stop containers:</p>
 grants host-administrative access even though this test uses a read-only API
 request. This short single-container test is not a representative resource
 benchmark, retention implementation or continuously running collector.</p>
+<p>To measure one hour of synthetic one-second samples for 1, 5, 25 and 50
+containers without contacting Docker, run:</p>
+<pre><code>CMP_METRICS_CAPACITY_TEST=1 go test -race -count=1 \
+  -run '^TestSyntheticHourCapacity$' -v ./internal/metricspoc</code></pre>
+<p>This writes temporary databases, verifies every series after reopening, and
+reports directory sizes at the end of ingestion and after closing. Its generated
+values and accelerated writes do not model production workloads or peak disk
+usage and must not be used as storage guarantees.</p>
 <h2>UI components</h2>
 <p>Reusable server-rendered metric, chart and list panels are defined in
 <code>internal/web/templates/partials/components.html</code>, with their Go
