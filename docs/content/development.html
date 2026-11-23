@@ -82,9 +82,11 @@ It can also persist observed event and state records, but does not collect them
 or infer state between snapshots. A read-only Docker event stream is available
 to a future collector; it does not reconnect or replay events itself.
 The foundation does not start collection, enforce one-hour expiry or a storage
-budget, or implement migration to TimescaleDB. Deleting SQLite rows does
-not by itself guarantee disk space is returned; the database's WAL and other
-files must be considered in a future storage-pressure design.</p>
+budget, or implement migration to TimescaleDB. A caller can atomically delete
+sample, event and state records before a cutoff, inspect SQLite file lengths,
+and attempt a WAL checkpoint. These are unwired primitives, not a budget
+controller. Deleting SQLite rows does not by itself guarantee disk space is
+returned; file lengths do not measure allocated blocks or peak usage.</p>
 <p>To measure one synthetic hour of SQLite samples for 1, 5, 25 and 50
 containers without Docker, run:</p>
 <pre><code>CMP_METRICS_SQLITE_CAPACITY_TEST=1 go test -count=1 \

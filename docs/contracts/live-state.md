@@ -193,7 +193,8 @@ fitness and operational characteristics still need evaluation.
 and Containers inventory views; preferences are browser-local and the
 identifying column remains visible. Application collection, historical logs
 and history are not implemented. Unwired SQLite sample, event and state
-persistence does not yet enforce a one-hour window or the storage budget.
+persistence provides transactional cutoff deletion and file-length accounting,
+but does not schedule a one-hour window or enforce the storage budget.
 Read-only Docker stats and event-stream foundations exist but are not connected
 to a collector or UI. A
 test-only, single-container Docker stats/tstorage feasibility spike is recorded

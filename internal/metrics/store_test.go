@@ -144,6 +144,68 @@ func TestVersionOneMigrationPreservesSamples(t *testing.T) {
 		*got[0].Observation.MemoryUsageBytes != uint64(math.MaxInt64) || got[0].Observation.MemoryLimitBytes != nil {
 		t.Fatalf("migrated samples = %#v, error = %v", got, err)
 	}
+	var version int
+	if err := store.db.QueryRowContext(ctx, `PRAGMA user_version`).Scan(&version); err != nil || version != schemaVersion {
+		t.Fatalf("schema version = %d, error = %v", version, err)
+	}
+	maxValue := uint64(math.MaxUint64)
+	if err := store.Insert(ctx, []Sample{{ContainerID: id, Observation: runtime.Observations{
+		Time: base.Add(time.Second), MemoryLimitBytes: &maxValue,
+	}}}); err != nil {
+		t.Fatalf("insert full-width integer after migration: %v", err)
+	}
+	if err := store.InsertEvents(ctx, []Event{{ContainerID: id, Time: base, Kind: EventStart}}); err != nil {
+		t.Fatalf("insert event after migration: %v", err)
+	}
+	if err := store.InsertStates(ctx, []State{{ContainerID: id, Time: base, State: "running", Health: HealthNone}}); err != nil {
+		t.Fatalf("insert state after migration: %v", err)
+	}
+}
+
+func TestVersionTwoMigrationCreatesHistory(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	db, err := sql.Open("sqlite", filepath.Join(dir, "metrics.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, statement := range []string{
+		`CREATE TABLE samples (
+			container_id TEXT NOT NULL, observed_ns INTEGER NOT NULL, cpu_percent REAL,
+			memory_usage_bytes TEXT, memory_limit_bytes TEXT, network_rx_bytes_per_sec REAL,
+			network_tx_bytes_per_sec REAL, block_read_bytes_per_sec REAL, block_write_bytes_per_sec REAL,
+			PRIMARY KEY(container_id, observed_ns)) WITHOUT ROWID`,
+		`CREATE INDEX samples_time ON samples(observed_ns)`,
+		`PRAGMA user_version = 2`,
+	} {
+		if _, err := db.ExecContext(ctx, statement); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err := Open(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := store.Close(); err != nil {
+			t.Error(err)
+		}
+	}()
+	id := strings.Repeat("b", 64)
+	base := time.Date(2026, 11, 22, 21, 0, 0, 0, time.UTC)
+	if err := store.InsertEvents(ctx, []Event{{ContainerID: id, Time: base, Kind: EventOOM}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.InsertStates(ctx, []State{{ContainerID: id, Time: base, State: "exited", Health: HealthUnknown}}); err != nil {
+		t.Fatal(err)
+	}
+	var version int
+	if err := store.db.QueryRowContext(ctx, `PRAGMA user_version`).Scan(&version); err != nil || version != schemaVersion {
+		t.Fatalf("schema version = %d, error = %v", version, err)
+	}
 }
 
 func TestInsertValidationAndAtomicity(t *testing.T) {

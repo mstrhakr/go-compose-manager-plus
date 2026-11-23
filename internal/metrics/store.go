@@ -26,7 +26,8 @@ type Sample struct {
 }
 
 type Store struct {
-	db *sql.DB
+	db   *sql.DB
+	path string
 }
 
 // Open uses a separate database from application state. It does not start
@@ -76,7 +77,7 @@ func Open(ctx context.Context, dataDir string) (*Store, error) {
 	if err := initialize(ctx, db); err != nil {
 		return fail(err)
 	}
-	return &Store{db: db}, nil
+	return &Store{db: db, path: path}, nil
 }
 
 func initialize(ctx context.Context, db *sql.DB) error {
@@ -119,61 +120,61 @@ func initialize(ctx context.Context, db *sql.DB) error {
 			if _, err := tx.ExecContext(ctx, statement); err != nil {
 				return fmt.Errorf("create metrics schema: %w", err)
 			}
-			version = 1
 		}
-		if version == 1 {
-			for _, statement := range []string{
-				`CREATE TABLE samples_v2 (
-					container_id TEXT NOT NULL,
-					observed_ns INTEGER NOT NULL,
-					cpu_percent REAL,
-					memory_usage_bytes TEXT,
-					memory_limit_bytes TEXT,
-					network_rx_bytes_per_sec REAL,
-					network_tx_bytes_per_sec REAL,
-					block_read_bytes_per_sec REAL,
-					block_write_bytes_per_sec REAL,
-					PRIMARY KEY (container_id, observed_ns)
-				) WITHOUT ROWID`,
-				`INSERT INTO samples_v2 SELECT container_id, observed_ns, cpu_percent,
-					CAST(memory_usage_bytes AS TEXT), CAST(memory_limit_bytes AS TEXT),
-					network_rx_bytes_per_sec, network_tx_bytes_per_sec,
-					block_read_bytes_per_sec, block_write_bytes_per_sec FROM samples`,
-				`DROP TABLE samples`,
-				`ALTER TABLE samples_v2 RENAME TO samples`,
-				`CREATE INDEX samples_time ON samples(observed_ns)`,
-				`PRAGMA user_version = 2`,
-			} {
-				if _, err := tx.ExecContext(ctx, statement); err != nil {
-					return fmt.Errorf("migrate metrics schema to version 2: %w", err)
-				}
-				version = 2
+		version = 1
+	}
+	if version == 1 {
+		for _, statement := range []string{
+			`CREATE TABLE samples_v2 (
+				container_id TEXT NOT NULL,
+				observed_ns INTEGER NOT NULL,
+				cpu_percent REAL,
+				memory_usage_bytes TEXT,
+				memory_limit_bytes TEXT,
+				network_rx_bytes_per_sec REAL,
+				network_tx_bytes_per_sec REAL,
+				block_read_bytes_per_sec REAL,
+				block_write_bytes_per_sec REAL,
+				PRIMARY KEY (container_id, observed_ns)
+			) WITHOUT ROWID`,
+			`INSERT INTO samples_v2 SELECT container_id, observed_ns, cpu_percent,
+				CAST(memory_usage_bytes AS TEXT), CAST(memory_limit_bytes AS TEXT),
+				network_rx_bytes_per_sec, network_tx_bytes_per_sec,
+				block_read_bytes_per_sec, block_write_bytes_per_sec FROM samples`,
+			`DROP TABLE samples`,
+			`ALTER TABLE samples_v2 RENAME TO samples`,
+			`CREATE INDEX samples_time ON samples(observed_ns)`,
+			`PRAGMA user_version = 2`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 2: %w", err)
 			}
-			if version == 2 {
-				for _, statement := range []string{
-					`CREATE TABLE container_events (
-						sequence INTEGER PRIMARY KEY,
-						container_id TEXT NOT NULL,
-						observed_ns INTEGER NOT NULL,
-						kind TEXT NOT NULL,
-						health TEXT NOT NULL
-					)`,
-					`CREATE INDEX container_events_time ON container_events(observed_ns, sequence)`,
-					`CREATE INDEX container_events_container_time ON container_events(container_id, observed_ns, sequence)`,
-					`CREATE TABLE container_states (
-						container_id TEXT NOT NULL,
-						observed_ns INTEGER NOT NULL,
-						state TEXT NOT NULL,
-						health TEXT NOT NULL,
-						PRIMARY KEY (container_id, observed_ns)
-					) WITHOUT ROWID`,
-					`CREATE INDEX container_states_time ON container_states(observed_ns)`,
-					`PRAGMA user_version = 3`,
-				} {
-					if _, err := tx.ExecContext(ctx, statement); err != nil {
-						return fmt.Errorf("migrate metrics schema to version 3: %w", err)
-					}
-				}
+		}
+		version = 2
+	}
+	if version == 2 {
+		for _, statement := range []string{
+			`CREATE TABLE container_events (
+				sequence INTEGER PRIMARY KEY,
+				container_id TEXT NOT NULL,
+				observed_ns INTEGER NOT NULL,
+				kind TEXT NOT NULL,
+				health TEXT NOT NULL
+			)`,
+			`CREATE INDEX container_events_time ON container_events(observed_ns, sequence)`,
+			`CREATE INDEX container_events_container_time ON container_events(container_id, observed_ns, sequence)`,
+			`CREATE TABLE container_states (
+				container_id TEXT NOT NULL,
+				observed_ns INTEGER NOT NULL,
+				state TEXT NOT NULL,
+				health TEXT NOT NULL,
+				PRIMARY KEY (container_id, observed_ns)
+			) WITHOUT ROWID`,
+			`CREATE INDEX container_states_time ON container_states(observed_ns)`,
+			`PRAGMA user_version = 3`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 3: %w", err)
 			}
 		}
 	}

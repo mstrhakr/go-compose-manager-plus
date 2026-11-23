@@ -555,6 +555,31 @@ measurement does not test eviction, physical disk exhaustion, crash recovery or
 set preset budgets. Two earlier attempts were interrupted because they were
 too slow; their temporary test data was inspected and removed.
 
+### SQLite Migration And Retention Primitives
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`1ce627c`, with changes uncommitted during these checks. Review found that the
+version-one and version-two schema migrations were nested under new-database
+creation: existing databases retained their older schema. The earlier
+version-one test checked only that an old sample could be read, not that the
+schema actually advanced. The corrected migration and tests exercise both
+upgrade paths and the resulting event, state and full-width memory writes.
+
+The unwired store now supports a transactional cutoff across sample, event and
+state records, logical SQLite file-length accounting and an explicit WAL
+checkpoint that reports blocking readers. `go test -race -count=1
+./internal/metrics ./internal/runtime` passed, including a forced transaction
+failure with rollback, exact-cutoff preservation, reopen, file accounting and
+blocked-checkpoint retry.
+`PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs`, `make check-docs` and
+`git diff --check` also passed.
+
+These are not a scheduled one-hour retention implementation or a budget
+controller. Logical deletion can leave allocated database pages behind; file
+lengths are not atomic snapshots or filesystem block counts. Filesystem-full
+recovery, earliest-first pressure eviction, warning and write pause/retry,
+collector startup and shutdown, and Docker integration remain unverified.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,
