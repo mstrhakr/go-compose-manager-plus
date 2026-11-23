@@ -1,34 +1,69 @@
 {{define "metrics-settings"}}
-<section class="workspace-panel metrics-settings" aria-labelledby="metrics-settings-title">
-  <div class="panel-heading"><div><h1 id="metrics-settings-title">Metrics settings</h1><p>Configure opt-in background metrics collection.</p></div></div>
-  <div class="discovery-content">
-    <p role="status"><strong>Collection status:</strong> {{.CollectionStatusText}}</p>
-    {{if .CollectionWarning}}<p class="discovery-notice" role="status">{{.CollectionWarning}}</p>{{end}}
-    <p>Collection retains up to one hour of history; storage pressure may shorten it. Suggested storage sizes have not been measured; enter an explicit limit. SQLite file usage can temporarily exceed that target.</p>
-    {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
-    {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
-    <form action="/settings/metrics" method="post" class="auth-form">
-      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
-      <input type="hidden" name="revision" value="{{.MetricsSettings.Revision}}">
-      <label for="metrics-profile">Profile</label>
-      <select id="metrics-profile" name="profile" data-metrics-profile>
-        <option value="low" {{if eq .MetricsSettings.Profile "low"}}selected{{end}}>Low — activated stacks, 15 seconds</option>
-        <option value="medium" {{if eq .MetricsSettings.Profile "medium"}}selected{{end}}>Medium — activated stacks, 5 seconds</option>
-        <option value="high" {{if eq .MetricsSettings.Profile "high"}}selected{{end}}>High — all running containers, 1 second</option>
-        <option value="custom" {{if eq .MetricsSettings.Profile "custom"}}selected{{end}}>Custom</option>
-      </select>
-      <label for="metrics-scope">Custom scope (used only with Custom)</label>
-      <select id="metrics-scope" name="scope">
-        <option value="activated" {{if eq .MetricsSettings.Scope "activated"}}selected{{end}}>Activated stacks</option>
-        <option value="all" {{if eq .MetricsSettings.Scope "all"}}selected{{end}}>All running containers</option>
-      </select>
-      <label for="metrics-interval">Custom sampling interval (used only with Custom, for example 5s)</label>
-      <input id="metrics-interval" name="interval" value="{{.MetricsSettings.Interval}}">
-      <label for="metrics-limit">Storage target in bytes</label>
-      <input id="metrics-limit" name="storage_limit" type="number" min="1" step="1" value="{{.MetricsSettings.Limit}}" required>
-      <label class="metrics-opt-in"><input name="enabled" type="checkbox" value="true" {{if .MetricsSettings.Enabled}}checked{{end}}> Enable background metrics collection</label>
-      <button class="primary-button" type="submit">Save metrics preferences</button>
-    </form>
-  </div>
-</section>
+<div class="settings-page">
+  <nav class="settings-navigation" aria-label="Settings categories">
+    <h2>Settings</h2>
+    <a href="/settings" aria-current="page">Metrics</a>
+  </nav>
+  <section class="workspace-panel metrics-settings" aria-labelledby="metrics-settings-title">
+    <div class="panel-heading"><div><h1 id="metrics-settings-title">Metrics settings</h1><p>Configure opt-in background metrics collection.</p></div></div>
+    <div class="discovery-content">
+      <p role="status"><strong>Collection status:</strong> {{.CollectionStatusText}}</p>
+      {{if .CollectionWarning}}<p class="discovery-notice" role="status">{{.CollectionWarning}}</p>{{end}}
+      <p>Collection retains up to one hour of history; storage pressure may shorten it. Suggested storage sizes have not been measured; enter an explicit limit. SQLite file usage can temporarily exceed that target.</p>
+      {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
+      {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
+      <form action="/settings/metrics" method="post" class="auth-form">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input type="hidden" name="revision" value="{{.MetricsSettings.Revision}}">
+        <fieldset class="metrics-profile-picker">
+          <legend>Collection profile</legend>
+          <div class="metrics-profile-options">
+            <label class="metrics-profile-option">
+              <input type="radio" name="profile" value="low" data-metrics-profile {{if eq .MetricsSettings.Profile "low"}}checked{{end}}>
+              <span>Low</span>
+            </label>
+            <label class="metrics-profile-option">
+              <input type="radio" name="profile" value="medium" data-metrics-profile {{if eq .MetricsSettings.Profile "medium"}}checked{{end}}>
+              <span>Medium</span>
+            </label>
+            <label class="metrics-profile-option">
+              <input type="radio" name="profile" value="high" data-metrics-profile {{if eq .MetricsSettings.Profile "high"}}checked{{end}}>
+              <span>High</span>
+            </label>
+            <label class="metrics-profile-option">
+              <input type="radio" name="profile" value="custom" data-metrics-profile {{if eq .MetricsSettings.Profile "custom"}}checked{{end}}>
+              <span>Custom</span>
+            </label>
+          </div>
+          <p class="metrics-profile-description" data-metrics-profile-description aria-live="polite"></p>
+        </fieldset>
+        <fieldset class="metrics-custom-options" data-metrics-custom-options hidden>
+          <legend>Custom collection settings</legend>
+          <label for="metrics-scope">Collection scope</label>
+          <select id="metrics-scope" name="scope">
+            <option value="activated" {{if eq .MetricsSettings.Scope "activated"}}selected{{end}}>Activated stacks</option>
+            <option value="all" {{if eq .MetricsSettings.Scope "all"}}selected{{end}}>All running containers</option>
+          </select>
+          <label for="metrics-interval">Sampling interval (for example 5s)</label>
+          <input id="metrics-interval" name="interval" value="{{.MetricsSettings.Interval}}">
+        </fieldset>
+        <div class="metrics-storage-setting">
+          <label for="metrics-limit">Storage target</label>
+          <div class="metrics-storage-input">
+            <input id="metrics-limit" name="storage_limit" type="number" min="0.000000001" step="any" value="{{.MetricsSettings.Limit}}" required>
+            <select id="metrics-storage-unit" name="storage_unit" aria-label="Storage unit" data-metrics-storage-unit>
+              <option value="B" {{if eq .MetricsSettings.LimitUnit "B"}}selected{{end}}>B</option>
+              <option value="KB" {{if eq .MetricsSettings.LimitUnit "KB"}}selected{{end}}>KB</option>
+              <option value="MB" {{if eq .MetricsSettings.LimitUnit "MB"}}selected{{end}}>MB</option>
+              <option value="GB" {{if eq .MetricsSettings.LimitUnit "GB"}}selected{{end}}>GB</option>
+            </select>
+          </div>
+          <p class="metrics-help">Decimal units: 1 KB = 1,000 bytes. This target is not a hard disk quota.</p>
+        </div>
+        <label class="metrics-opt-in"><input name="enabled" type="checkbox" value="true" {{if .MetricsSettings.Enabled}}checked{{end}}> Enable background metrics collection</label>
+        <button class="primary-button" type="submit">Save metrics preferences</button>
+      </form>
+    </div>
+  </section>
+</div>
 {{end}}

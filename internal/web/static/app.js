@@ -57,28 +57,54 @@ if (filterLink) {
   });
 }
 
-const metricsProfile = document.querySelector('[data-metrics-profile]');
-if (metricsProfile) {
+const metricsProfiles = [...document.querySelectorAll('[data-metrics-profile]')];
+if (metricsProfiles.length) {
   const scope = document.querySelector('#metrics-scope');
   const interval = document.querySelector('#metrics-interval');
   const storageLimit = document.querySelector('#metrics-limit');
+  const storageUnit = document.querySelector('[data-metrics-storage-unit]');
+  const customOptions = document.querySelector('[data-metrics-custom-options]');
+  const profileDescription = document.querySelector('[data-metrics-profile-description]');
   const presets = {
-    low: ['activated', '15s'],
-    medium: ['activated', '5s'],
-    high: ['all', '1s'],
+    low: { scope: 'activated', interval: '15s', description: 'Activated stacks, sampled every 15 seconds.' },
+    medium: { scope: 'activated', interval: '5s', description: 'Activated stacks, sampled every 5 seconds.' },
+    high: { scope: 'all', interval: '1s', description: 'All running containers, sampled every second.' },
+    custom: { description: 'Choose a collection scope and sampling interval below.' },
   };
-  metricsProfile.addEventListener('change', () => {
-    const preset = presets[metricsProfile.value];
-    if (preset) {
-      [scope.value, interval.value] = preset;
-    }
-  });
-  for (const control of [scope, interval, storageLimit]) {
-    control.addEventListener('input', () => {
-      metricsProfile.value = 'custom';
-    });
+  const selectedProfile = () => metricsProfiles.find(control => control.checked)?.value;
+  function renderProfile() {
+    const profile = selectedProfile();
+    if (customOptions) customOptions.hidden = profile !== 'custom';
+    if (profileDescription) profileDescription.textContent = presets[profile]?.description || '';
+  }
+  function selectCustomProfile() {
+    const custom = metricsProfiles.find(control => control.value === 'custom');
+    if (custom) custom.checked = true;
+    renderProfile();
+  }
+  function updateStorageMinimum() {
+    if (!storageLimit || !storageUnit) return;
+    storageLimit.min = { B: '1', KB: '0.001', MB: '0.000001', GB: '0.000000001' }[storageUnit.value] || '1';
+  }
+  for (const control of metricsProfiles) {
     control.addEventListener('change', () => {
-      metricsProfile.value = 'custom';
+      if (!control.checked) return;
+      const preset = presets[control.value];
+      if (preset?.scope) {
+        scope.value = preset.scope;
+        interval.value = preset.interval;
+      }
+      renderProfile();
     });
   }
+  for (const control of [scope, interval, storageLimit, storageUnit]) {
+    if (!control) continue;
+    control.addEventListener('input', selectCustomProfile);
+    control.addEventListener('change', () => {
+      if (control === storageUnit) updateStorageMinimum();
+      selectCustomProfile();
+    });
+  }
+  renderProfile();
+  updateStorageMinimum();
 }

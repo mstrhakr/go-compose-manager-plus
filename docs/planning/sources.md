@@ -96,6 +96,14 @@ the initial implementation, not the approved storage-pressure behavior.
 The owner asked whether metrics can be stored separately and later migrated to
 TimescaleDB on upgrade, with the local metrics database removable afterward.
 Migration, cutover and cleanup details are future work and are not implemented.
+On 2026-11-23 the owner approved distinct Settings category navigation,
+Custom-only scope and interval controls for collection profiles, and storage
+target entry in B, KB, MB and GB. The UI uses decimal multiples and persists an
+exact whole-byte limit. A new setup defaults the unit selector to MB and places
+it inside the input's trailing edge. For crowded charts, retain all series with
+bounded, individually switchable series controls; collection and retention
+behavior are unchanged. These refinements are recorded under
+[LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views).
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

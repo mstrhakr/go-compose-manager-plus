@@ -251,9 +251,10 @@ timeline synchronized with the charts. Longer ranges and custom timeframes are
 future advanced options; display aggregation does not determine stored
 resolution. The owner also wants historical logs and relevant usage together at
 the selected time; log sources and retention remain undecided. Presets are performance-oriented, but their actual costs are
-unmeasured. Scope edge cases, retention,
-resource limits and presentation details remain to be decided and
-verified; see [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views).
+unmeasured. Scope edge cases, retention, resource limits and other presentation
+details remain to be decided and verified; the bounded Settings/chart
+presentation refinement is recorded under
+[LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views).
 
 #### Observability Inventory: Proposed Long-Term Candidates
 

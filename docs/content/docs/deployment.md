@@ -147,8 +147,10 @@ No repository visibility or Pages setting is changed automatically.</p>
   <li>Review the generated content and remove anything that must remain private.</li>
   <li>When ready, select GitHub Actions as the Pages source in repository settings.</li>
   <li>Set the Actions variable <code>PUBLISH_DOCS</code> to <code>true</code>.</li>
-  <li>Run “Publish documentation (opt-in)” on the default branch and explicitly
-    confirm publication. Optionally require approval on the <code>github-pages</code> environment.</li>
+  <li>After setup, successful CI runs on default-branch pushes publish the site
+    only when documentation changes. A manual default-branch run remains
+    available and requires explicit publication confirmation. Optionally require
+    approval on the <code>github-pages</code> environment.</li>
 </ol>
 <p>The workflow derives the base URL from GitHub Pages, so project paths and custom
 domains do not require hardcoded repository names. Preview locally with

@@ -2,8 +2,11 @@ package web
 
 import (
 	"errors"
+	"fmt"
 	"math"
+	"math/big"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -13,23 +16,81 @@ import (
 )
 
 type metricsSettingsForm struct {
-	Enabled  bool
-	Profile  string
-	Scope    string
-	Interval string
-	Limit    string
-	Revision string
+	Enabled   bool
+	Profile   string
+	Scope     string
+	Interval  string
+	Limit     string
+	LimitUnit string
+	Revision  string
 }
 
 func formFromMetricsSettings(settings metrics.Settings) metricsSettingsForm {
 	if settings.Revision == 0 {
-		return metricsSettingsForm{Profile: string(metrics.ProfileLow), Scope: string(metrics.ScopeActivated), Interval: "15s", Revision: "0"}
+		return metricsSettingsForm{Profile: string(metrics.ProfileLow), Scope: string(metrics.ScopeActivated), Interval: "15s", LimitUnit: "MB", Revision: "0"}
 	}
+	limit, unit := formatStorageLimit(settings.StorageLimit)
 	return metricsSettingsForm{
 		Enabled: settings.Enabled, Profile: string(settings.Profile), Scope: string(settings.Scope),
-		Interval: settings.Interval.String(), Limit: strconv.FormatInt(settings.StorageLimit, 10),
+		Interval: settings.Interval.String(), Limit: limit, LimitUnit: unit,
 		Revision: strconv.FormatInt(settings.Revision, 10),
 	}
+}
+
+var storageUnits = map[string]int64{
+	"B":  1,
+	"KB": 1_000,
+	"MB": 1_000_000,
+	"GB": 1_000_000_000,
+}
+
+var storageAmountPattern = regexp.MustCompile(`^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$`)
+
+func parseStorageLimit(value, unit string) (int64, error) {
+	if unit == "" {
+		unit = "B"
+	}
+	multiplier, ok := storageUnits[unit]
+	if !ok || len(value) == 0 || len(value) > 64 {
+		return 0, errors.New("invalid storage limit or unit")
+	}
+	value = strings.TrimSpace(value)
+	if !storageAmountPattern.MatchString(value) {
+		return 0, errors.New("invalid storage amount")
+	}
+	amount, ok := new(big.Rat).SetString(value)
+	if !ok || amount.Sign() <= 0 {
+		return 0, errors.New("storage limit must be positive")
+	}
+	bytes := new(big.Rat).Mul(amount, new(big.Rat).SetInt64(multiplier))
+	if bytes.Denom().Cmp(big.NewInt(1)) != 0 || !bytes.Num().IsInt64() {
+		return 0, errors.New("storage limit must resolve to a positive whole number of bytes")
+	}
+	return bytes.Num().Int64(), nil
+}
+
+func formatStorageLimit(bytes int64) (string, string) {
+	for _, unit := range []struct {
+		name       string
+		multiplier int64
+		precision  int
+	}{
+		{"GB", storageUnits["GB"], 9},
+		{"MB", storageUnits["MB"], 6},
+		{"KB", storageUnits["KB"], 3},
+	} {
+		if bytes < unit.multiplier {
+			continue
+		}
+		value := strconv.FormatInt(bytes/unit.multiplier, 10)
+		remainder := bytes % unit.multiplier
+		if remainder == 0 {
+			return value, unit.name
+		}
+		fraction := strings.TrimRight(fmt.Sprintf("%0*d", unit.precision, remainder), "0")
+		return value + "." + fraction, unit.name
+	}
+	return strconv.FormatInt(bytes, 10), "B"
 }
 
 func collectionHistoryWarning(evictions metrics.EvictedSamples) string {
@@ -90,7 +151,7 @@ func (server *authServer) saveMetricsSettings(w http.ResponseWriter, r *http.Req
 	}
 	form := metricsSettingsForm{
 		Enabled: r.FormValue("enabled") == "true", Profile: r.FormValue("profile"), Scope: r.FormValue("scope"), Interval: r.FormValue("interval"),
-		Limit: r.FormValue("storage_limit"), Revision: r.FormValue("revision"),
+		Limit: r.FormValue("storage_limit"), LimitUnit: r.FormValue("storage_unit"), Revision: r.FormValue("revision"),
 	}
 	fail := func(message string) { server.renderMetricsSettings(w, r, form, message, "") }
 	revision, err := strconv.ParseInt(form.Revision, 10, 64)
@@ -98,12 +159,32 @@ func (server *authServer) saveMetricsSettings(w http.ResponseWriter, r *http.Req
 		fail("Invalid settings revision. Reload this page and try again.")
 		return
 	}
-	limit, err := strconv.ParseInt(form.Limit, 10, 64)
-	if err != nil || limit <= 0 {
-		fail("Enter a positive storage limit in bytes.")
+	limit, err := parseStorageLimit(form.Limit, form.LimitUnit)
+	if err != nil {
+		fail("Enter a positive storage limit using B, KB, MB or GB. KB, MB and GB use decimal units.")
 		return
 	}
-	settings := metrics.Settings{Profile: metrics.Profile(form.Profile), StorageLimit: limit, Revision: revision}
+	current, err := server.metricsSettings.Load(r.Context())
+	if err != nil {
+		server.logger.ErrorContext(r.Context(), "read metrics settings before save", "error", err)
+		http.Error(w, "Unable to read metrics settings", http.StatusInternalServerError)
+		return
+	}
+	if current.Revision != revision {
+		fail("Settings changed in another session. Reload this page before saving.")
+		return
+	}
+	profile := metrics.Profile(form.Profile)
+	switch profile {
+	case metrics.ProfileLow, metrics.ProfileMedium, metrics.ProfileHigh, metrics.ProfileCustom:
+	default:
+		fail("Choose a valid metrics profile.")
+		return
+	}
+	if limit != current.StorageLimit {
+		profile = metrics.ProfileCustom
+	}
+	settings := metrics.Settings{Profile: profile, StorageLimit: limit, Revision: revision}
 	switch settings.Profile {
 	case metrics.ProfileLow:
 		settings.Scope, settings.Interval = metrics.ScopeActivated, 15*time.Second

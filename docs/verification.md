@@ -876,3 +876,57 @@ present.
 No live Docker-backed dashboard collection or platform-specific verification
 was performed. Collection remains opt-in; disabled and unavailable states were
 covered without opening the metrics database from dashboard reads.
+
+## Metrics Settings And Large Chart Usability
+
+2026-11-23, Linux development container, branch `feat/settings-metrics-ui`,
+based on `6f6f49e` with changes uncommitted during verification. The Settings
+page now separates category navigation from the selected content, presents
+Low/Medium/High/Custom as accessible profile choices, and only exposes custom
+scope and interval controls for Custom. Storage targets accept B, KB, MB and
+GB, convert decimal units exactly to whole bytes, and retain legacy byte-only
+form submissions. Initial setup defaults to MB, with the unit selector
+embedded at the trailing edge of the numeric input. If JavaScript is
+unavailable, the server still changes the profile to Custom when the saved
+storage target changes; CSS reveals Custom controls when Custom is selected.
+
+Dashboard chart series controls are collapsed by default and bounded when
+opened. Every line remains available and can be individually hidden; chart
+geometry remains fixed, hover values include only visible lines, and touch
+selection can show a tooltip that is dismissed by tapping elsewhere.
+
+- `go test ./internal/web -run 'TestMetricsSettingsAuthenticatedConfiguration|TestMetricsStorageLimitUnits|TestFormatStorageLimitRoundTrips' -count=1`:
+  passed.
+- `npx playwright test --project=chromium --project=mobile-chromium tests/e2e/components.spec.js tests/e2e/home.spec.js --grep "renders chart series|keeps large chart legends|first login forces password setup"`:
+  passed desktop and mobile chart cases and the desktop settings flow; the
+  bootstrap test intentionally skips its duplicate mobile run.
+- `make check QUIET=1`: passed Go race tests, vet, build, Node, HTTP, complete
+  desktop/Firefox/WebKit/mobile browser tests, asset verification and contract
+  checks.
+- `make docs && make check-docs`: passed.
+- `make check-security`: passed npm audit and govulncheck with no findings.
+
+The 40-series case uses the component fixture; it is not evidence from a live
+Docker workload. The storage-write issue reported earlier had resolved before
+this change and was not reproduced, so no root cause is claimed. Live Docker,
+physical disk-full behavior and Windows/macOS remain unverified.
+
+## Automatic Documentation Publishing
+
+2026-11-23, Linux development container, branch `feat/settings-metrics-ui`,
+based on `5810f98` with changes uncommitted during verification. The Pages
+workflow now listens for completed CI runs and proceeds automatically only
+when the run succeeded for a same-repository push to the default branch. The
+source job checks that its SHA is still the branch head and that the commit
+changes Hugo documentation (or contracts when contract publication is enabled)
+before the build/deploy jobs run. `PUBLISH_DOCS=true` remains required; manual
+publication remains available with its explicit confirmation.
+
+- `npm run test:unit`: passed, including a workflow-policy regression.
+- `make check-workflows`: passed YAML/actionlint and workflow policy checks.
+- `gh variable list`: confirmed `PUBLISH_DOCS=true`.
+- `make docs && make check-docs`: passed.
+
+The GitHub Actions workflow itself has not yet run on the updated default
+branch. A successful CI-triggered Pages deployment therefore remains to be
+confirmed after merge.
