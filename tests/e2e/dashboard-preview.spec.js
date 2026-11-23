@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { test, expect } from '@playwright/test';
 
 let fixture;
+let observabilityFixtures;
 test.beforeAll(() => {
   const directory = mkdtempSync(join(tmpdir(), 'cmp-dashboard-preview-'));
   try {
@@ -13,8 +14,178 @@ test.beforeAll(() => {
       stdio: 'pipe',
     });
     fixture = readFileSync(join(directory, 'dashboard.html'), 'utf8');
+    observabilityFixtures = Array.from({ length: 6 }, (_, index) =>
+      readFileSync(join(directory, `observability-${index}.html`), 'utf8'));
   } finally {
     rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+function serveObservability(route) {
+  const query = new URL(route.request().url()).searchParams;
+  const selected = query.get('container');
+  const index = query.get('q') === 'database' ? 4 : query.get('q') === 'missing' ? 5 :
+    selected ? ['a', 'b', 'c', 'd'].findIndex(letter => selected === letter.repeat(64)) : 0;
+  return route.fulfill({
+    status: index < 0 ? 404 : 200, contentType: 'text/html',
+    body: index < 0 ? 'Container history unavailable' : observabilityFixtures[index],
+  });
+}
+
+test('single-container observability has a vertical synchronized timeline and stacked records', async ({ page }, testInfo) => {
+  await page.route('**/containers/observability*', serveObservability);
+  await page.goto('/containers/observability');
+  const timeline = page.locator('[data-timeline]');
+  const containers = page.getByRole('navigation', { name: 'Filtered containers' });
+  await expect(containers.getByRole('link')).toHaveCount(4);
+  await expect(containers.getByRole('link').first()).toHaveAttribute('aria-current', 'page');
+  await expect(timeline).toHaveAttribute('data-container', 'a'.repeat(64));
+  const charts = page.locator('[data-chart]');
+  await expect(charts).toHaveCount(3);
+  const assertIsolation = async letter => {
+    const data = await charts.evaluateAll(elements => elements.map(element => JSON.parse(element.dataset.chartSeries)));
+    for (const [index, chart] of data.entries()) {
+      if (index === 2) {
+        expect(chart.series.map(series => series.label)).toEqual(['Receive', 'Transmit']);
+      } else {
+        expect(chart.series).toHaveLength(1);
+        expect(chart.series[0].label).toBe(`Container ${letter.repeat(12)}`);
+      }
+    }
+  };
+  await assertIsolation('a');
+  const filterPanel = page.getByRole('complementary', { name: 'Inventory filters' });
+  const namePanel = page.getByRole('complementary', { name: 'Filtered containers' });
+  await expect(filterPanel.getByLabel('Search')).toBeVisible();
+  await expect(containers.getByRole('link', { name: 'api', exact: true })).toBeVisible();
+  const slider = page.getByRole('slider', { name: 'Selected time in the last hour' });
+  await expect(slider).toHaveAttribute('aria-orientation', 'vertical');
+  const bounds = await slider.boundingBox();
+  expect(bounds.height).toBeGreaterThan(bounds.width * 5);
+  if (testInfo.project.name === 'mobile-chromium') {
+    await slider.tap({ position: { x: bounds.width / 2, y: bounds.height / 2 } });
+  } else {
+    await slider.click({ position: { x: bounds.width / 2, y: bounds.height / 2 } });
+  }
+  const fraction = (Number(await slider.inputValue()) - Number(await timeline.getAttribute('data-start'))) /
+    (Number(await timeline.getAttribute('data-end')) - Number(await timeline.getAttribute('data-start')));
+  expect(fraction).toBeGreaterThan(0.4);
+  expect(fraction).toBeLessThan(0.6);
+  const chartBounds = await charts.evaluateAll(elements => elements.map(element => {
+    const bounds = element.getBoundingClientRect();
+    return { x: bounds.x, y: bounds.y, bottom: bounds.bottom };
+  }));
+  for (let index = 1; index < chartBounds.length; index++) {
+    expect(chartBounds[index].x).toBe(chartBounds[0].x);
+    expect(chartBounds[index].y).toBeGreaterThan(chartBounds[index - 1].bottom);
+  }
+  const restart = page.locator('.timeline-event').filter({ hasText: 'Restarted' });
+  if (testInfo.project.name === 'mobile-chromium') await restart.tap();
+  else await restart.click();
+  const selectedTime = await restart.getAttribute('data-timeline-select');
+  await expect(timeline).toHaveAttribute('data-selected', selectedTime);
+  for (const svg of await charts.locator('svg').all()) {
+    await expect(svg).toHaveAttribute('aria-valuenow', selectedTime);
+  }
+  const marker = page.locator('[data-timeline-marker][data-kind="restart"]');
+  const position = await marker.evaluate(element => ({ left: element.style.left, top: parseFloat(element.style.top) }));
+  expect(position.left).toBe('');
+  expect(position.top).toBeCloseTo(30, 1);
+  await slider.focus();
+  await page.keyboard.press('Home');
+  await expect(slider).toHaveValue(await timeline.getAttribute('data-start'));
+  await page.keyboard.press('ArrowUp');
+  expect(Number(await slider.inputValue())).toBe(Number(await timeline.getAttribute('data-start')) + 1000);
+  await page.keyboard.press('End');
+  await expect(slider).toHaveValue(await timeline.getAttribute('data-end'));
+  const logsLabel = page.locator('.observability-record-options').getByText('Container logs', { exact: true });
+  if (testInfo.project.name === 'mobile-chromium') await logsLabel.tap();
+  else await logsLabel.click();
+  await expect(page.locator('.observability-logs')).toBeVisible();
+  await expect(page.locator('.observability-logs')).toContainText('Container logs are not collected');
+  await expect(page.locator('.timeline-events')).toBeHidden();
+  await containers.getByRole('link').nth(1).click();
+  await expect(timeline).toHaveAttribute('data-container', 'b'.repeat(64));
+  await assertIsolation('b');
+  await expect(page.locator('.timeline-events')).toContainText('Out of memory');
+  await expect(page.locator('.timeline-events')).not.toContainText('Restarted');
+  await expect(page.getByRole('checkbox', { name: /Container/ })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await filterPanel.getByLabel('Search').fill('database');
+  await filterPanel.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(containers.getByRole('link')).toHaveCount(1);
+  await expect(containers.getByRole('link', { name: 'database', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(timeline).toHaveAttribute('data-container', 'b'.repeat(64));
+  await expect(containers.getByRole('link')).toHaveAttribute('href', /q=database/);
+  await filterPanel.getByLabel('Search').fill('missing');
+  await filterPanel.getByRole('button', { name: 'Apply filters' }).click();
+  await expect(containers.getByRole('link')).toHaveCount(0);
+  await expect(namePanel).toContainText('No containers match these filters');
+  await expect(page.locator('[data-chart-series]')).toHaveCount(0);
+  await page.goto('/containers/observability?container=' + 'b'.repeat(64));
+  if (testInfo.project.name === 'chromium') {
+    for (const theme of ['light', 'dark']) {
+      await page.setViewportSize({ width: 2560, height: 1440 });
+      await page.emulateMedia({ colorScheme: theme });
+      await page.screenshot({ path: `test-results/observability-single-container-${theme}-2560x1440.png` });
+      await page.setViewportSize({ width: 1256, height: 668 });
+      await expect(charts.nth(2)).toBeInViewport();
+      await expect(page.locator('.observability-records')).toBeInViewport();
+      await expect(page.locator('.timeline-event').first()).toBeInViewport({ ratio: 0.9 });
+      await page.screenshot({ path: `test-results/observability-single-container-${theme}-reference.png` });
+    }
+    for (const width of [1440, 1024, 901, 900, 620, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await expect(containers.getByRole('link').nth(1)).toBeVisible();
+    }
+    await page.setViewportSize({ width: 1440, height: 700 });
+    const filterBounds = await filterPanel.boundingBox();
+    const nameBounds = await namePanel.boundingBox();
+    expect(nameBounds.x).toBeGreaterThanOrEqual(filterBounds.x + filterBounds.width);
+    expect(nameBounds.width).toBeLessThan(filterBounds.width);
+    expect((await slider.boundingBox()).x).toBeGreaterThanOrEqual(nameBounds.x + nameBounds.width);
+    const sidebarTop = await containers.evaluate(element => element.getBoundingClientRect().top);
+    const railTop = await page.locator('.timeline-panel').evaluate(element => element.getBoundingClientRect().top);
+    await page.locator('.console-main').evaluate(element => { element.scrollTop = 180; });
+    expect(await containers.evaluate(element => element.getBoundingClientRect().top)).toBe(sidebarTop);
+    expect(await page.locator('.timeline-panel').evaluate(element => element.getBoundingClientRect().top)).toBeLessThanOrEqual(railTop);
+    await expect(slider).toBeInViewport();
+    await page.locator('.console-main').evaluate(element => { element.scrollTop = 0; });
+    await page.setViewportSize({ width: 390, height: 844 });
+    const contentBounds = await filterPanel.locator('.sidebar-content').boundingBox();
+    expect(contentBounds.y + contentBounds.height).toBeLessThanOrEqual((await namePanel.boundingBox()).y);
+    const networkSeries = charts.nth(2).locator('.chart-series-details');
+    await networkSeries.locator('summary').click();
+    await expect(networkSeries.getByRole('button', { name: 'Receive', exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await networkSeries.locator('summary').click();
+    await charts.nth(2).locator('.chart-data-details summary').click();
+    await expect(charts.nth(2).locator('.chart-table-scroll')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await charts.nth(2).locator('.chart-data-details summary').click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: 'test-results/observability-single-container-mobile.png', fullPage: true });
+  }
+});
+
+test('single-container navigation and record selectors work without JavaScript', async ({ browser, baseURL }) => {
+  const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
+  try {
+    await context.route('**/containers/observability*', serveObservability);
+    const page = await context.newPage();
+    await page.goto('/containers/observability');
+    await page.getByRole('navigation', { name: 'Filtered containers' }).getByRole('link', { name: 'database', exact: true }).click();
+    await expect(page.locator('[data-timeline]')).toHaveAttribute('data-container', 'b'.repeat(64));
+    await expect(page.locator('.timeline-event').filter({ hasText: 'Out of memory' })).toBeVisible();
+    await page.locator('.observability-record-options').getByText('Container logs', { exact: true }).click();
+    await expect(page.locator('.observability-logs')).toBeVisible();
+    await expect(page.locator('.timeline-events')).toBeHidden();
+    await page.getByLabel('Search', { exact: true }).fill('database');
+    await page.getByRole('button', { name: 'Apply filters' }).click();
+    await expect(page.getByRole('navigation', { name: 'Filtered containers' }).getByRole('link')).toHaveCount(1);
+  } finally {
+    await context.close();
   }
 });
 

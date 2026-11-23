@@ -45,6 +45,15 @@ load spike, and writes light/dark 2560×1440 screenshots under
 <code>test-results/dashboard-synthetic-*.png</code>. Preview data uses temporary
 test state only; it does not seed the running application's database or enable
 production collection.</p>
+<p>The same browser command captures a single-container Observability preview:
+separate filter and container-name sidebars, a vertical synchronized timeline,
+stacked CPU/memory/network charts and observed events beneath them. It writes
+light/dark 2560×1440, reduced-content-area and compact screenshots under
+<code>test-results/observability-single-container-*.png</code>. Synthetic
+snapshot names are test-only; real names and filters use an on-demand read-only
+Docker snapshot, with retained IDs used for history absent from the snapshot.
+The container-log section is explicitly unavailable until a log source and
+retention/access policy are configured; it does not invent historical logs.</p>
 <p>Go tests use the standard testing and httptest packages. Add table-driven
 configuration tests and handler tests near the implementation. For an individual
 package, run <code>go test -race ./internal/web</code>.</p>

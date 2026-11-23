@@ -1047,3 +1047,56 @@ No live Docker workload, host telemetry, native mobile device, container build
 or new security scan was exercised for this presentation-only slice. Existing
 unavailable-resource placeholders and raw chart-number formatting remain;
 this does not claim complete UniFi visual alignment.
+
+## Single-Container Observability Workspace
+
+2026-11-23, Linux development container, branch
+`feat/dashboard-aggregate-overview`, based on `44b9336` with implementation
+changes uncommitted during checks. The owner requested the actual UniFi
+Observability layout, not nearby dashboard/topology screens: separate filters
+and a slimmer filtered-name list, a vertical timeline, stacked charts and
+records underneath. The supplied recording was decoded locally; the latest
+1434x768 screenshot represents part of an unscaled 1080p desktop occupied by
+Chrome. Browser captures include a 1256x668 application-content viewport and
+2560x1440 light/dark views; these are layout evidence, not pixel-identical
+reproduction or owner acceptance of final appearance.
+
+The view defaults to the first filtered container. Names and filter values use
+one authenticated, on-demand read-only Docker snapshot; retained event/state
+and metric identities remain available with ID-based labels if absent from
+the snapshot. Queries do not enable collection. CPU, raw memory and network
+charts show only the selected container; receive/transmit share the network
+card. Event selection is scoped before the newest-200 limit, so unrelated busy
+containers cannot displace the selected container's events. Unknown or
+filtered-out explicit selections return 404 instead of an all-container view.
+
+- `go test ./internal/web ./internal/metrics`: passed. Tests exercise isolated
+  events, state/event-only identities, range expiry, default and filtered
+  selection, exact network values and original observation timestamps,
+  filter-preserving links, and authenticated
+  mock-Docker snapshot requests with escaped names.
+- Focused browser checks passed Chromium, Firefox, WebKit and mobile Chromium.
+  An initial WebKit failure exposed reversed native Home/End behavior for a
+  vertical RTL slider; explicit vertical keyboard handling corrected it.
+  Screenshot inspection exposed filter-content spill on compact screens and
+  legend-popup overflow; bounded internal scrolling and popup sizing corrected
+  both. An old horizontal touch coordinate was updated for the vertical control.
+- `make check QUIET=1`: passed Go vet/race tests/build, Node and HTTP tests,
+  supported desktop/mobile browser projects, asset and contract checks.
+- `make docs check-docs check-security QUIET=1`: passed Hugo variants/local
+  links, npm audit and Go vulnerability analysis with no findings.
+
+Browser regressions cover separate sidebar ordering/widths, single-container
+isolation, filter application and empty results, vertical pointer/touch and
+keyboard selection, exact event/chart synchronization, native no-JavaScript
+navigation and record tabs, and compact overflow including open chart controls.
+The reduced-content viewport must show the third chart and at least 90% of the
+first event row; mere existence of a bottom-section placeholder is insufficient.
+
+Container-log collection, retention/access policy, live-Docker history,
+native-platform behavior and container checks were not exercised or added.
+The log tab explicitly reports unavailability rather than presenting lifecycle
+events as application logs. Mobile feature scope remains undecided after the
+owner questioned desktop parity: existing access is preserved with bounded
+reflow, not certified as a final phone experience. No workflow changes or
+workflow checks are part of this slice.

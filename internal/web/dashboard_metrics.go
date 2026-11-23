@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"net/url"
 	"time"
 
 	"github.com/mstrhakr/go-compose-manager-plus/internal/metrics"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 )
 
 const chartBucket = 30 * time.Second
@@ -18,7 +20,8 @@ var chartColors = []string{"blue", "amber", "purple", "green", "red"}
 type dashboardMetricsCollector interface {
 	Status() metrics.CollectorStatus
 	SelectChartSeries(context.Context, time.Time, time.Time, time.Duration) ([]metrics.ContainerChartSeries, error)
-	SelectTimelineEvents(context.Context, time.Time, time.Time, int) ([]metrics.Event, error)
+	SelectTimelineEvents(context.Context, string, time.Time, time.Time, int) ([]metrics.Event, error)
+	SelectObservedContainers(context.Context, time.Time, time.Time) ([]string, error)
 }
 
 type dashboardChartData struct {
@@ -51,7 +54,7 @@ type dashboardAggregateMetric struct {
 
 func (server *authServer) dashboardCharts(ctx context.Context) ([]chartPanel, string) {
 	start, end := dashboardTimeRange()
-	return server.dashboardChartsForRange(ctx, start, end, true)
+	return server.dashboardChartsForRange(ctx, start, end, true, "")
 }
 
 func dashboardTimeRange() (time.Time, time.Time) {
@@ -60,7 +63,7 @@ func dashboardTimeRange() (time.Time, time.Time) {
 	return start, end
 }
 
-func (server *authServer) dashboardChartsForRange(ctx context.Context, start, end time.Time, aggregate bool) ([]chartPanel, string) {
+func (server *authServer) dashboardChartsForRange(ctx context.Context, start, end time.Time, aggregate bool, containerID string) ([]chartPanel, string) {
 	panels := emptyDashboardCharts("Collection disabled", "No metrics are being collected. Enable opt-in collection in Settings to populate these charts.", aggregate)
 	settings, err := server.metricsSettings.Load(ctx)
 	if err != nil {
@@ -70,11 +73,24 @@ func (server *authServer) dashboardChartsForRange(ctx context.Context, start, en
 	if !settings.Enabled {
 		return panels, "Disabled"
 	}
+	if !aggregate && containerID == "" {
+		return emptyDashboardCharts("No container selected", "Select a container to view its last-hour history.", false), "No selection"
+	}
 	status := server.collector.Status()
 	series, err := server.collector.SelectChartSeries(ctx, start, end, chartBucket)
 	if err != nil {
 		server.logger.ErrorContext(ctx, "read dashboard metrics", "error", err)
 		return emptyDashboardCharts("Unavailable", "Stored metrics could not be loaded.", aggregate), "Unavailable"
+	}
+	if !aggregate {
+		selected := []metrics.ContainerChartSeries{}
+		for _, container := range series {
+			if container.ContainerID == containerID {
+				selected = append(selected, container)
+				break
+			}
+		}
+		series = selected
 	}
 	if len(series) == 0 {
 		if status.Problem != "" {
@@ -126,35 +142,24 @@ func (server *authServer) dashboardChartsForRange(ctx context.Context, start, en
 		containerTitle string
 		aggregateTitle string
 		yLabel         string
-		containerValue func(metrics.ChartPoint) *float64
 		aggregate      []dashboardAggregateMetric
 	}
 	definitions := []chartDefinition{
 		{
-			id: "dashboard-cpu", containerTitle: "CPU by container", aggregateTitle: "CPU across collected containers", yLabel: "CPU (%)",
-			containerValue: func(point metrics.ChartPoint) *float64 { return point.CPUPercent },
-			aggregate:      []dashboardAggregateMetric{{Label: "Collected container total", Color: "blue", Value: func(point metrics.ChartPoint) *float64 { return point.CPUPercent }}},
+			id: "dashboard-cpu", containerTitle: "CPU usage", aggregateTitle: "CPU across collected containers", yLabel: "CPU (%)",
+			aggregate: []dashboardAggregateMetric{{Label: "Collected container total", Color: "blue", Value: func(point metrics.ChartPoint) *float64 { return point.CPUPercent }}},
 		},
 		{
-			id: "dashboard-memory", containerTitle: "Docker raw memory usage by container", aggregateTitle: "Raw memory across collected containers", yLabel: "MiB",
-			containerValue: memoryMiB,
-			aggregate:      []dashboardAggregateMetric{{Label: "Collected container total", Color: "amber", Value: memoryMiB}},
+			id: "dashboard-memory", containerTitle: "Memory usage (Docker raw)", aggregateTitle: "Raw memory across collected containers", yLabel: "MiB",
+			aggregate: []dashboardAggregateMetric{{Label: "Collected container total", Color: "amber", Value: memoryMiB}},
 		},
 		{
-			id: "dashboard-network-rx", containerTitle: "Network receive by container", aggregateTitle: "Network throughput across collected containers", yLabel: "MiB/s",
-			containerValue: func(point metrics.ChartPoint) *float64 { return rateMiB(point.NetworkRxBytesPerSec) },
+			id: "dashboard-network-rx", containerTitle: "Network throughput", aggregateTitle: "Network throughput across collected containers", yLabel: "MiB/s",
 			aggregate: []dashboardAggregateMetric{
 				{Label: "Receive", Color: "blue", Value: func(point metrics.ChartPoint) *float64 { return rateMiB(point.NetworkRxBytesPerSec) }},
 				{Label: "Transmit", Color: "amber", Value: func(point metrics.ChartPoint) *float64 { return rateMiB(point.NetworkTxBytesPerSec) }},
 			},
 		},
-		{
-			id: "dashboard-network-tx", containerTitle: "Network transmit by container", aggregateTitle: "Network transmit by container", yLabel: "MiB/s",
-			containerValue: func(point metrics.ChartPoint) *float64 { return rateMiB(point.NetworkTxBytesPerSec) },
-		},
-	}
-	if aggregate {
-		definitions = definitions[:3]
 	}
 	panels = make([]chartPanel, 0, len(definitions))
 	for _, definition := range definitions {
@@ -165,7 +170,7 @@ func (server *authServer) dashboardChartsForRange(ctx context.Context, start, en
 			title = definition.aggregateTitle
 			panel, err = buildAggregateDashboardChart(definition.id, title, definition.yLabel, series, start, end, chartBucket, definition.aggregate)
 		} else {
-			panel, err = buildDashboardChart(definition.id, title, definition.yLabel, series, start, end, definition.containerValue)
+			panel, err = buildDashboardChart(definition.id, title, definition.yLabel, series, start, end, definition.aggregate)
 		}
 		if err != nil {
 			server.logger.ErrorContext(ctx, "encode dashboard chart", "error", err)
@@ -203,7 +208,7 @@ type dashboardTimelineEvent struct {
 	Kind        string
 }
 
-func (server *authServer) dashboardTimeline(ctx context.Context, start, end time.Time) dashboardTimeline {
+func (server *authServer) dashboardTimeline(ctx context.Context, start, end time.Time, containerID string) dashboardTimeline {
 	timeline := dashboardTimeline{
 		Start: start.UnixMilli(), End: end.UnixMilli(), SelectedTime: end.UnixMilli(),
 		StartLabel: start.Format("Jan 2 · 15:04 MST"), EndLabel: end.Format("Jan 2 · 15:04 MST"),
@@ -220,7 +225,12 @@ func (server *authServer) dashboardTimeline(ctx context.Context, start, end time
 		timeline.Message = "Metrics collection is disabled. Enable opt-in collection in Settings to populate this timeline."
 		return timeline
 	}
-	events, err := server.collector.SelectTimelineEvents(ctx, start, end, timelineEventLimit+1)
+	if containerID == "" {
+		timeline.Status = "No selection"
+		timeline.Message = "Select a container to view its last-hour history."
+		return timeline
+	}
+	events, err := server.collector.SelectTimelineEvents(ctx, containerID, start, end, timelineEventLimit+1)
 	if err != nil {
 		server.logger.ErrorContext(ctx, "read observability timeline events", "error", err)
 		return timeline
@@ -273,6 +283,70 @@ func (server *authServer) dashboardTimeline(ctx context.Context, start, end time
 	return timeline
 }
 
+type observedContainer struct {
+	ID      string
+	Label   string
+	State   string
+	Href    string
+	Current bool
+}
+
+func (server *authServer) observabilityContainers(ctx context.Context, start, end time.Time, snapshot []runtime.Container, query url.Values) ([]observedContainer, string, inventoryFilters, error) {
+	settings, err := server.metricsSettings.Load(ctx)
+	if err != nil {
+		return nil, "", inventoryFilters{}, fmt.Errorf("load observability settings: %w", err)
+	}
+	var ids []string
+	if settings.Enabled {
+		ids, err = server.collector.SelectObservedContainers(ctx, start, end)
+		if err != nil {
+			return nil, "", inventoryFilters{}, fmt.Errorf("load observed containers: %w", err)
+		}
+	}
+	inventory := append([]runtime.Container{}, snapshot...)
+	seen := make(map[string]bool, len(inventory))
+	for _, container := range inventory {
+		if container.ID == "" {
+			return nil, "", inventoryFilters{}, fmt.Errorf("snapshot container %q has no identity", container.Name)
+		}
+		seen[container.ID] = true
+	}
+	for _, id := range ids {
+		if !seen[id] {
+			inventory = append(inventory, runtime.Container{ID: id, Name: "Container " + shortContainerID(id), State: "History only"})
+		}
+	}
+	filters, _, inventory := filterInventory("containers", query, nil, inventory)
+	filters.Path = "/containers/observability"
+	selected := query.Get("container")
+	if selected == "" && len(inventory) > 0 {
+		selected = inventory[0].ID
+	}
+	containers := make([]observedContainer, 0, len(inventory))
+	found := selected == ""
+	linkQuery := url.Values{}
+	for _, key := range []string{"q", "sort", "state", "group", "project"} {
+		linkQuery[key] = query[key]
+	}
+	for _, container := range inventory {
+		current := container.ID == selected
+		found = found || current
+		label := container.Name
+		if label == "" {
+			label = "Container " + shortContainerID(container.ID)
+		}
+		linkQuery.Set("container", container.ID)
+		containers = append(containers, observedContainer{
+			ID: container.ID, Label: label, State: container.State,
+			Href: "/containers/observability?" + linkQuery.Encode(), Current: current,
+		})
+	}
+	if !found {
+		return containers, "", filters, nil
+	}
+	return containers, selected, filters, nil
+}
+
 func timelineEventDescription(event metrics.Event) string {
 	switch event.Kind {
 	case metrics.EventStart:
@@ -301,39 +375,46 @@ func emptyDashboardCharts(status, detail string, aggregate bool) []chartPanel {
 		}
 	}
 	return []chartPanel{
-		{ID: "dashboard-cpu", Title: "CPU by container", Status: status, EmptyTitle: "CPU unavailable", EmptyDetail: detail},
-		{ID: "dashboard-memory", Title: "Docker raw memory usage by container", Status: status, EmptyTitle: "Memory unavailable", EmptyDetail: detail},
-		{ID: "dashboard-network-rx", Title: "Network receive by container", Status: status, EmptyTitle: "Network receive unavailable", EmptyDetail: detail},
-		{ID: "dashboard-network-tx", Title: "Network transmit by container", Status: status, EmptyTitle: "Network transmit unavailable", EmptyDetail: detail},
+		{ID: "dashboard-cpu", Title: "CPU usage", Status: status, EmptyTitle: "CPU unavailable", EmptyDetail: detail},
+		{ID: "dashboard-memory", Title: "Memory usage (Docker raw)", Status: status, EmptyTitle: "Memory unavailable", EmptyDetail: detail},
+		{ID: "dashboard-network-rx", Title: "Network throughput", Status: status, EmptyTitle: "Network unavailable", EmptyDetail: detail},
 	}
 }
 
-func buildDashboardChart(id, title, yLabel string, containers []metrics.ContainerChartSeries, start, end time.Time, value func(metrics.ChartPoint) *float64) (chartPanel, error) {
+func buildDashboardChart(id, title, yLabel string, containers []metrics.ContainerChartSeries, start, end time.Time, values []dashboardAggregateMetric) (chartPanel, error) {
 	input := dashboardChartData{
 		Min: 0, Max: 1, XMin: start.UnixMilli(), XMax: end.UnixMilli(),
 		SelectedTime: end.UnixMilli(), XLabel: "Time", YLabel: yLabel,
-		Series: make([]dashboardSeries, 0, len(containers)),
+		Series: make([]dashboardSeries, 0, len(containers)*len(values)),
 	}
 	maxValue := 0.0
 	hasValue := false
 	for index, container := range containers {
-		series := dashboardSeries{
-			Label:  "Container " + shortContainerID(container.ContainerID),
-			Color:  chartColors[index%len(chartColors)],
-			Points: make([]dashboardDataPoint, 0, len(container.Points)),
-		}
-		for _, point := range container.Points {
-			y := value(point)
-			if y != nil {
-				if math.IsNaN(*y) || math.IsInf(*y, 0) || *y < 0 {
-					return chartPanel{}, fmt.Errorf("invalid %s observation for container %s", yLabel, container.ContainerID)
-				}
-				hasValue = true
-				maxValue = math.Max(maxValue, *y)
+		for _, metric := range values {
+			series := dashboardSeries{
+				Label:  "Container " + shortContainerID(container.ContainerID),
+				Color:  chartColors[index%len(chartColors)],
+				Points: make([]dashboardDataPoint, 0, len(container.Points)),
 			}
-			series.Points = append(series.Points, dashboardDataPoint{X: point.Time.UnixMilli(), Y: y})
+			if len(containers) == 1 {
+				series.Color = metric.Color
+			}
+			if len(values) > 1 {
+				series.Label = metric.Label
+			}
+			for _, point := range container.Points {
+				y := metric.Value(point)
+				if y != nil {
+					if math.IsNaN(*y) || math.IsInf(*y, 0) || *y < 0 {
+						return chartPanel{}, fmt.Errorf("invalid %s observation for container %s", yLabel, container.ContainerID)
+					}
+					hasValue = true
+					maxValue = math.Max(maxValue, *y)
+				}
+				series.Points = append(series.Points, dashboardDataPoint{X: point.Time.UnixMilli(), Y: y})
+			}
+			input.Series = append(input.Series, series)
 		}
-		input.Series = append(input.Series, series)
 	}
 	if hasValue {
 		input.Max = math.Max(1, maxValue*1.1)

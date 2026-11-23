@@ -133,6 +133,21 @@ display, following the supplied dashboard recording. The bounded presentation
 uses CPU, memory and combined network receive/transmit views over unchanged
 last-hour aggregate samples; Observability retains separate per-container charts.
 
+On 2026-11-23 the owner requested Observability's single-container layout and
+interactions based on the supplied recording: a secondary-sidebar container
+selection (defaulting to the top entry), vertical timeline, stacked charts and
+bottom logs/records area, with no aggregate or overlapping-container view.
+The recording was decoded locally; its Observability segment demonstrates
+selected-entity charts, a newest-at-top time rail, synchronized time selection
+and records beneath the charts. The bounded implementation uses retained
+container identities and observed events. The owner further clarified the
+separate filter sidebar and slimmer container-name sidebar, directing attention
+to the actual Observability page rather than adjacent UniFi screens. A supplied
+1434x768 screenshot is described as an unscaled 1080p desktop with Chrome taking
+part of the screen. The implementation adds on-demand read-only snapshot names
+and filter values, retaining historical-only IDs with unknown current metadata.
+Historical log collection remains unavailable, not fabricated or inferred.
+
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose
 project name, even for copies resolving to the same name. This is runtime

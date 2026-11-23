@@ -251,12 +251,21 @@ measurements require a separate host data source and remain unimplemented; do
 not present container aggregates as host metrics or assume additional mounts or
 privileges. These charts cover the last hour and report when collection is
 disabled, starting, paused or has no observations.
-The authenticated Containers observability view presents the same one-hour
-metric charts with a shared timeline slider, observed lifecycle markers and a
-newest-first list bounded to 200 events. Slider, marker, list, chart-click and
+The authenticated Containers observability view presents one selected container's
+one-hour metric charts with a vertical timeline slider, observed lifecycle
+markers and a newest-first list bounded to 200 events for that container.
+The filter sidebar remains separate from a slimmer container-name sidebar.
+The name list combines an on-demand read-only Docker snapshot with retained
+event/state/sample identities and defaults to its first filtered entry in name
+order. Historical-only identities use IDs and unknown association/state rather
+than inventing current metadata. An explicit unknown or filtered-out identity
+is unavailable, never a fallback to all containers.
+Slider, marker, list, chart-click and
 chart-keyboard selection share the `observability:timechange` event and keep
-the timeline and chart cursors synchronized. It reads stored history without
-requesting a Docker snapshot. Event history may be incomplete; the view labels
+the timeline and chart cursors synchronized. Opening, filtering or selecting
+in this view requests one read-only snapshot for names and filter values; chart
+and event data still come from stored history, without enabling collection.
+Event history may be incomplete; the view labels
 observed events rather than asserting a complete lifecycle record. A bounded
 event list is explicitly marked when older events are omitted. No persisted
 per-container gap ledger, hard filesystem quota or measured preset
@@ -313,6 +322,22 @@ does not implement these behaviors.
 - The initial observability view shows the last hour; chart, slider, marker and
   event-list selections stay synchronized. Only recorded events appear, and the
   view does not imply Docker event history is complete.
+- On 2026-11-23 the owner requested a UniFi-inspired single-container
+  Observability workspace: selecting a container in the secondary sidebar opens
+  only its detail/history view, the first available container is selected by
+  default, the timeline is vertical, metric charts are stacked, and records sit
+  underneath. There is no multi-container overlay or aggregate option on this
+  page. This supersedes the earlier all-container Observability presentation,
+  not aggregate Overview.   The owner clarified that filters belong in the main sidebar and container
+  names in a separate slimmer sidebar, and supplied an additional unscaled
+  1080p desktop reference with Chrome occupying part of the screen. The
+  implementation uses an on-demand read-only snapshot for names and filters,
+  with retained-ID fallback for history absent from the snapshot. CPU, memory
+  and network charts are stacked; RX/TX are two metrics of the same container,
+  not an overlapping-container or aggregate view.
+  The bottom section exposes observed lifecycle events and an explicitly
+  unavailable container-log view. This request does not settle historical log
+  sources, access or retention policy or authorize a new log collector.
 
 ### Proposed Cases Requiring Review And Eventual Execution-Based Checks
 
@@ -326,6 +351,10 @@ does not implement these behaviors.
 - Desktop/mobile and keyboard/touch retain readable status, usable actions and
   recoverable connection feedback. No exact widget/layout is approved for the
   remaining live-state actions yet.
+- The owner questioned full mobile Observability parity on 2026-11-23.
+  Simplified companion, collapsible full access and desktop-only scope remain
+  undecided. This is not approval to remove features from narrow screens; the
+  current bounded reflow preserves access pending a separate decision.
 
 ## Decisions
 
@@ -374,6 +403,12 @@ through 620 pixels; the full browser suite includes mobile Chromium. These
 checks do not add or verify a host telemetry source, live Docker collection,
 physical disk-full recovery, platform-specific behavior or measured resource
 costs.
+
+The single-container Observability refinement is recorded separately in
+[workspace verification](../verification.md#single-container-observability-workspace).
+It replaces the all-container presentation with selected-container charts and
+events, plus on-demand snapshot names and filtering. Historical logs and final
+mobile feature scope remain unresolved; no whole-contract fulfillment is claimed.
 
 The desktop shell's independent main/sidebar scrolling was exercised on Linux
 on 2026-11-23. `make check QUIET=1`, `make docs && make check-docs`, and

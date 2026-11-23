@@ -195,7 +195,7 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 	for _, project := range projects {
 		views = append(views, projectView{Project: project, DisplayName: filepath.Base(project.Path)})
 	}
-	requested := r.URL.Query().Get("runtime") == "1" || view == "projects" || view == "containers"
+	requested := r.URL.Query().Get("runtime") == "1" || view == "projects" || view == "containers" || view == "observability"
 	containerList := listPanel{ID: "containers-title", Title: "Containers", Customize: true, Columns: []string{"Name", "State", "Compose project", "Service"}, Empty: "No containers found in this snapshot."}
 	var containers []runtime.Container
 	runtimeMessage := "Docker integration pending. Container status, logs, and operations are not connected."
@@ -216,7 +216,7 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 		} else {
 			runtimeMessage = "Docker snapshot taken " + time.Now().UTC().Format("2006-01-02 15:04:05 UTC") + "."
 			runtimeState = "Snapshot"
-			if view != "containers" {
+			if view == "projects" || view == "dashboard" {
 				for i := range views {
 					project := &views[i]
 					name, resolveErr := discovery.ResolveProjectName(r.Context(), project.Root, project.Path)
@@ -296,14 +296,26 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 		charts, metricsStatus = server.dashboardCharts(r.Context())
 	}
 	var timeline dashboardTimeline
+	var observed []observedContainer
+	var selected string
 	if view == "observability" {
 		start, end := dashboardTimeRange()
-		charts, metricsStatus = server.dashboardChartsForRange(r.Context(), start, end, false)
-		timeline = server.dashboardTimeline(r.Context(), start, end)
+		observed, selected, filters, err = server.observabilityContainers(r.Context(), start, end, containers, r.URL.Query())
+		if err != nil {
+			server.logger.ErrorContext(r.Context(), "load observability containers", "error", err)
+			http.Error(w, "Unable to load container history", http.StatusInternalServerError)
+			return
+		}
+		if r.URL.Query().Get("container") != "" && selected == "" {
+			http.Error(w, "Container is unavailable in this filtered view", http.StatusNotFound)
+			return
+		}
+		charts, metricsStatus = server.dashboardChartsForRange(r.Context(), start, end, false, selected)
+		timeline = server.dashboardTimeline(r.Context(), start, end, selected)
 	}
 	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, ProjectColumns: listPanel{ID: "projects-title", Title: "Projects", Columns: []string{"Project", "Discovery", "Activation", "Containers"}}, Filters: filters, SubviewNav: subviews,
 		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: views, RuntimeMessage: runtimeMessage, RuntimeState: runtimeState,
-		Charts: charts, MetricsStatus: metricsStatus, Timeline: timeline,
+		Charts: charts, MetricsStatus: metricsStatus, Timeline: timeline, ObservedContainers: observed, SelectedContainer: selected,
 		Metrics: []metricPanel{
 			{ID: "restart-title", Title: "Container restart & OOM rate", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
 			{ID: "health-title", Title: "Stack health & readiness", Status: "Unavailable", Value: "--", Detail: "No runtime data"},

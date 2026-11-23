@@ -120,8 +120,11 @@
       });
       const axis = document.createElement('div');
       axis.className = 'chart-axis';
+      const compact = chart.closest('.observability-charts') !== null;
+      const numberFormat = new Intl.NumberFormat(undefined, { maximumSignificantDigits: 4 });
+      const formatValue = value => compact ? numberFormat.format(value) : String(value);
       const yAxis = document.createElement('span');
-      yAxis.textContent = `${input.yLabel || 'Value'}: ${input.min}–${input.max}`;
+      yAxis.textContent = `${input.yLabel || 'Value'}: ${formatValue(input.min)}–${formatValue(input.max)}`;
       const xAxis = document.createElement('span');
       xAxis.textContent = `${input.xLabel || 'Time'}: ${formatChartTime(minX)}–${formatChartTime(maxX)}`;
       axis.append(yAxis, xAxis);
@@ -245,7 +248,7 @@
         for (const { series, point } of nearest.slice(0, 10)) {
           const entry = document.createElement('span');
           entry.className = `chart-tooltip-entry chart-${series.color}`;
-          entry.textContent = `${series.label}: ${point.y === null ? 'Missing observation' : point.y}`;
+          entry.textContent = `${series.label}: ${point.y === null ? 'Missing observation' : formatValue(point.y)}`;
           entries.push(entry);
         }
         if (nearest.length > 10) {
@@ -340,6 +343,11 @@
       output.value = format(selected);
       output.textContent = output.value;
       slider.setAttribute('aria-valuetext', output.value);
+      const cursor = timeline.querySelector('[data-timeline-cursor]');
+      if (cursor) {
+        cursor.style.top = `${100 - (selected - start) / (end - start) * 100}%`;
+        cursor.hidden = false;
+      }
       for (const marker of timeline.querySelectorAll('[data-timeline-select]')) {
         const eventTime = Number(marker.dataset.timelineSelect);
         const selectedMarker = marker.hasAttribute('data-timeline-marker')
@@ -360,6 +368,18 @@
       }));
     };
     slider.addEventListener('input', announce);
+    if (timeline.hasAttribute('data-timeline-vertical')) {
+      slider.addEventListener('keydown', event => {
+        if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        let time = Number(slider.value);
+        if (event.key === 'Home') time = start;
+        else if (event.key === 'End') time = end;
+        else time += ['ArrowUp', 'ArrowRight'].includes(event.key) ? step : -step;
+        slider.value = String(Math.max(start, Math.min(end, time)));
+        announce();
+      });
+    }
     timeline.addEventListener('click', event => {
       if (!(event.target instanceof Element)) return;
       const button = event.target.closest('[data-timeline-select]');
@@ -378,7 +398,11 @@
     setTime(Number.isFinite(initial) ? initial : end);
     for (const marker of timeline.querySelectorAll('[data-timeline-marker]')) {
       const position = Number(marker.dataset.position);
-      if (Number.isFinite(position)) marker.style.left = `${Math.max(0, Math.min(100, position))}%`;
+      if (Number.isFinite(position)) {
+        const bounded = Math.max(0, Math.min(100, position));
+        if (timeline.hasAttribute('data-timeline-vertical')) marker.style.top = `${100 - bounded}%`;
+        else marker.style.left = `${bounded}%`;
+      }
     }
   }
 

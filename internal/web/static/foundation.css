@@ -338,6 +338,71 @@ circle.chart-line { fill: currentColor; stroke: none; }
 .timeline-event[data-kind="oom"] .timeline-event-kind { color: var(--danger); }
 .timeline-event[data-kind="health_status"] .timeline-event-kind { color: var(--timeline-health); }
 .timeline-empty { margin: 12px 0 0; padding: 14px; color: var(--muted); background: var(--raised); border-radius: 4px; font-size: 11px; }
+.observability-container-list { display: grid; gap: 2px; margin-top: 12px; }
+.observability-sidebar { padding: 12px 8px; }
+.observability-layout .discovery-notice { margin: 6px 0; padding: 4px 8px; font-size: 11px; }
+.observability-container-list a { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 5px 6px; color: var(--muted); border-radius: 4px; }
+.observability-container-list a span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.observability-container-list a:hover, .observability-container-list a[aria-current="page"] { color: var(--blue); background: var(--blue-soft); }
+.observability-workspace { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: start; gap: 16px; margin-top: 16px; }
+.observability-workspace .timeline-panel { position: sticky; top: 0; display: flex; flex-direction: column; height: min(780px, calc(100dvh - 140px)); min-height: 360px; padding: 10px 8px; }
+.observability-workspace .timeline-panel h2 { margin: 0; font-size: 12px; }
+.observability-workspace .timeline-label { display: block; margin: 8px 0 12px; font-size: 10px; }
+.observability-workspace .timeline-label output { display: block; text-align: left; overflow-wrap: anywhere; }
+.timeline-rail { position: relative; flex: 1; min-height: 0; margin: 12px 0; }
+.timeline-selection { position: absolute; left: 0; right: 0; border-top: 1px solid var(--blue); pointer-events: none; }
+.timeline-selection[hidden] { display: none; }
+.observability-workspace .timeline-axis { position: absolute; inset: 0 auto 0 0; display: flex; flex-direction: column; justify-content: space-between; gap: 0; }
+.observability-workspace .timeline-track { position: absolute; inset: 0 24px 0 auto; width: 24px; height: auto; margin: 0; border: 0; }
+.observability-workspace .timeline-marker { left: 50%; bottom: auto; transform: translate(-50%, -50%); z-index: 1; }
+.observability-workspace .timeline-slider { position: absolute; inset: 0 0 0 auto; width: 24px; height: 100%; min-height: 0; margin: 0; writing-mode: vertical-lr; direction: rtl; cursor: ns-resize; }
+.observability-detail { min-width: 0; }
+.observability-charts { display: grid; gap: 8px; }
+.observability-charts .chart-panel { padding: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; }
+.observability-charts .chart { height: 96px; margin-top: 4px; }
+.observability-charts .chart-plot { inset: 8px 8px 26px; }
+.observability-charts .chart-axis { width: auto; flex-wrap: wrap; }
+.observability-charts .chart-axis span:last-child { display: none; }
+.observability-charts .chart-axis span { min-width: 0; overflow-wrap: anywhere; }
+.observability-charts .chart-series-list { width: min(40vw, 360px); }
+.observability-records { margin-top: 8px; border-top: 1px solid var(--border); }
+.observability-record-options { display: flex; gap: 4px; margin: 6px 0; padding: 0; border: 0; }
+.observability-record-options label { position: relative; cursor: pointer; }
+.observability-record-options span { display: block; padding: 4px 8px; color: var(--muted); border-bottom: 2px solid transparent; }
+.observability-record-options input:checked + span { color: var(--blue); border-color: var(--blue); }
+.observability-record-options input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 2px; }
+.observability-records .timeline-events { padding: 0; margin: 0; border: 0; background: transparent; }
+.observability-record-columns, .observability-records .timeline-event { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 8px; }
+.observability-record-columns { margin-top: 6px; padding: 4px 10px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 11px; }
+.observability-records .timeline-event-list { margin-top: 6px; gap: 0; }
+.observability-records .timeline-event { padding: 6px 10px; background: transparent; border-radius: 0; border-bottom: 1px solid var(--border); }
+.observability-records .timeline-event time { order: 2; }
+.observability-records .timeline-event-kind { order: 1; }
+.observability-records .timeline-event-container { display: none; }
+.observability-logs, .observability-records:has(input[value="logs"]:checked) .timeline-events { display: none; }
+.observability-records:has(input[value="logs"]:checked) .observability-logs { display: block; }
+@media (max-width: 900px) {
+  .observability-sidebar { max-height: 240px; }
+  .observability-container-list { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .observability-workspace { grid-template-columns: 100px minmax(0, 1fr); gap: 10px; }
+  .observability-workspace .timeline-panel { height: 540px; }
+}
+@media (min-width: 901px) {
+  .console-body.inventory-layout.observability-layout { grid-template-columns: 48px 200px 176px minmax(0, 1fr); }
+  .console-body.inventory-layout.observability-layout.navigation-expanded { grid-template-columns: 200px 200px 176px minmax(0, 1fr); }
+  .console-body.inventory-layout.observability-layout:has(.inventory-filter-disclosure:not([open])) { grid-template-columns: 48px 0 176px minmax(0, 1fr); }
+  .console-body.inventory-layout.observability-layout.navigation-expanded:has(.inventory-filter-disclosure:not([open])) { grid-template-columns: 200px 0 176px minmax(0, 1fr); }
+}
+@media (max-width: 620px) {
+  .observability-workspace { grid-template-columns: 80px minmax(0, 1fr); gap: 8px; }
+  .observability-workspace .timeline-panel { padding: 8px 4px; }
+  .observability-workspace .timeline-track { right: 18px; }
+  .observability-workspace .timeline-slider { width: 18px; }
+  .observability-records .timeline-event { display: flex; flex-direction: column; align-items: flex-start; }
+  .observability-record-columns { display: none; }
+  .observability-charts .chart { height: 144px; }
+  .observability-charts .chart-plot { bottom: 56px; }
+}
 .resource-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
 .resource-grid .resource-section { margin: 0; min-width: 0; }
 .resource-placeholder { min-height: 76px; display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 10px; color: var(--muted); border: 1px dashed var(--border); border-radius: 5px; }
@@ -392,6 +457,11 @@ circle.chart-line { fill: currentColor; stroke: none; }
   .sidebar-collapse-label, .sidebar-expand-label { position: static; width: auto; height: auto; clip: auto; white-space: normal; }
   .host-sidebar:has(.sidebar-disclosure:not([open])) { padding: 12px 10px; }
   .inventory-sidebar + .console-main { grid-column: 2; grid-row: 1; }
+  .observability-layout .inventory-sidebar { grid-row: 1; }
+  .observability-layout .sidebar-content { max-height: 300px; overflow-y: auto; }
+  .observability-layout .console-rail { grid-row: 1 / 4; }
+  .observability-layout .observability-sidebar { grid-column: 2; grid-row: 2; }
+  .observability-layout .console-main { grid-column: 2; grid-row: 3; }
   .inventory-filter-link { display: inline-block; }
   .inventory-columns, .inventory-item summary { gap: 8px; }
   .settings-page { grid-template-columns: minmax(0, 1fr); gap: 0; }
@@ -422,6 +492,10 @@ circle.chart-line { fill: currentColor; stroke: none; }
   .navigation-expanded .rail-item, .navigation-expanded .rail-toggle { width: auto; min-height: 36px; gap: 6px; }
   .inventory-sidebar { grid-column: 1; grid-row: 3; }
   .inventory-sidebar + .console-main { grid-column: 1; grid-row: 2; }
+  .observability-layout .console-rail { grid-row: 1; }
+  .observability-layout .inventory-sidebar { grid-column: 1; grid-row: 2; }
+  .observability-layout .observability-sidebar { grid-column: 1; grid-row: 3; }
+  .observability-layout .console-main { grid-column: 1; grid-row: 4; }
   .inventory-columns { display: none; }
   .inventory-panel .list-panel .data-table { min-width: 600px; }
   .inventory-item summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-height: 52px; }

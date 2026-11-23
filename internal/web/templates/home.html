@@ -55,7 +55,7 @@
       <form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="text-button" type="submit">Sign out</button></form>
     </div>
   </header>
-  <div class="console-body{{if eq .View "settings"}} settings-layout{{else if ne .View "dashboard"}} inventory-layout{{end}}">
+  <div class="console-body{{if eq .View "settings"}} settings-layout{{else if eq .View "observability"}} inventory-layout observability-layout{{else if ne .View "dashboard"}} inventory-layout{{end}}">
     <nav class="console-rail" aria-label="Main navigation" id="main-navigation">
       <a class="rail-item{{if eq .View "dashboard"}} selected{{end}}" href="/" {{if eq .View "dashboard"}}aria-current="page"{{end}} aria-label="Overview" title="Overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h7V3H3v10Zm0 8h7v-5H3v5Zm11 0h7V11h-7v10Zm0-18v5h7V3h-7Z"/></svg><span class="rail-label">Overview</span></a>
       <a class="rail-item{{if eq .View "projects"}} selected{{end}}" href="/projects" {{if eq .View "projects"}}aria-current="page"{{end}} aria-label="Compose projects" title="Compose projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4zM6 7h12M8 4h8"/></svg><span class="rail-label">Compose projects</span></a>
@@ -112,10 +112,14 @@
       </details>
     </aside>
     {{else if eq .View "observability"}}
-    <aside class="host-sidebar inventory-sidebar observability-sidebar" aria-label="Container views">
-      <div class="filter-heading"><h2>Container views</h2></div>
-      {{template "view-navigation" .SubviewNav}}
-      <p class="inventory-footnote">Explore the last hour of recorded container metrics and observed events.</p>
+    {{template "inventory-filters" .}}
+    <aside class="host-sidebar observability-sidebar" aria-label="Filtered containers">
+      <div class="filter-heading"><h2>Name</h2><span>{{.Filters.Shown}} / {{.Filters.Total}}</span></div>
+      <nav class="observability-container-list" aria-label="Filtered containers">
+        {{range .ObservedContainers}}<a href="{{.Href}}" title="{{.Label}} · {{.ID}} · {{.State}}" {{if .Current}}aria-current="page"{{end}}><span class="state-dot state-dot-{{if eq .State "running"}}running{{else if or (eq .State "created") (eq .State "exited") (eq .State "dead")}}stopped{{else}}unknown{{end}}" aria-hidden="true"></span><span>{{.Label}}</span></a>{{end}}
+      </nav>
+      {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
+      {{if not .ObservedContainers}}<p class="inventory-footnote">{{if .Filters.Total}}No containers match these filters.{{else}}No containers available in the snapshot or retained history.{{end}}</p>{{end}}
     </aside>
     {{else if ne .View "settings"}}
     {{template "inventory-filters" .}}
@@ -156,26 +160,36 @@
       {{template "containers-page" .}}
       {{else if eq .View "observability"}}
       <div class="workspace-toolbar">
-        <div><h1>Container observability</h1><p>Containers / Observability · last hour</p></div>
+        <div><h1>Container observability</h1><p>{{range .ObservedContainers}}{{if .Current}}{{.Label}} · {{end}}{{end}}Last hour · single-container history</p></div>
         <span class="toolbar-pill">Collection <span>{{.MetricsStatus}}</span></span>
       </div>
-      <div class="observability-timeline" data-timeline data-start="{{.Timeline.Start}}" data-end="{{.Timeline.End}}" data-selected="{{.Timeline.SelectedTime}}">
+      <div class="observability-timeline observability-workspace" data-container="{{.SelectedContainer}}" data-timeline data-timeline-vertical data-start="{{.Timeline.Start}}" data-end="{{.Timeline.End}}" data-selected="{{.Timeline.SelectedTime}}">
       <section class="timeline-panel" aria-labelledby="observability-timeline-title">
-        <div class="section-heading">
-          <div><h2 id="observability-timeline-title">Last-hour timeline</h2><p class="timeline-message" data-timeline-message>{{.Timeline.Message}}</p></div>
-          <span class="toolbar-pill timeline-status">{{.Timeline.Status}}</span>
-        </div>
+        <h2 id="observability-timeline-title">Last hour</h2>
+        <label class="timeline-label" for="observability-time">Selected time <output data-timeline-output for="observability-time">{{.Timeline.EndLabel}}</output></label>
+        <div class="timeline-rail">
+        <div class="timeline-selection" data-timeline-cursor aria-hidden="true" hidden></div>
+        <div class="timeline-axis" aria-hidden="true"><span>Now</span><span>−15m</span><span>−30m</span><span>−45m</span><span>−60m</span></div>
         <div class="timeline-track" role="group" aria-label="Observed container events">
           {{range .Timeline.Events}}<button class="timeline-marker" type="button" data-timeline-select="{{.Time}}" data-timeline-marker data-position="{{printf "%.3f" .Position}}" data-kind="{{.Kind}}" aria-label="Select {{.Description}} at {{.TimeLabel}} for {{.Container}}" title="{{.Description}} · {{.Container}} · {{.TimeLabel}}"><span aria-hidden="true"></span></button>{{end}}
         </div>
-        <label class="timeline-label" for="observability-time">Selected time <output data-timeline-output for="observability-time">{{.Timeline.EndLabel}}</output></label>
-        <input id="observability-time" class="timeline-slider" type="range" min="{{.Timeline.Start}}" max="{{.Timeline.End}}" step="1000" value="{{.Timeline.SelectedTime}}" data-timeline-slider aria-label="Selected time in the last hour">
-        <div class="timeline-axis"><time>{{.Timeline.StartLabel}}</time><time>{{.Timeline.EndLabel}}</time></div>
-        <p class="timeline-hint">Only recorded observations are shown. Docker event history may have gaps; missing events are not inferred.</p>
-        <noscript><p class="timeline-hint">Timeline selection requires JavaScript. The recorded event list remains available below.</p></noscript>
+        <input id="observability-time" class="timeline-slider" type="range" min="{{.Timeline.Start}}" max="{{.Timeline.End}}" step="1000" value="{{.Timeline.SelectedTime}}" data-timeline-slider aria-label="Selected time in the last hour" aria-orientation="vertical">
+        </div>
       </section>
-      <section class="resource-section timeline-events" aria-labelledby="timeline-events-title">
-        <div class="section-heading"><h2 id="timeline-events-title">Observed events</h2><span>Newest first</span></div>
+      <div class="observability-detail">
+      <div class="observability-charts">
+        {{range .Charts}}{{template "chart-panel" .}}{{end}}
+      </div>
+      <noscript><p class="timeline-hint">Timeline selection requires JavaScript. Container navigation and recorded events remain available.</p></noscript>
+      <section class="observability-records" aria-label="Container records">
+        <fieldset class="observability-record-options">
+          <legend class="visually-hidden">Container record type</legend>
+          <label><input class="visually-hidden" type="radio" name="container-records" value="events" checked><span>Observed events</span></label>
+          <label><input class="visually-hidden" type="radio" name="container-records" value="logs"><span>Container logs</span></label>
+        </fieldset>
+      <div class="timeline-events" aria-labelledby="timeline-events-title">
+        <div class="section-heading"><h2 class="visually-hidden" id="timeline-events-title">Observed events</h2><span>{{.Timeline.Status}} · newest first</span></div>
+        <div class="observability-record-columns" aria-hidden="true"><span>Description</span><span>Date / Time (UTC)</span></div>
         {{if .Timeline.Truncated}}<p class="timeline-hint">Showing the newest 200 recorded events in this hour.</p>{{end}}
         {{if .Timeline.RecentEvents}}
         <ol class="timeline-event-list">
@@ -183,11 +197,13 @@
             <time>{{.TimeLabel}}</time><span class="timeline-event-kind">{{.Description}}</span><span class="timeline-event-container">{{.Container}}</span>
           </button></li>{{end}}
         </ol>
-        {{else}}<p class="timeline-empty">No recorded events for this hour.</p>{{end}}
+        {{else}}<p class="timeline-empty">No recorded events for this container in this hour.</p>{{end}}
+        <p class="timeline-message" data-timeline-message>{{.Timeline.Message}}</p>
+        <p class="timeline-hint">Only recorded observations are shown. Docker event history may have gaps; missing events are not inferred.</p>
+      </div>
+      <div class="observability-logs"><h2 class="visually-hidden">Container logs</h2><p class="timeline-empty">Container logs are not collected. Historical log sources and retention are not configured; lifecycle events are available in Observed events.</p></div>
       </section>
       </div>
-      <div class="telemetry-section">
-        {{range .Charts}}{{template "chart-panel" .}}{{end}}
       </div>
       {{else if eq .View "settings"}}
       {{template "metrics-settings" .}}

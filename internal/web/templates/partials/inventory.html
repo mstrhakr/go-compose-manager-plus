@@ -52,7 +52,7 @@
   <div class="filter-heading"><h2 id="filter-title">Filters</h2><a href="{{.Filters.Path}}">Clear filters</a></div>
   <form action="{{.Filters.Path}}" method="get">
     <label class="filter-label" for="inventory-search">Search</label>
-    <input class="filter-input" id="inventory-search" name="q" type="search" value="{{.Filters.Search}}" placeholder="Search {{.View}}">
+    <input class="filter-input" id="inventory-search" name="q" type="search" value="{{.Filters.Search}}" placeholder="Search {{if eq .View "observability"}}containers{{else}}{{.View}}{{end}}">
     <label class="filter-label" for="inventory-sort">Sort by</label>
     <select class="filter-input" id="inventory-sort" name="sort">
       <option value="name" {{if eq .Filters.Sort "name"}}selected{{end}}>Name (A–Z)</option>
@@ -64,11 +64,12 @@
     <fieldset class="inventory-filter-group"><legend>{{if eq .View "projects"}}Activation{{else}}Project association{{end}}</legend>
       {{range .Filters.Groups}}<label><input type="checkbox" name="group" value="{{.Value}}" {{if .Checked}}checked{{end}}> <span>{{.Label}} ({{.Count}})</span></label>{{else}}<p>No values available</p>{{end}}
     </fieldset>
-    {{if eq .View "containers"}}<fieldset class="inventory-filter-group"><legend>Compose projects</legend>
+    {{if ne .View "projects"}}<fieldset class="inventory-filter-group"><legend>Compose projects</legend>
       <div class="filter-options">{{range .Filters.Projects}}<label><input type="checkbox" name="project" value="{{.Value}}" {{if .Checked}}checked{{end}}> <span>{{.Label}} ({{.Count}})</span></label>{{else}}<p>No values available</p>{{end}}</div>
     </fieldset>{{end}}
     <button class="quiet-button scan-button" type="submit">Apply filters</button>
-    <p class="inventory-filter-note">Applying filters refreshes the read-only Docker snapshot. Counts reflect all {{.View}}, before filtering.</p>
+    <p class="inventory-filter-note">Applying filters refreshes the read-only Docker snapshot. Counts reflect all {{if eq .View "observability"}}available containers, including retained history{{else}}{{.View}}{{end}}, before filtering.</p>
+    {{if eq .View "observability"}}<p class="inventory-filter-note">{{.RuntimeMessage}} Historical-only identities use IDs; snapshot state is not inferred across the hour.</p>{{end}}
   </form>
   <a class="inventory-overview-link" href="/">Discovery settings &amp; overview</a>
   </div>
