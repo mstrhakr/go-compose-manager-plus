@@ -14,6 +14,11 @@ const chartBucket = 30 * time.Second
 
 var chartColors = []string{"blue", "amber", "purple", "green", "red"}
 
+type dashboardMetricsCollector interface {
+	Status() metrics.CollectorStatus
+	SelectChartSeries(context.Context, time.Time, time.Time, time.Duration) ([]metrics.ContainerChartSeries, error)
+}
+
 type dashboardChartData struct {
 	Min          float64           `json:"min"`
 	Max          float64           `json:"max"`
@@ -49,21 +54,33 @@ func (server *authServer) dashboardCharts(ctx context.Context) ([]chartPanel, st
 		return panels, "Disabled"
 	}
 	status := server.collector.Status()
-	if status.Problem != "" {
-		return emptyDashboardCharts("Collection paused", "Metrics collection is reporting a problem. Check Settings for collection status."), "Collection paused"
-	}
-	if !status.Collecting {
-		return emptyDashboardCharts("Collector starting", "The metrics collector is starting; no dashboard history is available yet."), "Starting"
-	}
 	series, err := server.collector.SelectChartSeries(ctx, start, end, chartBucket)
 	if err != nil {
 		server.logger.ErrorContext(ctx, "read dashboard metrics", "error", err)
 		return emptyDashboardCharts("Unavailable", "Stored metrics could not be loaded."), "Unavailable"
 	}
 	if len(series) == 0 {
+		if status.Problem != "" {
+			return emptyDashboardCharts("Collection degraded", "Metrics collection is reporting a problem. Check Settings for collection status; no retained history is available to display yet."), "Collection degraded"
+		}
+		if !status.Collecting {
+			return emptyDashboardCharts("Collector starting", "The metrics collector is starting; no dashboard history is available yet."), "Starting"
+		}
 		return emptyDashboardCharts("Waiting for observations", "No observations were recorded during the last hour."), "Collecting"
 	}
-	countStatus := fmt.Sprintf("Last hour · %d containers", len(series))
+	containerCount := fmt.Sprintf("%d containers", len(series))
+	if len(series) == 1 {
+		containerCount = "1 container"
+	}
+	countStatus := "Last hour · " + containerCount
+	metricsStatus := "Last hour"
+	if status.Problem != "" {
+		countStatus = "Collection degraded · " + containerCount + " with retained history"
+		metricsStatus = "Collection degraded"
+	} else if !status.Collecting {
+		countStatus = "Collector starting · " + containerCount + " with retained history"
+		metricsStatus = "Starting"
+	}
 	builders := []func() (chartPanel, error){
 		func() (chartPanel, error) {
 			return buildDashboardChart("dashboard-cpu", "CPU by container", "CPU (%)", series, start, end, func(point metrics.ChartPoint) *float64 { return point.CPUPercent })
@@ -112,7 +129,7 @@ func (server *authServer) dashboardCharts(ctx context.Context) ([]chartPanel, st
 			panels[i].Status = countStatus
 		}
 	}
-	return panels, "Last hour"
+	return panels, metricsStatus
 }
 
 func emptyDashboardCharts(status, detail string) []chartPanel {

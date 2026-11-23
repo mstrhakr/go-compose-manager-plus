@@ -1,13 +1,31 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/metrics"
 )
+
+type dashboardMetricsCollectorStub struct {
+	status metrics.CollectorStatus
+	series []metrics.ContainerChartSeries
+}
+
+func (collector dashboardMetricsCollectorStub) Status() metrics.CollectorStatus {
+	return collector.status
+}
+
+func (collector dashboardMetricsCollectorStub) SelectChartSeries(context.Context, time.Time, time.Time, time.Duration) ([]metrics.ContainerChartSeries, error) {
+	return collector.series, nil
+}
 
 func TestBuildDashboardChartSerializesRecordedContainerValuesAndGaps(t *testing.T) {
 	start := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
@@ -44,5 +62,57 @@ func TestBuildDashboardChartSerializesRecordedContainerValuesAndGaps(t *testing.
 	}
 	if !reflect.DeepEqual(got.Series[0].Points[1], dashboardDataPoint{X: start.Add(2 * time.Minute).UnixMilli()}) {
 		t.Fatalf("missing sample representation = %#v", got.Series[0].Points[1])
+	}
+}
+
+func TestDashboardChartsKeepRetainedHistoryWhenCollectionIsDegraded(t *testing.T) {
+	ctx := context.Background()
+	database, err := auth.OpenDatabase(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := database.SQL.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	settings := metrics.NewSettingsStore(database.SQL)
+	if _, err := settings.Save(ctx, metrics.Settings{
+		Enabled: true, Profile: metrics.ProfileHigh, Scope: metrics.ScopeAll,
+		Interval: time.Second, StorageLimit: 10 << 20,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	cpu, memory, receive, transmit := 25.0, 1024.0, 2.0, 3.0
+	collector := dashboardMetricsCollectorStub{
+		status: metrics.CollectorStatus{Enabled: true, Problem: "Docker stats failed"},
+		series: []metrics.ContainerChartSeries{{
+			ContainerID: strings.Repeat("a", 64),
+			Points: []metrics.ChartPoint{{
+				Time: time.Now().UTC(), CPUPercent: &cpu, MemoryUsageBytes: &memory,
+				NetworkRxBytesPerSec: &receive, NetworkTxBytesPerSec: &transmit,
+			}},
+		}},
+	}
+	server := &authServer{
+		metricsSettings: settings, collector: collector,
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	panels, status := server.dashboardCharts(ctx)
+	if status != "Collection degraded" || len(panels) != 4 {
+		t.Fatalf("dashboard status = %q, panels = %d", status, len(panels))
+	}
+	for _, panel := range panels {
+		if panel.Status != "Collection degraded · 1 container with retained history" || panel.Series == "" {
+			t.Fatalf("degraded chart panel = %#v", panel)
+		}
+		var data dashboardChartData
+		if err := json.Unmarshal([]byte(panel.Series), &data); err != nil {
+			t.Fatal(err)
+		}
+		if len(data.Series) != 1 || len(data.Series[0].Points) != 1 || data.Series[0].Points[0].Y == nil {
+			t.Fatalf("retained chart data = %#v", data)
+		}
 	}
 }

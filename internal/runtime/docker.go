@@ -13,6 +13,7 @@ import (
 )
 
 const maxResponseBytes = 16 << 20
+const dockerResponseHeaderTimeout = 5 * time.Second
 
 type Container struct {
 	ID      string
@@ -37,7 +38,8 @@ func NewClient(socket string) *Client {
 		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
 			return (&net.Dialer{}).DialContext(ctx, "unix", socket)
 		},
-		DisableCompression: true,
+		DisableCompression:    true,
+		ResponseHeaderTimeout: dockerResponseHeaderTimeout,
 	}
 	noRedirect := func(*http.Request, []*http.Request) error {
 		return errors.New("Docker API redirect refused")

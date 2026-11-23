@@ -3,11 +3,8 @@ package metrics
 import (
 	"context"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
-	goruntime "runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -17,15 +14,7 @@ import (
 )
 
 func TestSamplerMockDockerToManagedStorage(t *testing.T) {
-	if goruntime.GOOS == "windows" {
-		t.Skip("Unix socket test")
-	}
-	dir := t.TempDir()
-	socket := filepath.Join(dir, "docker.sock")
-	listener, err := net.Listen("unix", socket)
-	if err != nil {
-		t.Fatal(err)
-	}
+	listener, socket := newDockerSocket(t)
 	id := strings.Repeat("a", 64)
 	base := time.Now().UTC().Truncate(time.Second)
 	var requests atomic.Int64
@@ -57,7 +46,7 @@ func TestSamplerMockDockerToManagedStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := OpenManaged(context.Background(), dir, 10<<20)
+	store, err := OpenManaged(context.Background(), t.TempDir(), 10<<20)
 	if err != nil {
 		t.Fatal(err)
 	}

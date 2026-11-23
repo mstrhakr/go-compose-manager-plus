@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -41,14 +42,33 @@ func newCollectorTestStore(t *testing.T) (*ManagedStore, time.Time) {
 	return store, now
 }
 
-func newCollectorDocker(t *testing.T, containers []runtime.Container) *runtime.Client {
+func newDockerSocket(t *testing.T) (net.Listener, string) {
 	t.Helper()
-	dir := t.TempDir()
-	socket := filepath.Join(dir, "docker.sock")
-	listener, err := net.Listen("unix", socket)
+	if goruntime.GOOS == "windows" {
+		t.Skip("Docker Unix socket integration test is not supported on Windows")
+	}
+	dir, err := os.MkdirTemp("/tmp", "cmp-")
 	if err != nil {
 		t.Fatal(err)
 	}
+	socket := filepath.Join(dir, "docker.sock")
+	listener, err := net.Listen("unix", socket)
+	if err != nil {
+		_ = os.RemoveAll(dir)
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = listener.Close()
+		if err := os.RemoveAll(dir); err != nil {
+			t.Errorf("remove temporary Docker socket directory: %v", err)
+		}
+	})
+	return listener, socket
+}
+
+func newCollectorDocker(t *testing.T, containers []runtime.Container) *runtime.Client {
+	t.Helper()
+	listener, socket := newDockerSocket(t)
 	var statsCount atomic.Int64
 	started := time.Now().UTC().Add(-time.Minute).Format(time.RFC3339Nano)
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -271,12 +291,7 @@ func TestCollectorRunOptInPersistsEventsAndStopsOnDisable(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := strings.Repeat("e", 64)
-	dir := t.TempDir()
-	socket := filepath.Join(dir, "docker.sock")
-	listener, err := net.Listen("unix", socket)
-	if err != nil {
-		t.Fatal(err)
-	}
+	listener, socket := newDockerSocket(t)
 	var statsCount atomic.Int64
 	eventTime := time.Now().UTC()
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
