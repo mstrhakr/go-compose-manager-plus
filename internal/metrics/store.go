@@ -20,6 +20,10 @@ import (
 
 const schemaVersion = 5
 
+// ErrWriteOutcomeUnknown means a database commit failed and its outcome must
+// be reconciled before retrying the same batch.
+var ErrWriteOutcomeUnknown = errors.New("metrics write commit outcome is unknown")
+
 type Sample struct {
 	ContainerID string
 	Observation runtime.Observations
@@ -311,7 +315,7 @@ func (s *Store) Insert(ctx context.Context, samples []Sample) error {
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit metric samples: %w", err)
+		return fmt.Errorf("%w: commit metric samples: %w", ErrWriteOutcomeUnknown, err)
 	}
 	return nil
 }

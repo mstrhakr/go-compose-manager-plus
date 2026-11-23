@@ -656,7 +656,9 @@ subsequent attempt is blocked if active usage has not decreased; the gate
 survives reopening. If total file length reaches the limit, it pauses rather
 than treating reusable pages as returned filesystem space. Status reports the
 last pause and cumulative eviction record; writes that commit before subsequent
-maintenance fails return a distinct committed-write error.
+maintenance fails return a distinct committed-write error. Commit failures
+report an unknown write outcome rather than promising a rollback; callers must
+reconcile before retrying.
 
 Focused Go race tests exercise retention boundaries for all three record types,
 ordering and recovery under synthetic pressure, no-progress behavior across
@@ -664,6 +666,8 @@ reopen, transactional gate and deletion failures, cancellation, concurrent
 writes, shutdown, version-four migration, and a competing writer in a separate
 process. SQLite `max_page_count` simulates a full database and subsequent
 retry; it is not a physical filesystem-full test.
+Deferred-constraint failures test the unknown-outcome error and subsequent
+maintenance for sample, event and state commits.
 `go test -race -count=1 ./internal/metrics ./internal/runtime`,
 `PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
 passed.

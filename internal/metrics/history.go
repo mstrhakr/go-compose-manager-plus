@@ -115,7 +115,7 @@ func (s *Store) InsertEvents(ctx context.Context, events []Event) error {
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit events: %w", err)
+		return fmt.Errorf("%w: commit events: %w", ErrWriteOutcomeUnknown, err)
 	}
 	return nil
 }
@@ -148,7 +148,7 @@ func (s *Store) InsertStates(ctx context.Context, states []State) error {
 		}
 	}
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("commit states: %w", err)
+		return fmt.Errorf("%w: commit states: %w", ErrWriteOutcomeUnknown, err)
 	}
 	return nil
 }

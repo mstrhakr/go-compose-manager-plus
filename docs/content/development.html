@@ -100,7 +100,9 @@ when no measurable progress is made, including after reopening. It reports
 paused writes and a cumulative eviction summary, but does not display warnings
 or schedule retries itself. A write can succeed before subsequent maintenance
 fails; callers must distinguish <code>ErrWriteCommitted</code> and not retry
-that committed batch. The implementation checkpoints frequently and its cost
+that committed batch. A failed commit returns
+<code>ErrWriteOutcomeUnknown</code>; reconcile the batch before retrying it.
+The implementation checkpoints frequently and its cost
 at target sampling rates is unmeasured.</p>
 <p>This is not a hard disk quota: SQLite deletion does not itself shrink the
 database, file lengths are not allocated blocks or peak usage, WAL and
