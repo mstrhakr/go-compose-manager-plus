@@ -1,8 +1,11 @@
 +++
 title = 'Getting started'
+url = '/getting-started/'
 weight = 10
 +++
-<h2>Run locally</h2>
+
+## Run locally
+
 <p>Install the Go version specified in <code>go.mod</code> (currently 1.27.4).
 Set a temporary bootstrap account without placing its password in shell history:</p>
 <pre><code>read -rp 'Admin username: ' APP_BOOTSTRAP_USERNAME
@@ -13,7 +16,9 @@ make run</code></pre>
 <p>Open <code>http://127.0.0.1:8080/</code>, sign in and complete the required
 password change. Discovery is available on request; Docker inventory is disabled
 by default and management actions are not connected. Stop the server with Ctrl+C.</p>
-<h2>Run in Docker</h2>
+
+## Run in Docker
+
 <p>Install Docker Engine and Docker Compose. The
 <a href="../examples/compose.yaml">example Compose file</a>
 uses the planned <code>latest</code> image tag, which is not yet published.
@@ -38,7 +43,9 @@ in its persistent <code>app-data</code> volume. Remove the bootstrap values from
 <code>.env</code> after setup and run <code>docker compose up -d --force-recreate</code>
 to remove them from the container environment. Docker status is disabled
 by default; management actions are not connected.</p>
-<h2>Discovery and Docker inventory</h2>
+
+## Discovery and Docker inventory
+
 <p>Mount a trusted project root into the container and save its in-container
 path as the discovery root. Requested scans examine direct-child directories.
 Discovered projects begin inactive; activation grants permission only and does
@@ -59,7 +66,9 @@ live metrics or lifecycle operations.</p>
 to choose visible columns and restore the defaults. Preferences are saved
 separately for each view in your browser; the identifying column always stays
 visible. Without JavaScript, all columns remain visible.</p>
-<h2>Configuration</h2>
+
+## Configuration
+
 <p>The native binary reads exported environment variables, not dotenv files.</p>
 <p>In the Compose example, <code>APP_ADDR</code> and <code>APP_DATA_DIR</code>
 are fixed to the container listener and volume path. Change the Compose file

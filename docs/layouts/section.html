@@ -1,8 +1,0 @@
-{{ define "main" }}
-{{ .Content }}
-<ul>
-  {{ range .Pages.ByWeight }}
-  <li><a href="{{ .RelPermalink }}">{{ .Title }}</a></li>
-  {{ end }}
-</ul>
-{{ end }}

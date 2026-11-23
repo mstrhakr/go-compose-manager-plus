@@ -1,12 +1,16 @@
 +++
 title = 'Development'
+url = '/development/'
 weight = 30
 +++
-<h2>Daily commands</h2>
+
+## Daily commands
+
 <p>Install Go 1.27.4, Node 24, GNU Make, and a C compiler (Go race tests use CGO).
 On Windows, use an appropriate Make/GCC toolchain or WSL for the local full suite;
-native Windows behavior is separately checked by CI. Hugo and Docker are optional
-until working on their surfaces.</p>
+native Windows behavior is separately checked by CI. Docs builds need extended
+Hugo 0.169.0; Hugo resolves the pinned theme as a Go module. Docker is optional
+until working on container surfaces.</p>
 <pre><code>make setup       # once: locked npm tools and Playwright browsers
 make test        # all Go, JS/unit/API, and desktop/mobile browser tests
 make check       # above plus vet, formatting, build, assets, contracts
@@ -169,7 +173,9 @@ run:</p>
 <pre><code>CMP_METRICS_SQLITE_EVICTION_PROBE=1 go test -race -count=1 \
   -run '^TestBoundedEvictionCheckpointProbe$' -v ./internal/metrics</code></pre>
 <p>The observed sizes are not worst-case bounds or safe budget defaults.</p>
-<h2>UI components</h2>
+
+## UI components
+
 <p>Reusable server-rendered metric, chart and list panels are defined in
 <code>internal/web/templates/partials/components.html</code>, with their Go
 view types in <code>internal/web/components.go</code> and shared styles in
@@ -218,7 +224,9 @@ JavaScript, all columns remain visible and the customizer is hidden.</p>
 to render the actual templates in a test-only page, with populated, empty,
 invalid and selectable examples. Browser screenshots are local test artifacts;
 the fixture is not served by the application.</p>
-<h2>Dependencies and updates</h2>
+
+## Dependencies and updates
+
 <p>The auth slice uses third-party Go modules for SQLite, password hashing,
 server-side sessions and CSRF protection. Use <code>go get module@version</code>
 and <code>go mod tidy</code> when adding dependencies, and commit both module
@@ -250,7 +258,9 @@ version checks and reviewed updates. Node 24, Go versions in prose and other
 duplicate pins also need coordination; a Docker or go.mod update does not rewrite
 them all. Check upstream releases and independently verify downloaded checksums.
 Direct Action pins are not a guarantee about transitive Actions or downloads.</p>
-<h2>Documentation</h2>
+
+## Documentation
+
 <p>Content lives in <code>docs/content/</code>. Architecture, development and
 deployment pages are excluded from the default public site and enabled by
 <code>hugo.development.toml</code>; contracts are independently opt-in.
@@ -261,7 +271,9 @@ directories. Existing pages use HTML with TOML
 front matter; Hugo also supports Markdown pages. Add a title and weight to include
 a page in navigation. Layouts and CSS are local, avoiding theme/submodule drift.
 CI builds the site with a project subpath to check GitHub Pages compatibility.</p>
-<h2>Continuous integration</h2>
+
+## Continuous integration
+
 <p>Protect main; use short-lived branches and squash PRs with Conventional Commit
 titles. No permanent dev branch, mandatory second reviewer, or local commit hook.
 The optional VS Code extension assists authoring; CI checks the PR title and the

@@ -1,8 +1,11 @@
 +++
 title = 'Deployment and publishing'
+url = '/deployment/'
 weight = 40
 +++
-<h2>Docker Compose</h2>
+
+## Docker Compose
+
 <pre><code>cp .env.example .env
 docker compose up --build -d
 docker compose logs -f
@@ -30,7 +33,9 @@ loopback. The multistage image contains a static binary and CA certificates, run
 UID/GID 65532, and provides a built-in health check. Compose uses a read-only
 filesystem, drops capabilities, and prevents privilege escalation. No secrets,
 source files, shell, or docs are included in the runtime image.</p>
-<h2>Container registry (off by default)</h2>
+
+## Container registry (off by default)
+
 <p>After explicit setup, relevant passing protected-main CI triggers dev images.
 Only successful main push runs from this repository's CI are accepted, never
 PR runs or arbitrary artifacts. A read-only job builds/scans/smoke-tests; a
@@ -43,7 +48,9 @@ exposed to the scanner; its image is digest-pinned.</p>
 Do not deliberately overwrite version/SHA tags. Roll back by an exact version
 or digest only when config/data remain compatible. GHCR package visibility is
 separate from repository visibility; check package access explicitly.</p>
-<h2>GitHub setup for each repository</h2>
+
+## GitHub setup for each repository
+
 <p>Template-created repos do not inherit live settings. Authenticate GitHub CLI
 outside chat, review this public-repo setup, then explicitly apply it:</p>
 <pre><code>node scripts/setup-github.mjs --repo OWNER/PROJECT
@@ -70,7 +77,9 @@ verified-setup acknowledgement <code>RELEASE_APPROVAL_CONFIGURED</code> are true
 Keep the environment protected; that acknowledgement is not itself enforcement.
 Docs publication remains separately off. Apply local changes through a feature
 branch/PR; do not bypass the new main rule to bootstrap them.</p>
-<h2>Versions and release channels</h2>
+
+## Versions and release channels
+
 <p>Initial normal version: v0.1.0. Before v1, feat/fix increment patch;
 breaking changes increment minor. Docs/test/chore-only work does not ordinarily
 release the app. Entering v1 requires an explicit policy/config change.</p>
@@ -100,7 +109,9 @@ suite. Add slower integration/upgrade/rollback cases as those features exist;
 never invent empty stage gates. Security boundaries apply at every stage.
 Native CI covers declared OS/architecture targets; local cross-builds do not
 establish native Windows/macOS support. No desktop framework is included.</p>
-<h2>Verify downloads and images</h2>
+
+## Verify downloads and images
+
 <p>GoReleaser produces Linux/Windows x64 and macOS x64/ARM64 downloads, checksums
 and embedded version/revision metadata. Use <code>server -version</code> locally.
 Verify checksums and provenance with the repository/workflow you expect:</p>
@@ -116,14 +127,18 @@ Verify your own repository/workflow identity. Attestations are origin evidence,
 not proof that upstream code or an authorized workflow is harmless. Publication
 and consumer-side verification must be exercised before claiming end-to-end
 verification; local snapshot builds alone do not provide that evidence.</p>
-<h2>Support, retention and recovery</h2>
+
+## Support, retention and recovery
+
 <p>Initially support the latest normal release; dev/beta/RC are test channels.
 Retain normal and prerelease versions. Target about 30 days of dev registry
 history with cautious manual cleanup; do not delete referenced release digests.
 CI reports/build handoff artifacts expire after seven days. No deletion bot is
 given broad package write access. For incidents, stop publishing, revoke affected
 access, review trusted source/workflows, rebuild, and restore deliberately.</p>
-<h2>GitHub Pages (off by default)</h2>
+
+## GitHub Pages (off by default)
+
 <p><strong>A private repository does not guarantee a private Pages site.</strong>
 Pages availability and private-site access controls depend on your GitHub plan.
 Treat publishing as public disclosure unless you have explicitly verified access controls.

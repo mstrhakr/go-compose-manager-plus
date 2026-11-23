@@ -178,7 +178,7 @@ remains a draft; wording, product adoption and fulfillment remain reviewable.
 ## Verification
 
 Implementation links: Makefile; scripts/ci.mjs; scripts/release.mjs; workflows;
-internal/web; docs/content/deployment.html. Local executed checks are recorded in
+internal/web; docs/content/docs/deployment.md. Local executed checks are recorded in
 the source-only docs/verification.md evidence record, not inferred here. Live GitHub settings require API
 readback. Native Windows/macOS CI, CodeQL, hosted approvals, real publication,
 attestation verification and template-created-repo setup remain unverified until

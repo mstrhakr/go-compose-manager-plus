@@ -250,8 +250,8 @@ metrics, streaming and lifecycle actions are not implemented.
 
 ## Documentation
 
-Install Hugo **0.169.0** from its [official releases](https://github.com/gohugoio/hugo/releases),
-verifying the release checksum, then:
+Install Go 1.27.4 and [extended Hugo **0.169.0**](https://github.com/gohugoio/hugo/releases),
+verifying Hugo's release checksum, then:
 
 ```sh
 make docs-serve  # http://localhost:1313/
@@ -261,11 +261,12 @@ make docs-development # preview contributor pages
 make docs-contracts   # preview contracts
 ```
 
-Start with [getting started](docs/content/getting-started.html),
-[architecture](docs/content/architecture.html),
-[development](docs/content/development.html), and
-[deployment](docs/content/deployment.html). Content, layouts, and styles live
-together under `docs/`, with no third-party theme.
+Start with [getting started](docs/content/docs/getting-started.md),
+[architecture](docs/content/docs/architecture.md),
+[development](docs/content/docs/development.md), and
+[deployment](docs/content/docs/deployment.md). The documentation site uses the
+pinned Hextra Hugo theme, with responsive navigation, offline full-text search,
+dark mode, and a scroll-aware table of contents.
 The default site includes user documentation only. Contributor pages and
 contracts require separate opt-ins. The downloadable
 [Compose example](docs/static/examples/compose.yaml) uses the planned `latest`
@@ -292,7 +293,7 @@ tag, which is not yet published; the `dev` tag is available for testing.
   and access controls before enabling publishing. Repository/package visibility
   is never changed by these workflows.
 
-See [delivery and setup](docs/content/deployment.html) and
+See [delivery and setup](docs/content/docs/deployment.md) and
 [security policy](SECURITY.md). GitHub settings do not automatically transfer
 to repositories created from a template.
 
