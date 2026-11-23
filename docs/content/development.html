@@ -75,6 +75,12 @@ the same uninterrupted container instance and discard it after a disconnect.
 Memory usage is raw Docker usage, not the CLI's cache-adjusted value. Missing
 counters, resets and changing interface/device sets produce unavailable rates
 instead of zero; platform support remains unverified.</p>
+<p>The unwired SQLite metrics persistence foundation stores observations in a
+separate <code>metrics.db</code>, preserving unavailable fields as SQL NULL.
+It does not start collection, enforce one-hour expiry or a storage budget, or
+implement event history or migration to TimescaleDB. Deleting SQLite rows does
+not by itself guarantee disk space is returned; the database's WAL and other
+files must be considered in a future storage-pressure design.</p>
 <h2>UI components</h2>
 <p>Reusable server-rendered metric, chart and list panels are defined in
 <code>internal/web/templates/partials/components.html</code>, with their Go

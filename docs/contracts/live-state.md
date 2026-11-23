@@ -161,8 +161,11 @@ Use a reusable preset-selection and customization UI structure suitable for
 other feature settings, rather than duplicating an observability-specific
 pattern. Future features' actual options and behavior require their own decisions.
 
-The selected storage direction is tstorage for metrics while SQLite remains
-the application-state store. Netdata-style historical retention and a
+The owner selected SQLite for the initial one-hour metrics implementation,
+separate from application state, after the tstorage failure probe. A future
+optional TimescaleDB backend is a possibility, not an implemented feature or
+an approval of its retention limits. Longer SQLite limits and differences
+between backends require evidence and a later decision. Netdata-style historical retention and a
 UniFi-inspired display are design goals, not approval of a longer-term
 retention duration, aggregation, disk limit or visual implementation. The owner wants
 the storage budget managed toward approximately 90% usage, reserving roughly
@@ -189,7 +192,8 @@ fitness and operational characteristics still need evaluation.
 **Enforcement:** The reusable column customizer is implemented for the Projects
 and Containers inventory views; preferences are browser-local and the
 identifying column remains visible. Application collection, historical logs
-and history are not implemented. A read-only Docker stats snapshot and
+and history are not implemented. An unwired SQLite sample persistence foundation
+does not yet enforce a one-hour window or the storage budget. A read-only Docker stats snapshot and
 observation conversion foundation exists but is not connected to a collector
 or UI. A
 test-only, single-container Docker stats/tstorage feasibility spike is recorded

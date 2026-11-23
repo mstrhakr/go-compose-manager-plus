@@ -488,6 +488,30 @@ Capturing the log alone therefore does not prove that acknowledged history can
 be recovered. The selected storage direction needs a safe resolution before a
 collector can claim the approved pause, warning and retry behavior.
 
+### SQLite Metrics Persistence Foundation
+
+Linux development container, branch `spike/docker-metrics-storage`, based on
+`ca69169` with the changes uncommitted during these checks. A separate SQLite
+metrics database can atomically insert and query numeric container observations,
+retain missing fields, reopen, and logically delete observations before a
+specified cutoff. It is not connected to the application or Docker. The owner
+selected SQLite for the initial one-hour implementation; TimescaleDB and a
+migration path are future possibilities, not implemented.
+
+- `go test -race -count=1 ./internal/metrics ./internal/runtime`: passed.
+  Tests include reopening, missing versus zero, time boundaries, duplicate
+  transaction rollback, concurrent calls, unsupported schemas, cancellation,
+  and retry after a simulated SQLite page-limit failure.
+- `PLAYWRIGHT_PORT=18334 make check QUIET=1`: passed Go race tests, vet and
+  build, Node, HTTP and browser tests, asset verification and contracts.
+- `make docs`, `make check-docs` and `git diff --check`: passed.
+
+The page-limit test is not a real filesystem-full, WAL-write or crash-recovery
+test. Logical deletion does not guarantee filesystem space is returned. No
+one-hour expiry scheduler, storage-budget accounting, early eviction, warning,
+write-pause/retry mechanism, event/state storage, collection, migration,
+performance measurement or live Docker test is verified by this slice.
+
 ## Inventory Column Customizer
 
 2026-11-22, Linux development container, branch `spike/docker-metrics-storage`,

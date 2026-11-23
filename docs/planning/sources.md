@@ -88,6 +88,14 @@ known state supports it, for example when a container is stopped, and requested
 that lifecycle events appear on the timeline and some charts. The exact
 metric/state and time-boundary rules remain to be refined; this is not approval
 to turn unknown or disconnected periods into zero.
+After a reproduced tstorage write-failure issue, the owner selected a separate
+SQLite metrics store for the initial one-hour implementation. A possible future
+TimescaleDB backend, longer retention, and backend-specific limits or features
+are deferred pending evidence. This replaces the earlier tstorage choice for
+the initial implementation, not the approved storage-pressure behavior.
+The owner asked whether metrics can be stored separately and later migrated to
+TimescaleDB on upgrade, with the local metrics database removable afterward.
+Migration, cutover and cleanup details are future work and are not implemented.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose
