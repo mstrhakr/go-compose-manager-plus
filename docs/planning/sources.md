@@ -56,7 +56,10 @@ For the initial single-resolution version, the owner chose early removal of
 the oldest metrics with a clear warning when the metrics store reaches its
 limit before normal expiry, rather than stopping collection as the first
 response. How to account for and enforce the limit and what happens if space
-cannot be recovered remain open.
+cannot be recovered were initially open. The owner subsequently chose to pause
+metric writes, clearly report the problem and retry when space is available if
+space cannot be recovered, while keeping the rest of the app usable. Limit
+accounting and enforcement still need verification.
 The owner clarified that Low, Medium and High configure the entire metrics
 feature, including a storage limit adjustable in the wizard, and individual
 changes select Custom. Suggested limits should be informed by measurement;

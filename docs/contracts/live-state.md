@@ -151,8 +151,9 @@ should be rejected. This is a
 target rather than a guarantee against storage exhaustion. For the initial
 single-resolution version, if the metrics store reaches its limit before normal
 expiry, remove the oldest metrics early and clearly warn that history was
-shortened. Exact accounting, compatibility validation and behavior when space
-cannot be recovered remain open.
+shortened. If space cannot be recovered, pause metric writes, clearly report the
+problem and retry when space is available; the rest of the app remains usable.
+Exact accounting and compatibility validation remain open.
 A reusable column
 customizer is also requested for inventory views. These directions do not
 authorize Compose mutations or imply that unavailable metrics are zero.
