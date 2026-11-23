@@ -152,8 +152,29 @@ selected time is reflected across the charts, inspired by the owner's reference
 view. The owner wants event markers on the timeline and an event list for
 context. The owner also wants historical logs alongside relevant usage and other
 context at the selected time, so an incident can be investigated in one view.
-Log sources, retention, access, synchronization and unavailable states remain
-to be defined; this direction does not imply logs are collected or retained.
+On 2026-11-23 the owner requested implementing container-log collection using
+the same local observability SQLite database with one-hour retention; optional
+TimescaleDB support is deferred for longer log and metric history. The owner
+also requested an aggregated dashboard log view over that history. This is
+approval of the bounded feature/backend/retention direction, not evidence that
+logs are already collected. Log-source compatibility, collection consent,
+access, synchronization, shared-budget pressure behavior and unavailable
+states remain to be settled and verified.
+
+Proposed first source: read-only Docker container stdout/stderr, using Docker
+timestamps and immutable container IDs, without reading arbitrary host files or
+changing a container's logging driver. Application output can contain sensitive
+data. An additional default-off "Collect container logs" option, within the
+existing collection opt-in and selected-container scope, is recommended but
+not owner-approved; enabling numeric metrics must not be treated as evidence
+of a separate log-consent decision. The existing storage-pressure owner evicts
+metric samples only, so adding logs requires an explicit shared-budget policy
+rather than pretending that sample eviction already bounds log storage.
+
+A possible dedicated logs navigation view with stack, container and network
+filters is a follow-up idea, not an approved complete feature set. Network
+filtering needs evidence and time-bound association rules; current inventory
+does not establish historical network membership.
 Chart rendering may reduce displayed points independently of retained raw
 resolution. Longer ranges and custom timeframes are future advanced options;
 their retention, zoom resolution and display behavior remain to be designed.
@@ -336,8 +357,15 @@ does not implement these behaviors.
   and network charts are stacked; RX/TX are two metrics of the same container,
   not an overlapping-container or aggregate view.
   The bottom section exposes observed lifecycle events and an explicitly
-  unavailable container-log view. This request does not settle historical log
-  sources, access or retention policy or authorize a new log collector.
+  unavailable container-log view. That presentation request did not authorize
+  a new log collector; the subsequent one-hour SQLite collection direction is
+  recorded above, with consent and remaining policies still unresolved.
+- The owner subsequently confirmed desktop-first delivery and deferred mobile
+  alignment. Full desktop/mobile parity and 100% mobile feature coverage are
+  not required. Basic controls and basic statistics should remain usable when
+  implemented; advanced views may later be simplified, truncated or disabled.
+  Exact mobile feature availability remains a later decision. This direction
+  does not authorize implementing Up/Down effects or disabling existing views.
 
 ### Proposed Cases Requiring Review And Eventual Execution-Based Checks
 
@@ -351,10 +379,10 @@ does not implement these behaviors.
 - Desktop/mobile and keyboard/touch retain readable status, usable actions and
   recoverable connection feedback. No exact widget/layout is approved for the
   remaining live-state actions yet.
-- The owner questioned full mobile Observability parity on 2026-11-23.
-  Simplified companion, collapsible full access and desktop-only scope remain
-  undecided. This is not approval to remove features from narrow screens; the
-  current bounded reflow preserves access pending a separate decision.
+- The exact reduced mobile feature set remains undecided under the owner's
+  desktop-first direction. Current bounded reflow preserves access until mobile
+  alignment is authorized; no particular advanced view has been selected for
+  removal.
 
 ## Decisions
 

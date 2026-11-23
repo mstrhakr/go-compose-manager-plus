@@ -103,6 +103,15 @@ inferred from Docker container stats. The provided dashboard references target
 breakpoints and mobile overflow/responsiveness. See the
 [verification record](../verification.md#aggregate-overview-dashboard-presentation).
 
+On 2026-11-23 the owner prioritized desktop alignment, with mobile basics and
+reduced advanced views to be designed later rather than requiring desktop
+parity. The next requested observability slice is container-log collection in
+the same local SQLite history store, retaining one hour, followed by an
+aggregated dashboard log view. TimescaleDB is deferred for longer metric/log
+history. Collection consent and shared log/metric storage-pressure behavior
+remain implementation gates under [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
+a dedicated log view and network-aware filters remain follow-up ideas.
+
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,
 architecture and deployment pages describe the scaffold, not proven management

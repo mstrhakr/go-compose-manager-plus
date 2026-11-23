@@ -148,6 +148,19 @@ part of the screen. The implementation adds on-demand read-only snapshot names
 and filter values, retaining historical-only IDs with unknown current metadata.
 Historical log collection remains unavailable, not fabricated or inferred.
 
+On 2026-11-23 the owner confirmed desktop-first work, with mobile alignment
+later and basic controls/statistics rather than full desktop parity. Advanced
+mobile views may eventually be simplified, truncated or disabled; the exact
+feature set is not decided and existing views have not been disabled.
+The owner requested container-log collection in the same local observability
+SQLite database with one-hour retention, deferring TimescaleDB for longer log
+and metric history. An aggregated dashboard log view is requested; a separate
+logs navigation view with stack/container/network filtering remains a tentative
+follow-up. Docker stdout/stderr and an additional default-off log-collection
+option are proposals, not settled source/consent policy. The log opt-in question
+has not received an owner answer. Shared storage-pressure handling currently
+evicts samples only and needs a bounded policy for logs before implementation.
+
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose
 project name, even for copies resolving to the same name. This is runtime
