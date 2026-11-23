@@ -6,7 +6,10 @@ import (
 	"html/template"
 	"io"
 	"log/slog"
+	"math"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -32,6 +35,95 @@ func (collector dashboardMetricsCollectorStub) SelectChartSeries(context.Context
 
 func (collector dashboardMetricsCollectorStub) SelectTimelineEvents(context.Context, time.Time, time.Time, int) ([]metrics.Event, error) {
 	return collector.events, nil
+}
+
+func TestSyntheticDashboardPreview(t *testing.T) {
+	ctx := context.Background()
+	database, err := auth.OpenDatabase(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := database.SQL.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	settings := metrics.NewSettingsStore(database.SQL)
+	if _, err := settings.Save(ctx, metrics.Settings{
+		Enabled: true, Profile: metrics.ProfileHigh, Scope: metrics.ScopeAll,
+		Interval: time.Second, StorageLimit: 10 << 20,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	start, end := dashboardTimeRange()
+	containers := make([]metrics.ContainerChartSeries, 4)
+	for container := range containers {
+		containers[container].ContainerID = strings.Repeat(string(rune('a'+container)), 64)
+		for bucket := 0; bucket < 120; bucket++ {
+			phase := float64(bucket)/7 + float64(container)
+			cpu := 12 + 9*math.Sin(phase) + float64(container)*3
+			receive := (1.2 + math.Sin(phase)*.8) * 1024 * 1024
+			transmit := (.4 + math.Cos(phase)*.25) * 1024 * 1024
+			memory := (180 + float64(container)*100 + 25*math.Sin(phase/3)) * 1024 * 1024
+			if bucket >= 72 && bucket < 86 {
+				cpu += 22
+				receive *= 3
+			}
+			point := metrics.ChartPoint{
+				Time:       start.Add(time.Duration(bucket)*chartBucket + 5*time.Second),
+				CPUPercent: &cpu, MemoryUsageBytes: &memory,
+				NetworkRxBytesPerSec: &receive, NetworkTxBytesPerSec: &transmit,
+			}
+			if container == 2 && bucket >= 40 && bucket <= 43 {
+				point.CPUPercent = nil
+				point.NetworkRxBytesPerSec = nil
+			}
+			containers[container].Points = append(containers[container].Points, point)
+		}
+	}
+	server := &authServer{
+		metricsSettings: settings,
+		collector: dashboardMetricsCollectorStub{
+			status: metrics.CollectorStatus{Enabled: true, Collecting: true}, series: containers,
+		},
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+		pages:  template.Must(template.ParseFS(content, "templates/*.html", "templates/partials/*.html")),
+	}
+	panels, _ := server.dashboardChartsForRange(ctx, start, end, true)
+	if len(panels) != 3 {
+		t.Fatalf("preview panels = %d", len(panels))
+	}
+	var cpu dashboardChartData
+	if err := json.Unmarshal([]byte(panels[0].Series), &cpu); err != nil {
+		t.Fatal(err)
+	}
+	if cpu.XMax != end.UnixMilli() || end.Sub(start) != time.Hour ||
+		len(cpu.Series) != 1 || len(cpu.Series[0].Points) != 120 ||
+		cpu.Series[0].Points[43].Y != nil || cpu.Series[0].Points[119].Y == nil {
+		t.Fatalf("preview must contain current last-hour history with a gap: %#v", cpu)
+	}
+	response := httptest.NewRecorder()
+	server.render(response, pageData{
+		Title: "Synthetic dashboard preview", View: "dashboard", Username: "Preview", Initial: "P",
+		Charts: panels, MetricsStatus: "Synthetic preview",
+		Metrics: []metricPanel{
+			{ID: "restart-title", Title: "Container restart & OOM rate", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
+			{ID: "health-title", Title: "Stack health & readiness", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
+		},
+		Notice:       "Synthetic preview data only. Generated for the current last hour; no Docker connection or production data.",
+		RuntimeState: "Not connected", RuntimeMessage: "Synthetic preview; Docker is not connected.",
+		SubviewNav: viewNavigation{Label: "Overview views", Tabs: []viewTab{
+			{Label: "Dashboard", Href: "/", Current: true},
+		}},
+	})
+	if response.Code != 200 || !strings.Contains(response.Body.String(), "Synthetic preview data only") {
+		t.Fatalf("preview rendering failed: %s", response.Body.String())
+	}
+	if directory := os.Getenv("CMP_UI_PREVIEW_DIR"); directory != "" {
+		if err := os.WriteFile(filepath.Join(directory, "dashboard.html"), response.Body.Bytes(), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func TestBuildDashboardChartSerializesRecordedContainerValuesAndGaps(t *testing.T) {

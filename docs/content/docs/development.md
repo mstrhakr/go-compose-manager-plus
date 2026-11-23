@@ -34,6 +34,15 @@ needed: a wrapper would only delegate to Make, never maintain a second test list
 to reuse an unrelated existing listener. Two workers bound memory use; tests
 do not retry failures. Reports and failure traces are local ignored artifacts.
 Node unit tests use the built-in runner; HTTP and browser tests use Playwright.</p>
+<p>For populated dashboard screenshots without a Docker connection, run
+<code>npx playwright test tests/e2e/dashboard-preview.spec.js --project=chromium</code>.
+This test renders the real dashboard templates and aggregate-chart builders
+using clearly labeled synthetic container observations for the current last
+hour. It generates new timestamps on every run, includes sample gaps and a
+load spike, and writes light/dark 2560×1440 screenshots under
+<code>test-results/dashboard-synthetic-*.png</code>. Preview data uses temporary
+test state only; it does not seed the running application's database or enable
+production collection.</p>
 <p>Go tests use the standard testing and httptest packages. Add table-driven
 configuration tests and handler tests near the implementation. For an individual
 package, run <code>go test -race ./internal/web</code>.</p>
