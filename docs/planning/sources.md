@@ -75,6 +75,14 @@ the shared identity clear. The association does not establish ownership.
 When a container leaves collection scope through deactivation or a settings
 change, the owner chose to stop new collection while retaining existing
 samples until normal expiry or storage pressure removes them.
+The owner approved an initial collection scope of CPU utilization, memory usage
+and limit, network receive/transmit byte rates, block read/write byte rates,
+container running and health state, observed start/stop/exit/restart/OOM/health
+events, and collector freshness, gaps, errors and shortened-history reporting.
+The selected timeline should correlate charts with event markers and an event
+list. Missing observations, counter resets and disconnected periods are gaps;
+Docker event replay cannot guarantee complete history. Logs and additional
+integrations remain later work, not part of this approval.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

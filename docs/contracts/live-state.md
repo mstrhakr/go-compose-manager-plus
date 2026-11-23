@@ -131,9 +131,21 @@ exception does not approve discarding raw data before scheduled downsampling
 once longer-term tiers are implemented. Automatic tuning, preset defaults,
 confirmation and data-retention effects when changing settings remain open.
 
+For the first collection slice, the owner selected per-container CPU utilization,
+memory usage and limit, network receive/transmit byte rates, and block read/write
+byte rates. Show running and health-check state, including no health check and
+unknown states. Capture observed start, stop, exit, restart, OOM and health
+changes as timeline events, and report collector freshness, missing samples,
+errors and shortened history. Label the memory usage definition; derive rates
+from valid counter deltas. Missing values, counter resets and disconnected
+periods are gaps, not zeroes. Docker event replay is limited, so event history
+cannot be assumed complete after a disconnect. Metric availability, details of
+recovery and per-platform support require verification.
+
 The initial observability view defaults to the last hour, with a timeline whose
 selected time is reflected across the charts, inspired by the owner's reference
-view. The owner also wants historical logs alongside relevant usage and other
+view. The owner wants event markers on the timeline and an event list for
+context. The owner also wants historical logs alongside relevant usage and other
 context at the selected time, so an incident can be investigated in one view.
 Log sources, retention, access, synchronization and unavailable states remain
 to be defined; this direction does not imply logs are collected or retained.
@@ -163,8 +175,8 @@ customizer is also requested for inventory views. These directions do not
 authorize Compose mutations or imply that unavailable metrics are zero.
 
 **Approval:** Owner selected the opt-in collection boundary, initial preset
-sampling targets and the above product and storage directions on 2026-11-22.
-Supported metrics, collection edge cases, remaining preset behavior,
+sampling targets, first collection scope and the above product and storage
+directions on 2026-11-22. Other metrics, collection edge cases, remaining preset behavior,
 longer-term retention/downsampling, resource budgets,
 recovery and presentation details remain unresolved. The storage dependency's
 fitness and operational characteristics still need evaluation.

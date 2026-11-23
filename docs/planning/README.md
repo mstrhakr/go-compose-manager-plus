@@ -256,11 +256,12 @@ verified; see [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-me
 
 #### Observability Inventory: Proposed Long-Term Candidates
 
-This is a planning inventory, not an approved metric set or an implementation
-claim. The owner's Gemini mockup and timeline screenshot are private local
+This is a planning inventory, not an implementation claim or approval of every
+candidate. The owner's Gemini mockup and timeline screenshots are private local
 references in ignored `scratch/ui-references/`; their labels are inspiration,
-not evidence that the pictured data is available. The first collection slice
-and later priorities still need owner selection and source verification.
+not evidence that the pictured data is available. The owner selected the first
+collection slice in [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
+later priorities and source support still need verification.
 
 | Area | Candidate observations and incident context | Likely source / qualification |
 | --- | --- | --- |
