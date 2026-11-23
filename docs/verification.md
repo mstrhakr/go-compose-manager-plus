@@ -667,7 +667,10 @@ writes, shutdown, version-four migration, and a competing writer in a separate
 process. SQLite `max_page_count` simulates a full database and subsequent
 retry; it is not a physical filesystem-full test.
 Deferred-constraint failures test the unknown-outcome error and subsequent
-maintenance for sample, event and state commits.
+maintenance for sample, event and state commits. An in-process latch now keeps
+maintenance and subsequent writes paused until the caller acknowledges that
+the uncertain batch was reconciled. The latch is not persisted across restart;
+crash-safe reconciliation is not implemented.
 `go test -race -count=1 ./internal/metrics ./internal/runtime`,
 `PLAYWRIGHT_PORT=18334 make check QUIET=1`, `make docs` and `make check-docs`
 passed.

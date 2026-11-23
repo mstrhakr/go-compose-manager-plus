@@ -61,8 +61,24 @@ func TestManagedCommitFailureReportsUnknownOutcome(t *testing.T) {
 			if _, err := m.store.db.ExecContext(ctx, `DROP TRIGGER fail_commit`); err != nil {
 				t.Fatal(err)
 			}
+			if err := m.Maintain(ctx, now); !errors.Is(err, ErrReconcileWrite) {
+				t.Fatalf("uncertain write did not block maintenance: %v", err)
+			}
+			if err := tt.insert(m); !errors.Is(err, ErrReconcileWrite) {
+				t.Fatalf("uncertain write did not block new write: %v", err)
+			}
+			status, err = m.Status(ctx)
+			if err != nil || status.UncertainWrite == nil {
+				t.Fatalf("uncertainty not reported: %#v %v", status, err)
+			}
+			if err := m.AcknowledgeReconciledWrite(ctx); err != nil {
+				t.Fatal(err)
+			}
 			if err := m.Maintain(ctx, now); err != nil {
-				t.Fatalf("maintenance after commit failure: %v", err)
+				t.Fatalf("maintenance after reconciliation: %v", err)
+			}
+			if err := m.AcknowledgeReconciledWrite(ctx); err == nil {
+				t.Fatal("accepted acknowledgement without uncertainty")
 			}
 		})
 	}

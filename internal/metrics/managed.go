@@ -11,6 +11,7 @@ import (
 var (
 	ErrMetricsPaused  = errors.New("metrics writes paused")
 	ErrWriteCommitted = errors.New("metrics write committed but subsequent maintenance failed")
+	ErrReconcileWrite = errors.New("uncertain metrics write requires reconciliation")
 )
 
 const evictionBatchSize = 128
@@ -18,11 +19,12 @@ const evictionBatchSize = 128
 // ManagedStore owns its SQLite connection and serializes maintenance and writes.
 // Callers must schedule Maintain even when there are no observations.
 type ManagedStore struct {
-	lock   chan struct{}
-	store  *Store
-	limit  int64
-	paused error
-	closed bool
+	lock      chan struct{}
+	store     *Store
+	limit     int64
+	paused    error
+	uncertain error
+	closed    bool
 }
 
 type storageSnapshot struct {
@@ -31,11 +33,12 @@ type storageSnapshot struct {
 }
 
 type ManagedStatus struct {
-	Paused    bool
-	Problem   error
-	Files     FileUsage
-	Pages     PageUsage
-	Evictions EvictedSamples
+	Paused         bool
+	Problem        error
+	UncertainWrite error
+	Files          FileUsage
+	Pages          PageUsage
+	Evictions      EvictedSamples
 }
 
 // OpenManaged reserves the database using SQLite exclusive locking. The caller
@@ -111,6 +114,9 @@ func (m *ManagedStore) maintain(ctx context.Context, now time.Time) error {
 	}
 	if _, err := timestamp(now); err != nil {
 		return fmt.Errorf("invalid maintenance time: %w", err)
+	}
+	if m.uncertain != nil {
+		return m.pause(fmt.Errorf("%w: %w", ErrReconcileWrite, m.uncertain))
 	}
 	if err := m.store.Checkpoint(ctx); err != nil {
 		return m.pause(err)
@@ -207,7 +213,24 @@ func (m *ManagedStore) Status(ctx context.Context) (ManagedStatus, error) {
 	if err != nil {
 		return ManagedStatus{}, fmt.Errorf("read metrics status: %w", err)
 	}
-	return ManagedStatus{Paused: m.paused != nil, Problem: m.paused, Files: files, Pages: pages, Evictions: evictions}, nil
+	return ManagedStatus{Paused: m.paused != nil, Problem: m.paused, UncertainWrite: m.uncertain, Files: files, Pages: pages, Evictions: evictions}, nil
+}
+
+// AcknowledgeReconciledWrite clears the in-process uncertainty latch only
+// after the caller has reconciled the failed commit. It does not retry the write.
+func (m *ManagedStore) AcknowledgeReconciledWrite(ctx context.Context) error {
+	if err := m.acquire(ctx); err != nil {
+		return err
+	}
+	defer m.release()
+	if m.closed {
+		return errors.New("metrics store is closed")
+	}
+	if m.uncertain == nil {
+		return errors.New("no uncertain metrics write to acknowledge")
+	}
+	m.uncertain = nil
+	return nil
 }
 
 func (m *ManagedStore) write(ctx context.Context, now time.Time, insert func() error) error {
@@ -219,6 +242,9 @@ func (m *ManagedStore) write(ctx context.Context, now time.Time, insert func() e
 		return err
 	}
 	if err := insert(); err != nil {
+		if errors.Is(err, ErrWriteOutcomeUnknown) {
+			m.uncertain = err
+		}
 		return m.pause(err)
 	}
 	if err := m.maintain(ctx, now); err != nil {
