@@ -466,6 +466,17 @@ recovery is not guaranteed and may require an operator to increase the target.
 This approves rolling eviction and source-local safeguards, not a hard disk
 quota, complete replay, Custom delivery/flush or detailed migration/recovery.
 
+The owner selected **hide retained history while its source is Off, without
+erasing it**. This applies to a source Off selection and to sources disabled
+by overall Off. Stop the corresponding collection and hide its history;
+reenabling can show whatever remains eligible under normal retention.
+Off is not a clear-history action and does not override the preserved-preference
+rule, raw one-hour age eligibility or the separate state-baseline exception.
+This keeps the existing disabled-stats presentation rather than selecting the
+offered visible-history alternative. Background cleanup while all sources are
+Off, state-baseline cleanup lifetime and in-flight buffer handling were not
+settled by this visibility decision.
+
 A possible dedicated logs navigation view with stack, container and network
 filters is a follow-up idea, not an approved complete feature set. Network
 filtering needs evidence and time-bound association rules; current inventory
@@ -756,7 +767,8 @@ was adopted to bypass the gates below.
   source-local rolling eviction, pause/retry and shortened-history reporting.
 - Stream bounds, replay/cancellation/reconciliation, baseline cleanup and
   collection-disable/history-retention effects.
-- Save/navigation handling of dirty forms and final reference alignment.
+- Save/navigation handling of dirty forms, in-flight stop/flush behavior,
+  dormant-store cleanup and final reference alignment.
 
 ### Approved Presentation Cases
 

@@ -116,6 +116,9 @@ profiles or overwriting existing configured amounts. Rolling eviction and
 DB/WAL/SHM/reusable-page safeguards are now selected independently per history
 database, without cross-store eviction, budget borrowing or early state/event
 pressure eviction. Named storage presets and enforcement remain unverified.
+The owner selected hiding retained history while a source is Off without
+erasing it; normal age eligibility and preserved preferences remain. Dormant
+cleanup and in-flight stop/flush are separate pending decisions.
 The owner selected the three-database layout on 2026-11-24, amending the
 earlier same-history-file request; the log foundation still uses `metrics.db`.
 Layout migration, budget enforcement and implementation of the

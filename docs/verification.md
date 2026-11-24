@@ -1305,3 +1305,9 @@ separate shortened-history warnings and existing file/reusable-page/pause/retry
 safeguards. No cross-store eviction, borrowing or early state/event pressure
 eviction is selected. This is not executed pressure verification; the
 foundation still lacks managed production log writes and a dedicated log DB.
+
+The owner selected hiding retained source history while Off without erasing
+it. This matches the existing disabled-stats presentation, but independent
+state/log control enforcement, dormant cleanup and in-flight buffer handling
+remain unimplemented/unverified. Normal age eligibility and state-baseline
+exceptions are not changed by recording the visibility decision.

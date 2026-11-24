@@ -432,6 +432,16 @@ does not pause healthy metrics, but host disk-full errors can affect both.
 Complete replay, Custom delivery/flush, Off behavior and detailed migration or
 recovery are not approved by this pressure choice.
 
+The owner selected
+"B — Hide retained history while Off, without erasing it" for an individual
+source or overall Off. The offered alternative would have kept history visible
+until normal expiry. The selected option retains the disabled-stats
+presentation, stops corresponding collection and hides retained history without
+making Off a clear-history action. Normal retention eligibility, preserved
+preferences and the separately selected state-baseline rule stay intact.
+The answer does not approve the alternative's background expiry maintenance
+while all sources are Off or settle in-flight buffers and baseline cleanup.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
