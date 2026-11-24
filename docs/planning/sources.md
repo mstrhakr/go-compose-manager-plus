@@ -341,6 +341,34 @@ every displayed feature. At that stage, a container-category/subpage adaptation
 remained to be selected with the owner; the subsequent decisions below settle
 the organization and basic visual direction.
 
+On 2026-11-24, all 63 supplied PNG attachments were checked by SHA-256 against
+byte-identical, descriptively named copies in ignored `scratch/ui-references/`.
+This includes older prototype/deployment screenshots as well as UI inspiration;
+attachment originals were not edited. The latest timeline references are
+`timeline-light-live-overview-grouped-events.png`,
+`timeline-light-live-minute-zoom.png`,
+`timeline-light-historical-selection.png`,
+`timeline-dark-historical-selection.png`,
+`timeline-dark-live-overview-grouped-events.png`,
+`timeline-dark-clusters-six-and-two.png`,
+`timeline-dark-clusters-split-three-and-three.png`, and
+`observability-dark-fixed-cursor-disconnection-hover.png`.
+The owner clarified that the selection marker stays fixed while timeline
+contents scroll underneath it. The last screenshot also supplies the
+disconnection-event hover treatment. Zoom-dependent grouping should prevent
+overlapping event badges. This authorizes aligning these interactions and
+presentation within the existing one-hour history, not the pictured product's
+24-hour retention, networking capabilities or an unapproved live-refresh source.
+The images remain private research references, not shipped product assets.
+
+The owner subsequently requested more useful application Debug diagnostics and
+consistent structured formatting for the differently formatted Docker/Compose
+warning. This authorizes operational troubleshooting output and normalization
+of the embedded Compose SDK's diagnostics, not parsing/reformatting collected
+container message bytes or exposing credentials/resolved configuration.
+The owner also requested preserving the screenshot/compare/iterate workflow as
+a reusable repository skill; it does not authorize additional product features.
+
 The owner then requested a broad future-settings inventory before selecting the
 hierarchy. The assistant compared existing product/contract scope with
 exploratory future candidates; no source-plugin capability was automatically

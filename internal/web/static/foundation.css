@@ -372,29 +372,46 @@ circle.chart-line { fill: currentColor; stroke: none; }
 .observability-container-list a { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 5px 6px; color: var(--muted); border-radius: 4px; }
 .observability-container-list a span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .observability-container-list a:hover, .observability-container-list a[aria-current="page"] { color: var(--blue); background: var(--blue-soft); }
-.observability-workspace { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: start; gap: 16px; margin-top: 16px; }
-.observability-workspace .timeline-panel { position: sticky; top: 0; display: flex; flex-direction: column; height: min(780px, calc(100dvh - 140px)); min-height: 360px; padding: 10px 8px; }
-.observability-workspace .timeline-panel h2 { margin: 0; font-size: 12px; }
-.timeline-caption { margin-top: 6px; color: var(--muted); font-size: 10px; }
-.timeline-rail { position: relative; flex: 1; min-height: 0; margin: 12px 0; }
-.timeline-selected-time { position: absolute; top: 12px; left: 0; z-index: 2; max-width: 100%; padding: 3px 5px; transform: translateY(-50%); overflow: hidden; color: #fff; background: #0067d6; border-radius: 3px; font-size: 10px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
-.timeline-latest { align-self: flex-end; width: 28px; min-height: 28px; padding: 2px; color: var(--blue); background: var(--blue-soft); border: 1px solid var(--border); border-radius: 50%; }
+.observability-workspace { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: start; gap: 16px; margin-top: 16px; }
+.observability-workspace .timeline-panel { position: sticky; top: 0; display: flex; flex-direction: column; height: min(880px, calc(100dvh - 140px)); min-height: 360px; padding: 10px 8px 0; border-radius: 8px; }
+.observability-workspace .timeline-panel h2 { margin: 0 0 8px; color: var(--muted); font-size: 11px; font-weight: 400; white-space: nowrap; }
+.timeline-zoom { display: flex; align-items: center; gap: 6px; height: 24px; padding: 0 4px; background: var(--raised); border-radius: 14px; }
+.timeline-zoom[hidden] { display: none; }
+.timeline-zoom button { display: grid; flex: 0 0 18px; place-items: center; padding: 0; color: var(--dim); background: transparent; border: 0; font-size: 17px; cursor: pointer; }
+.timeline-zoom input { width: 0; flex: 1; height: 16px; margin: 0; appearance: none; background: transparent; cursor: pointer; }
+.timeline-zoom input::-webkit-slider-runnable-track { height: 4px; background: var(--border); border-radius: 3px; }
+.timeline-zoom input::-webkit-slider-thumb { width: 20px; height: 8px; margin-top: -2px; appearance: none; background: var(--blue); border-radius: 6px; }
+.timeline-zoom input::-moz-range-track { height: 4px; background: var(--border); border-radius: 3px; }
+.timeline-zoom input::-moz-range-thumb { width: 20px; height: 8px; background: var(--blue); border: 0; border-radius: 6px; }
+.timeline-rail { --timeline-anchor: min(72px, 12%); position: relative; flex: 1; min-height: 0; margin: 8px -8px 0; overflow: hidden; touch-action: none; cursor: grab; }
+.timeline-rail:active { cursor: grabbing; }
+.timeline-rail:has(.timeline-slider:focus-visible) { outline: 2px solid var(--blue); outline-offset: -2px; }
+.timeline-selected-time { position: absolute; top: var(--timeline-anchor); left: 12px; z-index: 6; max-width: calc(100% - 24px); padding: 4px 7px; transform: translateY(-50%); overflow: hidden; color: #fff; background: #0067d6; border-radius: 4px; font-size: 10px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; text-overflow: ellipsis; box-shadow: 0 2px 6px #007bff30; }
+.timeline-latest { position: absolute; right: 12px; bottom: 12px; z-index: 7; display: grid; place-items: center; width: 28px; height: 28px; min-height: 28px; padding: 0; color: #fff; background: #0067d6; border: 1px solid #0067d6; border-radius: 50%; font-size: 21px; line-height: 1; cursor: pointer; }
 .timeline-latest[hidden] { display: none; }
-.timeline-selection { position: absolute; left: 0; right: 0; border-top: 1px solid var(--blue); pointer-events: none; }
+.timeline-selection { position: absolute; top: var(--timeline-anchor); left: 0; right: 0; z-index: 5; border-top: 2px solid var(--blue); pointer-events: none; }
 .timeline-selection[hidden] { display: none; }
-.observability-workspace .timeline-axis { position: absolute; inset: 0 auto 0 0; display: flex; flex-direction: column; justify-content: space-between; gap: 0; }
-.observability-workspace .timeline-axis::after { position: absolute; top: 0; bottom: 0; left: 36px; width: 4px; content: ''; background: repeating-linear-gradient(to bottom, var(--border) 0 1px, transparent 1px 6.25%); }
-.observability-workspace .timeline-track { position: absolute; inset: 0 24px 0 auto; width: 24px; height: auto; margin: 0; border: 0; }
-.observability-workspace .timeline-span { position: absolute; left: 50%; width: 10px; min-height: 2px; transform: translateX(-50%); }
+.observability-workspace .timeline-axis { position: absolute; inset: 0; display: block; font-size: 9px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.timeline-tick { position: absolute; left: 8px; right: calc(50% + 10px); height: 1px; transform: translateY(-50%); text-align: left; line-height: 0; white-space: nowrap; }
+.timeline-tick::after { position: absolute; right: 0; width: 5px; border-top: 1px solid var(--border); content: ''; }
+.timeline-tick-major::after { width: 10px; }
+.observability-workspace .timeline-track { position: absolute; inset: 0 auto 0 calc(50% - 5px); width: 10px; height: auto; margin: 0; background: var(--border); border: 0; border-radius: 1px; }
+.timeline-track-past { position: absolute; inset: var(--timeline-anchor) 0 0; background: var(--blue-soft); }
+.observability-workspace .timeline-span { position: absolute; left: 0; width: 10px; min-height: 2px; }
 .observability-workspace .timeline-span-unhealthy { z-index: 0; border: 1px solid var(--danger); background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--danger) 80%, transparent) 0 3px, transparent 3px 6px); }
-.observability-workspace .timeline-span-unavailable { z-index: 2; background: rgb(145, 153, 170); }
-.observability-workspace .timeline-marker { left: 50%; bottom: auto; transform: translate(-50%, -50%); z-index: 3; }
-.observability-workspace .timeline-marker:focus-visible, .observability-workspace .timeline-marker:hover { z-index: 3; }
-.observability-workspace .timeline-slider { position: absolute; inset: 0 0 0 auto; width: 24px; height: 100%; min-height: 0; margin: 0; appearance: none; background: transparent; writing-mode: vertical-lr; direction: rtl; cursor: ns-resize; }
-.observability-workspace .timeline-slider::-webkit-slider-runnable-track { width: 4px; height: 100%; background: var(--border); border-radius: 2px; }
-.observability-workspace .timeline-slider::-webkit-slider-thumb { width: 10px; height: 10px; margin-left: -3px; appearance: none; background: var(--blue); border: 2px solid var(--panel); border-radius: 50%; box-shadow: 0 0 0 1px var(--blue); }
-.observability-workspace .timeline-slider::-moz-range-track { width: 4px; height: 100%; background: var(--border); border-radius: 2px; }
-.observability-workspace .timeline-slider::-moz-range-thumb { width: 6px; height: 6px; background: var(--blue); border: 2px solid var(--panel); border-radius: 50%; box-shadow: 0 0 0 1px var(--blue); }
+.observability-workspace .timeline-span-unavailable { z-index: 2; background: repeating-linear-gradient(45deg, var(--border) 0 3px, transparent 3px 6px), var(--raised); }
+.observability-workspace .timeline-marker { left: 0; bottom: auto; display: block; width: 44px; height: 24px; transform: translateY(-50%); z-index: 3; }
+.observability-workspace .timeline-marker[hidden], .observability-workspace .timeline-span[hidden] { display: none; }
+.observability-workspace .timeline-marker .timeline-dot { position: absolute; left: 0; top: 12px; width: 10px; height: 10px; transform: translateY(-50%); background: var(--timeline-event-color, var(--blue)); border: 0; box-shadow: none; }
+.observability-workspace .timeline-marker .timeline-badge { position: absolute; top: 0; left: 18px; display: grid; place-items: center; width: 24px; height: 24px; color: var(--blue); background: var(--blue-soft); border: 0; border-radius: 3px; box-shadow: none; font-size: 11px; font-weight: 650; }
+.observability-workspace .timeline-marker:not(.timeline-cluster) .timeline-badge::after { width: 13px; height: 13px; border: 1px solid currentColor; border-radius: 50%; content: ''; background: radial-gradient(circle, transparent 3px, currentColor 3px 4px, transparent 4px); }
+.observability-workspace .timeline-marker:hover .timeline-badge, .observability-workspace .timeline-marker:focus-visible .timeline-badge { color: #fff; background: #0067d6; }
+.observability-workspace .timeline-slider { min-height: 0; margin: 0; }
+.timeline-tooltip { position: fixed; z-index: 100; max-width: min(340px, calc(100vw - 16px)); padding: 8px 10px; color: #f3f5f8; background: #292c31; border-radius: 4px; box-shadow: 0 2px 8px #0003; font-size: 11px; pointer-events: none; }
+:root[data-theme="dark"] .observability-workspace .timeline-panel { background: var(--bg); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .observability-workspace .timeline-panel { background: var(--bg); }
+}
 .observability-detail { min-width: 0; }
 .observability-charts { display: grid; gap: 8px; }
 .observability-charts .chart-panel { padding: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; }
@@ -427,7 +444,7 @@ circle.chart-line { fill: currentColor; stroke: none; }
 @media (max-width: 900px) {
   .host-sidebar.observability-sidebar { max-height: 240px; overflow-y: auto; }
   .observability-container-list { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
-  .observability-workspace { grid-template-columns: 100px minmax(0, 1fr); gap: 10px; }
+  .observability-workspace { grid-template-columns: 140px minmax(0, 1fr); gap: 10px; }
   .observability-workspace .timeline-panel { height: 540px; }
 }
 @media (min-width: 901px) {
@@ -437,8 +454,7 @@ circle.chart-line { fill: currentColor; stroke: none; }
   .console-body.inventory-layout.observability-layout.navigation-expanded:has(.inventory-filter-disclosure:not([open])) { grid-template-columns: 200px 0 176px minmax(0, 1fr); }
 }
 @media (max-width: 620px) {
-  .observability-workspace { grid-template-columns: 80px minmax(0, 1fr); gap: 8px; }
-  .observability-workspace .timeline-panel { padding: 8px 4px; }
+  .observability-workspace { grid-template-columns: 112px minmax(0, 1fr); gap: 8px; }
   .timeline-latest { width: 44px; min-height: 44px; }
   .observability-records .timeline-event { display: flex; flex-direction: column; align-items: flex-start; }
   .observability-record-columns { display: none; }

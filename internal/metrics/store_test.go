@@ -164,6 +164,53 @@ func TestSelectChartSeriesRejectsUnboundedRanges(t *testing.T) {
 	}
 }
 
+func TestChartSeriesLargeHistory(t *testing.T) {
+	dir := os.Getenv("CMP_SQLITE_FIXTURE_DIR")
+	if dir == "" {
+		dir = t.TempDir()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	store, err := Open(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	start := time.Date(2026, 11, 24, 12, 0, 0, 0, time.UTC)
+	const containers = 12
+	samples := make([]Sample, 0, containers*3600)
+	for container := range containers {
+		for second := range 3600 {
+			cpu := float64(second)
+			samples = append(samples, Sample{
+				ContainerID: fmt.Sprintf("%064x", container+1),
+				Observation: runtime.Observations{Time: start.Add(time.Duration(second) * time.Second), CPUPercent: &cpu},
+			})
+		}
+	}
+	if err := store.Insert(ctx, samples); err != nil {
+		t.Fatal(err)
+	}
+	series, err := store.SelectChartSeries(ctx, "", start, start.Add(time.Hour), 30*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(series) != containers {
+		t.Fatalf("chart containers = %d, want %d", len(series), containers)
+	}
+	for _, container := range series {
+		if len(container.Points) != 120 {
+			t.Fatalf("chart buckets = %d, want 120", len(container.Points))
+		}
+		for bucket, point := range container.Points {
+			want := float64((bucket+1)*30 - 1)
+			if point.CPUPercent == nil || *point.CPUPercent != want {
+				t.Fatalf("bucket %d = %#v, want latest CPU %v", bucket, point, want)
+			}
+		}
+	}
+}
+
 func TestFullUnsignedMemoryRangePersists(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()

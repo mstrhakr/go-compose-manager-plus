@@ -32,6 +32,59 @@ type dashboardMetricsCollectorStub struct {
 	states   map[string]metrics.StateHistory
 }
 
+type unavailableHistoryCollector struct {
+	dashboardMetricsCollectorStub
+}
+
+func (unavailableHistoryCollector) SelectObservedContainers(context.Context, time.Time, time.Time) ([]string, error) {
+	return nil, context.DeadlineExceeded
+}
+
+func TestObservabilityKeepsLiveIdentitiesWhenHistoryIsUnavailable(t *testing.T) {
+	ctx := context.Background()
+	db, err := auth.OpenDatabase(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.SQL.Close()
+	settings := metrics.NewSettingsStore(db.SQL)
+	if _, err := settings.Save(ctx, metrics.Settings{
+		Enabled: true, Profile: metrics.ProfileHigh, Scope: metrics.ScopeAll,
+		Interval: time.Second, StorageLimit: 10 << 20,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	server := &authServer{metricsSettings: settings, collector: unavailableHistoryCollector{}}
+	start, end := dashboardTimeRange()
+	id := strings.Repeat("a", 64)
+	containers, selected, _, err := server.observabilityContainers(ctx, start, end,
+		[]runtime.Container{{ID: id, Name: "api", State: "running"}}, url.Values{})
+	if err == nil || !strings.Contains(err.Error(), "deadline exceeded") {
+		t.Fatalf("history failure was hidden: %v", err)
+	}
+	if len(containers) != 1 || containers[0].Label != "api" || selected != id {
+		t.Fatalf("unavailable history removed live container navigation: %#v, %q", containers, selected)
+	}
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	fallback, fallbackID, _, settingsErr := server.observabilityContainers(canceled, start, end,
+		[]runtime.Container{{ID: id, Name: "api", State: "running"}}, url.Values{})
+	if settingsErr == nil || len(fallback) != 1 || fallbackID != id {
+		t.Fatalf("settings timeout removed live container navigation: %#v, %q, %v", fallback, fallbackID, settingsErr)
+	}
+	server.logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	server.pages = template.Must(template.ParseFS(content, "templates/*.html", "templates/partials/*.html"))
+	response := httptest.NewRecorder()
+	server.render(response, pageData{
+		View: "observability", ObservedContainers: containers,
+		Error: "Stored container history could not be loaded.",
+	})
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `role="alert">Stored container history`) ||
+		!strings.Contains(response.Body.String(), ">api</span>") {
+		t.Fatalf("history failure lost its visible warning or snapshot navigation: %d %s", response.Code, response.Body.String())
+	}
+}
+
 func (collector dashboardMetricsCollectorStub) Status() metrics.CollectorStatus {
 	return collector.status
 }
@@ -161,6 +214,12 @@ func TestSyntheticDashboardPreview(t *testing.T) {
 				{ContainerID: containers[0].ContainerID, Time: start.Add(20 * time.Minute), Kind: metrics.EventStart},
 				{ContainerID: containers[1].ContainerID, Time: start.Add(25 * time.Minute), Kind: metrics.EventOOM},
 				{ContainerID: containers[0].ContainerID, Time: start.Add(42*time.Minute + 750*time.Millisecond), Kind: metrics.EventRestart},
+				{ContainerID: containers[0].ContainerID, Time: start.Add(41 * time.Minute), Kind: metrics.EventPause},
+				{ContainerID: containers[0].ContainerID, Time: start.Add(41*time.Minute + 2*time.Second), Kind: metrics.EventUnpause},
+				{ContainerID: containers[0].ContainerID, Time: start.Add(41*time.Minute + 4*time.Second), Kind: metrics.EventPause},
+				{ContainerID: containers[0].ContainerID, Time: start.Add(41*time.Minute + 18*time.Second), Kind: metrics.EventUnpause},
+				{ContainerID: containers[0].ContainerID, Time: start.Add(41*time.Minute + 20*time.Second), Kind: metrics.EventPause},
+				{ContainerID: containers[0].ContainerID, Time: start.Add(41*time.Minute + 22*time.Second), Kind: metrics.EventUnpause},
 				{ContainerID: containers[1].ContainerID, Time: start.Add(50 * time.Minute), Kind: metrics.EventStop},
 			},
 		},

@@ -515,18 +515,18 @@ type observedContainer struct {
 
 func (server *authServer) observabilityContainers(ctx context.Context, start, end time.Time, snapshot []runtime.Container, query url.Values) ([]observedContainer, string, inventoryFilters, error) {
 	settings, sources, err := server.metricsSettings.LoadConfiguration(ctx)
-	if err != nil {
-		return nil, "", inventoryFilters{}, fmt.Errorf("load observability settings: %w", err)
-	}
 	var ids []string
-	if settings.Enabled || sources.StateEnabled || sources.Logs.Enabled {
+	var historyErr error
+	if err != nil {
+		historyErr = fmt.Errorf("load observability settings: %w", err)
+	} else if settings.Enabled || sources.StateEnabled || sources.Logs.Enabled {
 		if selector, ok := server.collector.(dashboardSourceContainerSelector); ok {
 			ids, err = selector.SelectObservedContainersForSources(ctx, start, end, settings.Enabled, sources.StateEnabled, sources.Logs.Enabled)
 		} else if settings.Enabled || sources.StateEnabled {
 			ids, err = server.collector.SelectObservedContainers(ctx, start, end)
 		}
 		if err != nil {
-			return nil, "", inventoryFilters{}, fmt.Errorf("load observed containers: %w", err)
+			historyErr = fmt.Errorf("load observed containers: %w", err)
 		}
 	}
 	inventory := append([]runtime.Container{}, snapshot...)
@@ -568,9 +568,9 @@ func (server *authServer) observabilityContainers(ctx context.Context, start, en
 		})
 	}
 	if !found {
-		return containers, "", filters, nil
+		return containers, "", filters, historyErr
 	}
-	return containers, selected, filters, nil
+	return containers, selected, filters, historyErr
 }
 
 func timelineEventDescription(event metrics.Event) string {

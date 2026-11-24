@@ -5,6 +5,7 @@
   const chartSelections = new WeakMap();
   const chartTooltips = new WeakMap();
   const timelineSelections = new WeakMap();
+  const timelineLayouts = new WeakMap();
 
   function formatChartTime(value) {
     if (Math.abs(value) < 100000000000) return String(value);
@@ -320,51 +321,133 @@
   }
 
   function initializeTimeline(timeline) {
-    for (const span of timeline.querySelectorAll('[data-timeline-span]')) {
-      const start = Number(span.dataset.spanStart);
-      const height = Number(span.dataset.spanHeight);
-      if (!Number.isFinite(start) || !Number.isFinite(height) ||
-          start < 0 || start > 100 || height <= 0 || start + height > 100.001) continue;
-      span.style.bottom = `${start}%`;
-      span.style.height = `${Math.min(height, 100 - start)}%`;
-      span.hidden = false;
+    if (timeline.dataset.timelineReady === 'true') {
+      timelineLayouts.get(timeline)?.();
+      return;
     }
-    if (timeline.dataset.timelineReady === 'true') return;
     const slider = timeline.querySelector('[data-timeline-slider]');
     const output = timeline.querySelector('[data-timeline-output]');
-    const caption = timeline.querySelector('[data-timeline-caption]');
+    const viewport = timeline.querySelector('[data-timeline-viewport]');
+    const axis = timeline.querySelector('[data-timeline-axis]');
+    const track = timeline.querySelector('.timeline-track');
+    const zoom = timeline.querySelector('[data-timeline-zoom]');
+    const tooltip = timeline.querySelector('[data-timeline-tooltip]');
     const start = Number(timeline.dataset.start);
     const end = Number(timeline.dataset.end);
-    if (!slider || !output || !Number.isFinite(start) || !Number.isFinite(end) || start >= end) return;
+    if (!slider || !output || !viewport || !axis || !track || !zoom || !tooltip ||
+        !Number.isFinite(start) || !Number.isFinite(end) || start >= end) return;
     const step = Number(slider.step) || 1000;
-    const format = time => {
-      return new Date(time).toLocaleString(undefined, {
-        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short',
-        fractionalSecondDigits: time % 1000 ? 3 : undefined,
-      });
+    const format = time => new Date(time).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short',
+      fractionalSecondDigits: time % 1000 ? 3 : undefined,
+    });
+    const clock = time => new Date(time).toLocaleTimeString(undefined, {
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    });
+    let selected = end;
+    const scale = () => (end - start) / 2 ** Number(zoom.value) / Math.max(1, viewport.clientHeight);
+    const anchor = () => Math.min(72, viewport.clientHeight * 0.12);
+    const pixel = time => anchor() + (selected - time) / scale();
+    const hideTooltip = () => { tooltip.hidden = true; };
+    const render = () => {
+      hideTooltip();
+      zoom.setAttribute('aria-valuetext', `${Math.round((end - start) / 2 ** Number(zoom.value) / 1000)} seconds across the viewport; up to one hour retained`);
+      axis.replaceChildren();
+      const height = viewport.clientHeight;
+      const msPerPixel = scale();
+      const topTime = Math.min(end, selected + anchor() * msPerPixel);
+      const bottomTime = Math.max(start, selected - (height - anchor()) * msPerPixel);
+      const intervals = [1000, 5000, 10000, 15000, 30000, 60000, 120000, 300000, 600000, 900000];
+      const major = intervals.find(interval => interval / msPerPixel >= 110) ?? 900000;
+      const minor = major / 10;
+      for (let time = Math.ceil(bottomTime / minor) * minor; time <= topTime; time += minor) {
+        const tick = document.createElement('span');
+        tick.className = 'timeline-tick';
+        tick.style.top = `${pixel(time)}px`;
+        if (time % major === 0) {
+          tick.classList.add('timeline-tick-major');
+          tick.textContent = new Date(time).toLocaleTimeString(undefined, {
+            hour: '2-digit', minute: '2-digit', ...(major < 60000 ? { second: '2-digit' } : {}),
+          });
+        }
+        axis.append(tick);
+      }
+      for (const span of timeline.querySelectorAll('[data-timeline-span]')) {
+        const from = Number(span.dataset.spanStart);
+        const length = Number(span.dataset.spanHeight);
+        const valid = Number.isFinite(from) && Number.isFinite(length) &&
+          from >= 0 && length > 0 && from + length <= 100.001;
+        const spanStart = start + (end - start) * from / 100;
+        const spanEnd = Math.min(end, spanStart + (end - start) * length / 100);
+        const top = Math.max(0, pixel(spanEnd));
+        const bottom = Math.min(height, pixel(spanStart));
+        span.hidden = !valid || bottom <= top;
+        span.style.top = `${top}px`;
+        span.style.height = `${Math.max(0, bottom - top)}px`;
+        span.tabIndex = span.hidden ? -1 : 0;
+        span.removeAttribute('title');
+        span.dataset.timelineLabel ??= span.getAttribute('aria-label');
+        span.dataset.timelineDescription = `${span.dataset.timelineLabel} · ${format(spanStart)} – ${format(spanEnd)}`;
+        span.setAttribute('aria-label', span.dataset.timelineDescription);
+      }
+      for (const group of track.querySelectorAll('[data-timeline-group]')) group.remove();
+      const groups = [];
+      const markers = [...track.querySelectorAll('[data-timeline-marker]')].sort((a, b) =>
+        Number(b.dataset.timelineSelect) - Number(a.dataset.timelineSelect));
+      for (const marker of markers) {
+        const y = pixel(Number(marker.dataset.timelineSelect));
+        marker.hidden = y < 12 || y > height - 12;
+        marker.style.top = `${y}px`;
+        if (marker.hidden) continue;
+        const group = groups.at(-1);
+        // Adjacent badges need 28px. Connected overlaps form one cluster;
+        // zooming increases their separation until individual badges fit.
+        if (group && y - group.last < 28) {
+          group.markers.push(marker);
+          group.last = y;
+        } else groups.push({ markers: [marker], first: y, last: y });
+      }
+      for (const group of groups) {
+        if (group.markers.length === 1) continue;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'timeline-marker timeline-cluster';
+        button.dataset.timelineGroup = '';
+        const times = group.markers.map(marker => Number(marker.dataset.timelineSelect));
+        button.dataset.timelineSelect = String(Math.round((times[0] + times.at(-1)) / 2));
+        const zoomHint = Number(zoom.value) < Number(zoom.max)
+          ? 'Select to zoom in.' : 'Maximum timeline zoom; use the observed event records below for details.';
+        button.dataset.timelineDescription = `${times.length} records · ${clock(times.at(-1))} – ${clock(times[0])}. ${zoomHint}`;
+        button.setAttribute('aria-label', button.dataset.timelineDescription);
+        button.style.top = `${(group.first + group.last) / 2}px`;
+        for (const marker of group.markers) {
+          marker.hidden = true;
+          const dot = document.createElement('span');
+          dot.className = 'timeline-dot';
+          dot.style.top = `${parseFloat(marker.style.top) - (group.first + group.last) / 2 + 12}px`;
+          dot.setAttribute('aria-hidden', 'true');
+          button.append(dot);
+        }
+        const badge = document.createElement('span');
+        badge.className = 'timeline-badge';
+        badge.textContent = String(times.length);
+        badge.setAttribute('aria-hidden', 'true');
+        button.append(badge);
+        track.append(button);
+      }
     };
     const setTime = time => {
-      const selected = Math.round(Math.max(start, Math.min(end, time)));
+      selected = Math.round(Math.max(start, Math.min(end, time)));
       const sliderTime = Math.max(start, Math.min(end,
         start + Math.round((selected - start) / step) * step));
       slider.value = String(sliderTime);
       timeline.dataset.selected = String(selected);
       const label = format(selected);
-      const vertical = timeline.hasAttribute('data-timeline-vertical');
-      output.value = vertical ? new Date(selected).toLocaleTimeString(undefined, {
-        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-      }) : label;
+      output.value = selected === end ? 'Latest' : clock(selected);
       output.textContent = output.value;
       output.title = label;
-      if (caption) caption.title = label;
       slider.setAttribute('aria-valuetext', label);
-      const position = 100 - (selected - start) / (end - start) * 100;
-      if (vertical) output.style.top = `clamp(12px, ${position}%, calc(100% - 12px))`;
-      const cursor = timeline.querySelector('[data-timeline-cursor]');
-      if (cursor) {
-        cursor.style.top = `${position}%`;
-        cursor.hidden = false;
-      }
+      render();
       for (const marker of timeline.querySelectorAll('[data-timeline-select]')) {
         const eventTime = Number(marker.dataset.timelineSelect);
         const selectedMarker = marker.hasAttribute('data-timeline-marker')
@@ -375,54 +458,92 @@
       }
       return selected;
     };
-    const announce = () => {
-      const time = Number(slider.value);
+    const select = time => {
       if (!Number.isFinite(time)) return;
-      setTime(time);
       timeline.dispatchEvent(new CustomEvent('observability:timechange', {
-        bubbles: true,
-        detail: { time: Math.round(time) },
+        bubbles: true, detail: { time: Math.round(Math.max(start, Math.min(end, time))) },
       }));
     };
-    slider.addEventListener('input', announce);
-    if (timeline.hasAttribute('data-timeline-vertical')) {
-      slider.addEventListener('keydown', event => {
-        if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-        event.preventDefault();
-        let time = Number(slider.value);
-        if (event.key === 'Home') time = start;
-        else if (event.key === 'End') time = end;
-        else time += ['ArrowUp', 'ArrowRight'].includes(event.key) ? step : -step;
-        slider.value = String(Math.max(start, Math.min(end, time)));
-        announce();
-      });
-    }
+    slider.addEventListener('input', () => select(Number(slider.value)));
+    slider.addEventListener('keydown', event => {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].includes(event.key)) return;
+      event.preventDefault();
+      if (event.key === 'Home') select(start);
+      else if (event.key === 'End') select(end);
+      else {
+        const page = event.key.startsWith('Page');
+        const increment = page ? (end - start) / 2 ** Number(zoom.value) / 5 : step;
+        select((page ? selected : Number(slider.value)) +
+          (['ArrowUp', 'ArrowRight', 'PageUp'].includes(event.key) ? increment : -increment));
+      }
+    });
+    zoom.addEventListener('input', render);
+    viewport.addEventListener('wheel', event => {
+      event.preventDefault();
+      const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1);
+      select(selected - delta * scale());
+    }, { passive: false });
+    let drag;
+    viewport.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || event.target.closest('button, [data-timeline-span]')) return;
+      drag = { y: event.clientY, time: selected, moved: false };
+      viewport.setPointerCapture(event.pointerId);
+      hideTooltip();
+    });
+    viewport.addEventListener('pointermove', event => {
+      if (!drag) return;
+      const delta = event.clientY - drag.y;
+      drag.moved ||= Math.abs(delta) > 3;
+      if (drag.moved) select(drag.time + delta * scale());
+    });
+    viewport.addEventListener('pointerup', event => {
+      if (!drag) return;
+      if (!drag.moved) select(selected + (anchor() - (event.clientY - viewport.getBoundingClientRect().top)) * scale());
+      drag = undefined;
+      viewport.releasePointerCapture(event.pointerId);
+    });
+    viewport.addEventListener('pointercancel', () => { drag = undefined; });
+    const changeZoom = delta => {
+      zoom.value = String(Math.max(Number(zoom.min), Math.min(Number(zoom.max), Number(zoom.value) + delta)));
+      render();
+    };
     timeline.addEventListener('click', event => {
       if (!(event.target instanceof Element)) return;
+      if (event.target.closest('[data-timeline-zoom-in]')) return changeZoom(1);
+      if (event.target.closest('[data-timeline-zoom-out]')) return changeZoom(-1);
       const button = event.target.closest('[data-timeline-select]');
       if (!button || !timeline.contains(button)) return;
       const time = Number(button.dataset.timelineSelect);
       if (!Number.isFinite(time)) return;
-      const selected = setTime(time);
-      timeline.dispatchEvent(new CustomEvent('observability:timechange', {
-        bubbles: true,
-        detail: { time: selected },
-      }));
+      const group = button.hasAttribute('data-timeline-group');
+      if (group) changeZoom(1);
+      select(time);
+      if (group || button.hidden) slider.focus({ preventScroll: true });
     });
+    const showTooltip = event => {
+      const target = event.target.closest?.('[data-timeline-description]');
+      if (!target || !timeline.contains(target)) return;
+      tooltip.textContent = target.dataset.timelineDescription;
+      tooltip.hidden = false;
+      const bounds = target.getBoundingClientRect();
+      const width = tooltip.getBoundingClientRect().width;
+      tooltip.style.left = `${Math.max(8, Math.min(window.innerWidth - width - 8, bounds.right + 8))}px`;
+      tooltip.style.top = `${Math.max(8, Math.min(window.innerHeight - tooltip.offsetHeight - 8, bounds.top))}px`;
+    };
+    timeline.addEventListener('pointerover', showTooltip);
+    timeline.addEventListener('focusin', showTooltip);
+    timeline.addEventListener('pointerout', hideTooltip);
+    timeline.addEventListener('focusout', hideTooltip);
     timelineSelections.set(timeline, setTime);
+    timelineLayouts.set(timeline, render);
     timeline.dataset.timelineReady = 'true';
+    slider.disabled = false;
+    timeline.querySelector('[data-timeline-zoom-controls]').hidden = false;
+    timeline.querySelector('[data-timeline-cursor]').hidden = false;
     const latest = timeline.querySelector('[data-timeline-latest]');
     if (latest) latest.hidden = false;
     const initial = Number(timeline.dataset.selected);
     setTime(Number.isFinite(initial) ? initial : end);
-    for (const marker of timeline.querySelectorAll('[data-timeline-marker]')) {
-      const position = Number(marker.dataset.position);
-      if (Number.isFinite(position)) {
-        const bounded = Math.max(0, Math.min(100, position));
-        if (timeline.hasAttribute('data-timeline-vertical')) marker.style.top = `${100 - bounded}%`;
-        else marker.style.left = `${bounded}%`;
-      }
-    }
   }
 
   function updateList(list) {
@@ -564,6 +685,13 @@
       if (!chart.querySelector('svg')?.contains(event.target)) chartTooltips.get(chart)?.();
     }
   });
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    for (const tooltip of document.querySelectorAll('[data-timeline-tooltip]')) tooltip.hidden = true;
+  });
   document.addEventListener('DOMContentLoaded', () => initialize(document));
   document.addEventListener('htmx:afterSwap', event => initialize(event.target));
+  window.addEventListener('resize', () => {
+    for (const timeline of document.querySelectorAll('[data-timeline]')) timelineLayouts.get(timeline)?.();
+  });
 })();

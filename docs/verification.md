@@ -1434,3 +1434,153 @@ Focused deterministic regressions and combined auth/metrics/web race suites
 passed. The initial hosted CI and a later timeline-fix revision passed Linux,
 Windows, both macOS jobs, browser, docs/contracts, container and security checks;
 final state-fix hosted checks remain required before merge.
+
+## Observability Reliability And Fixed-Cursor Follow-Up
+
+Date: 2026-11-24. Branch: `fix/observability-reliability-timeline`, based on
+main `a8e9ad0`. Scope: the owner's reported SQLite 6410 error, blocked history
+pages, duplicate unchanged state observations and reference-aligned timeline;
+LIVE-003 retention, source enablement and independent databases are unchanged.
+
+### Storage And Sparse-State Evidence
+
+- SQLite 6410 is `SQLITE_IOERR_GETTEMPPATH`. The previous chart window query
+  reproduced this exact error with 43,200 samples in an unprivileged chroot
+  containing writable `/data` but no temporary directory. The replacement
+  index-ordered stream passed the same fixture, checking the newest reading in
+  every one of 120 buckets for each of 12 containers. This is a scratch-like
+  filesystem reproduction, not evidence from the owner's actual Docker host.
+  No writable-root workaround, temp-store policy or schema change was added.
+- Chart iteration is linear in matching samples, with output-bounded
+  container/bucket memory and sorted container IDs. Selected-container filtering,
+  missing buckets and unsigned memory readings retain existing behavior.
+- Sampling and event/scope reconciliation now compare against one state cache
+  under the existing persistence mutex. The focused shared-writer regression
+  verifies two actual observations survive four unchanged subsequent cycles
+  and that a delayed sample cannot rewind a newer state. Local and shared gaps
+  still require a newer reconnect observation. Existing retained duplicates
+  are not retroactively erased.
+- A follow-up focused race regression also verifies that a confirmed committed
+  state write advances the shared cache even if subsequent maintenance fails.
+  The maintenance error remains visible; after explicit pending-write
+  reconciliation, unchanged inspection/sampling does not repeat that committed
+  observation. Both state writers retain this acknowledgement boundary.
+- Focused metrics/web race checks passed for shared sparse history, state-only
+  lifecycle capture and unavailable-history navigation. The lifecycle fixture
+  uses inspection acknowledgements rather than a five-second polling race.
+- The initial full `make check QUIET=1` passed vet and all other Go packages,
+  but stopped at `TestCollectorRunOptInPersistsEventsAndStopsOnDisable`'s
+  existing five-second activation deadline. An isolated run also failed.
+  Replacing both collector owners with unchanged main sources through a Go
+  overlay reproduced the same deadline failure before first-cycle completion.
+  This is a local baseline limitation, not a passing full-suite result.
+
+The precise cause of the owner's intermittent Observability hang and every
+deployed duplicate record has not been traced on their host. Query reproduction
+and shared-cache regressions establish narrower fixes; they do not prove every
+deployment issue resolved or authorize destructive database cleanup.
+
+### Timeline And Page Evidence
+
+The blue cursor now stays fixed within the rail while ticks, state spans and
+markers move beneath it. Zoom-dependent nonoverlapping count badges split a
+six-record cluster into two groups of three. Maximum zoom explains how to use
+the records list for coincident events. Gap hover/focus describes unavailable
+observation with local date/time bounds, and Escape dismisses it without
+requiring keyboard focus inside the timeline. No live refresh was added.
+
+Generated light/dark panels and a full dark hover capture were opened and
+compared with the private references after multiple visual passes. Corrections
+included panel/axis geometry, the horizontal zoom capsule, dark panel background,
+opaque grey hatching over unhealthy striping, a genuinely round return button
+and readable selected-time contrast. The one-hour label, honest snapshot
+"Latest" wording and darker accessible blue intentionally differ from references.
+No numerical visual-similarity percentage was measured.
+
+Focused Chromium, Firefox, WebKit and mobile Chromium checks exercised scrolling,
+dragging, fixed positioning, clustering, coincident events at maximum zoom,
+keyboard/fractional-time synchronization, production CSP, fragment initialization
+and no-JavaScript navigation. The four-project run passed 15/16; its remaining
+mobile assertion incorrectly compared screen coordinates across automatic page
+scrolling. After switching to rail-relative coordinates, that complete mobile
+case passed. The older standalone component fixture was also updated to the
+current timeline contract. Firefox needed a 90-second test budget on this host.
+
+History reads share a five-second context budget after Docker snapshot loading.
+Snapshot identities and an explicit alert survive unavailable history/settings;
+the focused web race regression passed. The subsequent full Go attempt again
+hit the baseline activation deadline, then exhausted the metrics package's
+ten-minute suite budget while executing SQLite filesystem synchronization.
+Other Go packages passed. This remains failed local full-suite evidence.
+Node/HTTP tests, docs variants/links and dependency checks passed separately;
+final hosted checks remain required.
+
+### Structured Troubleshooting Diagnostics
+
+The owner's follow-up requested useful Debug output and uniform manager log
+formatting. Startup/database timings, source configuration/session boundaries,
+metrics-cycle counts/timings, bounded live-log status and workspace/history/HTTP
+route timings now use the existing application logger. Info remains quiet.
+Routes are logged by their matched pattern, not query strings or request data.
+Live log ingestion itself does not emit per-message diagnostics, avoiding a
+self-capture feedback loop.
+
+The differently formatted obsolete-`version` warning was traced to compose-go's
+logrus logger, not an external Docker CLI process. A startup bridge preserves
+severity/message/fields through the application's JSON handler. Standard-library
+logs and HTTP server errors use the same handler. SDK debug/trace dumps stay
+disabled even when application Debug is selected. The existing pinned logrus
+dependency is now direct; no dependency version changed.
+
+Race tests passed using an actual Compose file that triggers the obsolete
+attribute warning, checking single-line JSON, preserved severity/fields,
+newline/quote escaping, standard logging and repeated configuration without
+duplicate hooks. The request regression verifies useful matched-route timing,
+excludes query/body/cookie/authorization sentinels, and remains silent at Info.
+Targeted metrics/web/logging race checks passed across sampling, state-only
+capture, sparse/committed state history and independent log health. The live-log
+integration case initially missed its short deadline in a combined run; isolated
+unchanged-main and current-source runs both passed. Vet/build, Node unit tests,
+asset verification, contract structure, docs variants/links and dependency
+checks passed. The previously documented full local gate failures remain
+qualifications, not converted to successes by these focused checks.
+
+The complete subsequent four-project browser run passed 84 cases with three
+intentional bootstrap skips; the remaining authenticated flow still attempted
+to tap the old native timeline slider. Its touch caller now selects through the
+visible viewport, and its no-JavaScript assertion checks the disabled control.
+The entire authenticated desktop/touch flow then passed at the default
+30-second test timeout. This was an obsolete test interaction, not a reason to
+make the hidden keyboard control pointer-interactive.
+
+Copilot review identified a reconnect interleaving: a sampling observation
+captured before a shared gap could be discarded and still allow the cycle to
+close that gap. A deterministic regression reproduced the closed gap with no
+fresh reconnect observation, including a newer state from the other writer.
+Gap-related rejection now reports incomplete reconciliation before stale-cache
+filtering. Shared-gap opening uses the same persistence lock as reconciliation,
+so a disconnect cannot slip between observation validation and gap closure.
+Focused race checks cover the rejected cycle and a later genuinely observed
+recovery, shared sparse writers, commit acknowledgement and snapshot recovery.
+
+The review also corrected selected-time badge hit testing and dark-theme filled
+control contrast. Four browser projects passed the actual badge hover and
+measured foreground/background contrast checks (4.5:1 for the hovered count,
+3:1 for the return icon), along with scrolling, grouping and gap tooltips.
+The first added tooltip assertion incorrectly assumed a four-digit year; the
+corrected check verifies the title matches the full accessible timestamp.
+New generated screenshots preserve both themes and the disconnection hover.
+Hosted CI passed all gates at `aaf57a3`, before these review follow-ups; final
+revision results remain a separate delivery gate.
+
+All hosted Go platform checks passed at `1911f90`; WebKit found a pointer-test
+geometry issue. The downloaded trace showed the now-hoverable selected-time
+label covering the default center of the event button at maximum zoom. The
+event-count badge itself remains visible beside the label, so both count-hover
+checks now target that visible badge instead of an occluded part of its parent.
+No forced pointer action, larger timeout or pointer-inaccessible timestamp was
+used to bypass the failure. Copilot's follow-up on `1911f90` reported no open
+findings; deployment-specific uncertainty and local gate failures remain noted.
+The corrected scenario then passed in all four local browser projects with the
+previously disclosed 90-second shared-host budget; Firefox took 51.8 seconds and
+WebKit 32.0 seconds. The repository's default CI timeout remains unchanged.

@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"html"
 	"io"
 	"log/slog"
@@ -27,6 +28,49 @@ import (
 )
 
 const testOrigin = "http://127.0.0.1:8080"
+
+func TestDebugRequestDiagnosticsExcludeRequestSecrets(t *testing.T) {
+	var output bytes.Buffer
+	var level slog.LevelVar
+	level.Set(slog.LevelDebug)
+	handler := testHandlerWithLogger(t, nil, slog.New(slog.NewJSONHandler(&output, &slog.HandlerOptions{Level: &level})))
+	for _, method := range []string{http.MethodGet, http.MethodPost} {
+		request := httptest.NewRequest(method, testOrigin+"/containers/observability?token=private-query",
+			strings.NewReader("password=private-password"))
+		request.Header.Set("Authorization", "Bearer private-authorization")
+		request.AddCookie(&http.Cookie{Name: "session", Value: "private-cookie"})
+		handler.ServeHTTP(httptest.NewRecorder(), request)
+	}
+	for _, secret := range []string{"private-query", "private-password", "private-authorization", "private-cookie"} {
+		if strings.Contains(output.String(), secret) {
+			t.Fatalf("request diagnostic exposed %s: %s", secret, output.String())
+		}
+	}
+	decoder := json.NewDecoder(&output)
+	found := false
+	for decoder.More() {
+		var record struct {
+			Level    string `json:"level"`
+			Route    string `json:"route"`
+			Duration int64  `json:"duration_ms"`
+		}
+		if err := decoder.Decode(&record); err != nil {
+			t.Fatal(err)
+		}
+		if record.Route == "GET /containers/observability" && record.Level == "DEBUG" && record.Duration >= 0 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("request diagnostic did not identify the matched route and duration")
+	}
+	output.Reset()
+	level.Set(slog.LevelInfo)
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, testOrigin+"/login", nil))
+	if output.Len() != 0 {
+		t.Fatalf("debug request diagnostics leaked into normal logging: %s", output.String())
+	}
+}
 
 func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 	handler := testHandler(t, nil)

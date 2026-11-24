@@ -498,7 +498,7 @@ func (s *Store) Select(ctx context.Context, id string, start, end time.Time, lim
 // SelectChartSeries returns at most one recorded observation per container and
 // display bucket. It does not combine values across containers; missing buckets
 // remain nil and display selection does not alter retained samples.
-// An empty id selects all containers; a nonempty id scopes rows before ranking.
+// An empty id selects all containers; a nonempty id scopes the streamed rows.
 func (s *Store) SelectChartSeries(ctx context.Context, id string, start, end time.Time, bucket time.Duration) ([]ContainerChartSeries, error) {
 	if id != "" {
 		if err := validateID(id); err != nil {
@@ -524,27 +524,17 @@ func (s *Store) SelectChartSeries(ctx context.Context, id string, start, end tim
 	}
 	bucketCount := int((rangeNS-1)/bucketNS + 1)
 	filter := ""
-	args := []any{from, bucketNS, from, bucketNS, from, to}
+	args := []any{from, to}
 	if id != "" {
 		filter = " AND container_id = ?"
 		args = append(args, id)
 	}
-	rows, err := s.db.QueryContext(ctx, `WITH ranked AS (
-		SELECT container_id, observed_ns,
-			((observed_ns - ?) / ?) AS bucket_index,
-			cpu_percent, CAST(memory_usage_bytes AS REAL) AS memory_usage_bytes,
-			network_rx_bytes_per_sec, network_tx_bytes_per_sec,
-			ROW_NUMBER() OVER (
-				PARTITION BY container_id, ((observed_ns - ?) / ?)
-				ORDER BY observed_ns DESC
-			) AS sample_rank
-		FROM samples
-		WHERE observed_ns >= ? AND observed_ns < ?`+filter+`
-	)
-	SELECT container_id, bucket_index, observed_ns, cpu_percent, memory_usage_bytes,
-		network_rx_bytes_per_sec, network_tx_bytes_per_sec
-	FROM ranked WHERE sample_rank = 1
-	ORDER BY container_id, bucket_index`, args...)
+	// Stream in index order instead of sorting every retained sample in a
+	// SQLite window query. Only the newest reading per display bucket is kept.
+	rows, err := s.db.QueryContext(ctx, `SELECT container_id, observed_ns, cpu_percent,
+		CAST(memory_usage_bytes AS REAL), network_rx_bytes_per_sec, network_tx_bytes_per_sec
+		FROM samples WHERE observed_ns >= ? AND observed_ns < ?`+filter+`
+		ORDER BY observed_ns, container_id`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query chart metrics: %w", err)
 	}
@@ -556,11 +546,10 @@ func (s *Store) SelectChartSeries(ctx context.Context, id string, start, end tim
 	seriesByID := make(map[string]*containerBuckets)
 	for rows.Next() {
 		var id string
-		var index int
 		var ns int64
 		var point ChartPoint
 		var cpu, memory, rx, tx sql.NullFloat64
-		if err := rows.Scan(&id, &index, &ns, &cpu, &memory, &rx, &tx); err != nil {
+		if err := rows.Scan(&id, &ns, &cpu, &memory, &rx, &tx); err != nil {
 			return nil, fmt.Errorf("read chart metrics: %w", err)
 		}
 		series := seriesByID[id]
@@ -577,6 +566,7 @@ func (s *Store) SelectChartSeries(ctx context.Context, id string, start, end tim
 		point.MemoryUsageBytes = nullableFloat(memory)
 		point.NetworkRxBytesPerSec = nullableFloat(rx)
 		point.NetworkTxBytesPerSec = nullableFloat(tx)
+		index := int((ns - from) / bucketNS)
 		if index < 0 || index >= len(series.points) {
 			return nil, errors.New("chart query returned an invalid bucket")
 		}

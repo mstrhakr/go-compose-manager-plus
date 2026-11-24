@@ -171,6 +171,11 @@ func (c *Collector) beginStateOnlySession() {
 }
 
 func (c *Collector) collectStateOnlySession(ctx context.Context, settings Settings, sources SourceSettings) error {
+	started := time.Now()
+	c.logger.DebugContext(ctx, "state history session started", "database", "metrics.db", "scope", sources.StateScope)
+	defer func() {
+		c.logger.DebugContext(ctx, "state history session finished", "duration_ms", time.Since(started).Milliseconds())
+	}()
 	c.beginStateOnlySession()
 	store, err := OpenManaged(ctx, c.dataDir, settings.StorageLimit)
 	if err != nil {
@@ -182,10 +187,10 @@ func (c *Collector) collectStateOnlySession(ctx context.Context, settings Settin
 	defer func() {
 		c.storeMu.Lock()
 		c.store = nil
+		c.storeMu.Unlock()
 		if err := store.Close(); err != nil {
 			c.logger.Error("close managed state store", "error", err)
 		}
-		c.storeMu.Unlock()
 	}()
 	pending, err := store.ReconcilePendingWrite(ctx)
 	if err != nil {
@@ -289,6 +294,7 @@ func (c *Collector) watchStateEvents(ctx context.Context, store *ManagedStore, s
 	}()
 	for ctx.Err() == nil {
 		err := c.docker.WatchContainerEventsWithConnect(ctx, func() {
+			c.logger.DebugContext(ctx, "Docker event stream connected", "source", "state_history")
 			connected.Store(true)
 			c.updateStatus(func(status *CollectorStatus) {
 				status.StateEnabled = true
@@ -346,7 +352,7 @@ func (c *Collector) watchStateEvents(ctx context.Context, store *ManagedStore, s
 			return
 		}
 		var gapErr error
-		if gapErr = store.StartGlobalStateGap(ctx, time.Now().UTC()); gapErr != nil {
+		if gapErr = c.startGlobalStateGap(ctx, store, time.Now().UTC()); gapErr != nil {
 			c.logger.ErrorContext(ctx, "record shared state-source disconnect", "error", gapErr)
 			c.setStateStorageProblem(gapErr)
 		}
@@ -447,46 +453,23 @@ func (c *Collector) persistObservedState(ctx context.Context, store *ManagedStor
 	if err != nil {
 		return fmt.Errorf("read open state gap for %s: %w", current.ContainerID, err)
 	}
-	globalGapStart, globalGapOpen, err := store.OpenGlobalStateGap(ctx)
+	current.ReconnectObserved = current.ReconnectObserved || (gapOpen && !gapStart.IsZero())
+	changed, err := c.changedStates(ctx, store, []State{current})
 	if err != nil {
-		return fmt.Errorf("read shared state observation gap: %w", err)
+		return err
 	}
-	current.ReconnectObserved = current.ReconnectObserved || (gapOpen && !gapStart.IsZero()) || (globalGapOpen && !globalGapStart.IsZero())
-	previous, found := known[current.ContainerID]
-	if !found {
-		latest, err := store.SelectLatestState(ctx, current.ContainerID)
-		if err != nil {
-			return fmt.Errorf("read previous state for %s: %w", current.ContainerID, err)
-		}
-		if latest != nil {
-			previous, found = *latest, true
-			known[current.ContainerID] = previous
-		}
+	if len(changed) == 0 {
+		return nil
 	}
-	if found && previous.State == current.State && previous.Health == current.Health {
-		if !gapOpen && !globalGapOpen {
-			return nil
-		}
-		relevantGapStart := gapStart
-		if globalGapStart.After(relevantGapStart) {
-			relevantGapStart = globalGapStart
-		}
-		if previous.ReconnectObserved && !previous.Time.Before(relevantGapStart) {
-			known[current.ContainerID] = previous
-			c.rememberStates([]State{previous})
-			if gapOpen {
-				if err := store.EndStateGap(ctx, current.ContainerID, previous.Time); err != nil {
-					return fmt.Errorf("end state observation gap for %s: %w", current.ContainerID, err)
-				}
-			}
-			return nil
-		}
+	current = changed[0]
+	writeErr := c.reconcileWrite(ctx, store, store.InsertStates(ctx, time.Now().UTC(), changed))
+	if writeErr == nil || errors.Is(writeErr, ErrWriteCommitted) {
+		known[current.ContainerID] = current
+		c.rememberStates(changed)
 	}
-	if err := c.reconcileWrite(ctx, store, store.InsertStates(ctx, time.Now().UTC(), []State{current})); err != nil {
-		return fmt.Errorf("persist changed container state: %w", err)
+	if writeErr != nil {
+		return fmt.Errorf("persist changed container state: %w", writeErr)
 	}
-	known[current.ContainerID] = current
-	c.rememberStates([]State{current})
 	c.clearStateStorageProblem()
 	if gapOpen {
 		if err := store.EndStateGap(ctx, current.ContainerID, current.Time); err != nil {

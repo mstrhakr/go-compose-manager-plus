@@ -9,6 +9,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/justinas/nosurf"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
@@ -97,7 +98,18 @@ func Handler(manager *auth.Manager, store *discovery.Store, metricsSettings *met
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte("{\"status\":\"ok\"}\n"))
 	})
-	protected := http.NewCrossOriginProtection().Handler(mux)
+	loggedMux := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		started := time.Now()
+		defer func() {
+			if r.Pattern == "GET /healthz" || r.Pattern == "GET /static/" {
+				return
+			}
+			logger.DebugContext(r.Context(), "HTTP request completed",
+				"method", r.Method, "route", r.Pattern, "duration_ms", time.Since(started).Milliseconds())
+		}()
+		mux.ServeHTTP(w, r)
+	})
+	protected := http.NewCrossOriginProtection().Handler(loggedMux)
 	withSessions := manager.SessionManager().LoadAndSave(protected)
 	csrfProtected := nosurf.New(withSessions)
 	cookieName := "compose_manager_csrf"

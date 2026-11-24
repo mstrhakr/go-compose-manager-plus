@@ -20,6 +20,10 @@
 - Keep Go responsible for business rules and escaped HTML templates/partials.
   Use self-hosted htmx for server-driven updates and small JS modules for local
   browser behavior. Do not add a competing client framework without a decision.
+- For UI implementation and polish, use
+  [refine-ui](skills/refine-ui/SKILL.md): capture real-browser screenshots and
+  compare them with references after each coherent set of visual changes,
+  iterating before claiming alignment. Keep private reference images private.
 - Run focused tests while editing, then `make check` for completed app work.
   Use `make docs`, `make check-workflows`, `make check-security` and container checks
   when their surfaces change. State checks not run; never invent verification.

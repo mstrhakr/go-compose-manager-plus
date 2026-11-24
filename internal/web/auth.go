@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"html/template"
 	"log/slog"
@@ -171,6 +172,12 @@ func (server *authServer) observabilityPage(w http.ResponseWriter, r *http.Reque
 }
 
 func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view string) {
+	started := time.Now()
+	server.logger.DebugContext(r.Context(), "workspace load started", "view", view)
+	defer func() {
+		server.logger.DebugContext(r.Context(), "workspace load finished",
+			"view", view, "duration_ms", time.Since(started).Milliseconds())
+	}()
 	user, _, err := server.manager.CurrentUser(r.Context())
 	if err != nil {
 		http.Error(w, "Unable to verify session", http.StatusInternalServerError)
@@ -293,27 +300,41 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 	var charts []chartPanel
 	var metricsStatus string
 	if view == "dashboard" {
-		charts, metricsStatus = server.dashboardCharts(r.Context())
+		historyCtx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		charts, metricsStatus = server.dashboardCharts(historyCtx)
 	}
 	var timeline dashboardTimeline
 	var logHistory dashboardLogHistory
 	var observed []observedContainer
 	var selected string
+	historyError := ""
 	if view == "observability" {
+		historyCtx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		historyStarted := time.Now()
+		server.logger.DebugContext(r.Context(), "observability history read started", "timeout_ms", 5000)
 		start, end := dashboardTimeRange()
-		observed, selected, filters, err = server.observabilityContainers(r.Context(), start, end, containers, r.URL.Query())
+		observed, selected, filters, err = server.observabilityContainers(historyCtx, start, end, containers, r.URL.Query())
 		if err != nil {
 			server.logger.ErrorContext(r.Context(), "load observability containers", "error", err)
-			http.Error(w, "Unable to load container history", http.StatusInternalServerError)
-			return
+			historyError = "Stored container history could not be loaded. Only available Docker snapshot identities are listed; history may be incomplete. Try refreshing, and check collection status in Settings."
 		}
-		if r.URL.Query().Get("container") != "" && selected == "" {
+		if err == nil && r.URL.Query().Get("container") != "" && selected == "" {
 			http.Error(w, "Container is unavailable in this filtered view", http.StatusNotFound)
 			return
 		}
-		charts, metricsStatus = server.dashboardChartsForRange(r.Context(), start, end, false, selected)
-		timeline = server.dashboardTimeline(r.Context(), start, end, selected)
-		logHistory = server.dashboardLogs(r.Context(), start, end, selected)
+		charts, metricsStatus = server.dashboardChartsForRange(historyCtx, start, end, false, selected)
+		timeline = server.dashboardTimeline(historyCtx, start, end, selected)
+		logHistory = server.dashboardLogs(historyCtx, start, end, selected)
+		server.logger.DebugContext(r.Context(), "observability history read finished",
+			"duration_ms", time.Since(historyStarted).Milliseconds(), "containers", len(observed),
+			"charts", len(charts), "event_records", len(timeline.Events), "log_records", len(logHistory.Entries),
+			"timed_out", errors.Is(historyCtx.Err(), context.DeadlineExceeded))
+	}
+	pageError := server.manager.SessionManager().PopString(r.Context(), "discovery_error")
+	if historyError != "" {
+		pageError = strings.TrimSpace(pageError + " " + historyError)
 	}
 	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, ProjectColumns: listPanel{ID: "projects-title", Title: "Projects", Columns: []string{"Project", "Discovery", "Activation", "Containers"}}, Filters: filters, SubviewNav: subviews,
 		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: views, RuntimeMessage: runtimeMessage, RuntimeState: runtimeState,
@@ -322,7 +343,7 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 			{ID: "restart-title", Title: "Container restart & OOM rate", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
 			{ID: "health-title", Title: "Stack health & readiness", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
 		},
-		Error:  server.manager.SessionManager().PopString(r.Context(), "discovery_error"),
+		Error:  pageError,
 		Notice: server.manager.SessionManager().PopString(r.Context(), "discovery_notice")})
 }
 
