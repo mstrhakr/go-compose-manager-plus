@@ -160,6 +160,14 @@ does not establish healthy, and a failed observation does not establish stopped.
 Exact state vocabulary, transition reconciliation, baseline retention and
 uncertain-span presentation remain to be refined.
 
+The owner further specified a distinct grey timeline area for Docker
+disconnections, following the supplied reference presentation. This area
+represents unavailable Docker observation, not proof that the container was
+offline/stopped. Use a readable label or equivalent accessible description in
+addition to grey styling. Exact reference geometry and synchronization with
+other charts remain to be aligned; this answer does not approve baseline
+retention or the full transition/reconciliation algorithm.
+
 The owner raised possible other change-based container information, such as
 update status, without approving an update checker or additional history source.
 Image changes, exit details and update-availability history remain candidates,

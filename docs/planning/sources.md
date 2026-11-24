@@ -267,7 +267,11 @@ sampling cycle; transition-only state history is not implemented. Lifecycle,
 health and observation availability are distinct; taxonomy, reconciliation,
 retention baselines and uncertainty presentation need refinement. Other
 change-based information such as update status is tentative, not approval to
-add registry checks or other sources.
+add registry checks or other sources. The owner further requested Docker
+disconnects appear as a distinct grey timeline area, referring to the supplied
+screenshots and offering another if needed. This identifies an observation-gap
+presentation, not a container-down inference or approval of all proposed state
+baseline/reconciliation mechanics. Exact visual alignment remains pending.
 
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
