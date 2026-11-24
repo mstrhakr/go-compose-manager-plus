@@ -131,6 +131,10 @@ effects through visible noneditable value controls, editable under Custom;
 named choices use explanatory text. Off collapses dependent controls.
 Custom unlocks currently displayed preset values rather than restoring a
 separately remembered custom configuration; Off alone preserves preferences.
+Leaf edits mark source/category Custom without changing siblings. Parent
+presets use explicit per-setting mappings, not necessarily matching labels;
+overall Off preserves children for direct restoration under Custom, including
+children without an Off position. Concrete mappings remain to be selected.
 Not every future setting must conform to this pattern.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and

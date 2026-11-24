@@ -227,6 +227,15 @@ separate earlier custom configuration. Explicit preset selection replaces prior
 custom values; disabling via Off alone continues to preserve preferences.
 Nested individual-setting/source/category Custom propagation remains open.
 
+The owner then approved upward Custom propagation without sibling changes:
+editing one leaf marks its source and overall category Custom, leaving other
+values untouched; selecting a category preset explicitly reapplies both source
+presets. The owner clarified parent presets may map to differently named child
+choices because some omit Medium or Off. Do not copy labels blindly or invent
+missing choices. Overall Off preserves last child settings, and returning
+directly to Custom restores them even where a child has no Off position.
+Concrete per-setting preset mappings remain undecided.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

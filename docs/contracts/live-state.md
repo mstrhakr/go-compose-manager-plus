@@ -231,9 +231,22 @@ Expanding a card alone does not change saved settings. The owner selected
 "unlock-current" when moving from an explicit preset to Custom: Custom starts
 from the values currently displayed by that preset, not a separately remembered
 earlier custom configuration. Explicit preset selection replaces earlier custom
-values; Off alone still preserves preferences as approved above. How
-individual-setting changes propagate Custom through source/category presets
-remains to be refined.
+values; Off alone still preserves preferences as approved above. Upward
+Custom propagation through source/category presets is now approved:
+changing one leaf setting marks its source and category Custom
+without changing sibling values; selecting an explicit category preset reapplies
+that preset to both sources.
+
+The owner clarified that parent presets need not select an identically named
+position in every child: some children have only Low/High or lack Off. Each
+parent preset therefore needs an explicit setting-specific value/choice mapping,
+not a generic label copy or an invented Medium/Off position. Exact mappings
+remain to be selected. Overall Off disables collection while preserving the
+last child settings, including settings with no Off position. Moving directly
+from overall Off to Custom restores those settings; it does not replace them
+with defaults or fabricate disabled values in leaf controls. This extends the
+approved Off-preservation rule to the category level, not the separate
+explicit-preset-to-Custom behavior.
 
 The existing storage-pressure owner evicts
 metric samples only, so production capture requires an explicit shared-budget policy
