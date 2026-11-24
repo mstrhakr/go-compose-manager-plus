@@ -296,6 +296,13 @@ Raw logs/metrics retain their one-hour boundary; baseline removal/cleanup and
 reconciliation remain unresolved. The owner reiterated TimescaleDB and possible
 Grafana output/integration are deferred, not part of this slice.
 
+The owner approved separate lifecycle and health dimensions, with different
+presentations appropriate to different views. Unhealthy periods should be
+conspicuous red striped/highlighted timeline areas, distinct from grey Docker
+disconnect areas. The primary goal is quickly understanding container behavior
+over time, not a status label alone. Color must not be the only explanation;
+uncertainty/overlap precedence and exact reference alignment remain unresolved.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

@@ -160,6 +160,19 @@ does not establish healthy, and a failed observation does not establish stopped.
 Exact state vocabulary, transition reconciliation, baseline retention and
 uncertain-span presentation remain to be refined.
 
+The owner subsequently approved separate lifecycle and health dimensions:
+lifecycle Created, Running, Paused, Restarting, Exited, Removing, Dead and
+Unknown; health Starting, Healthy, Unhealthy, No health check and Unknown.
+They may be combined in labels but need not share the same presentation across
+views. Activity records actual lifecycle/health observations; sparse state
+history records changes in either dimension plus retained starting context.
+The owner requested unhealthy periods be conspicuous as red striped/highlighted
+timeline areas, distinct from grey Docker-observation gaps. The purpose is
+at-a-glance understanding of what happened over time, not merely a textual list.
+Use accessible descriptions beyond color alone. Exact styling and precedence
+when an unhealthy observation intersects an observation gap remain to be refined;
+do not imply continuous knowledge where observation is unavailable.
+
 The owner further distinguished overall action/activity history from selected
 container history on 2026-11-23. Up, Down, Stop, Restart and Update are distinct
 manager actions to record on the overall timeline and in an activity record,
