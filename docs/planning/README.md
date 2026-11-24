@@ -143,6 +143,12 @@ Custom transport and other budget/lifecycle mappings remain undecided.
 Existing stats collection is not changed by the streaming preference.
 Not every future setting must conform to this pattern.
 
+The owner also requested change-based container state history under LIVE-003
+alongside the log slice. State history should appear beside logs in Observability without
+repeating unchanged status events; vocabulary, reconciliation and uncertain
+timeline spans remain undecided. Update-status history remains a candidate,
+not an authorized new checker.
+
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,
 architecture and deployment pages describe the scaffold, not proven management

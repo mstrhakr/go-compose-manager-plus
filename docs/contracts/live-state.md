@@ -147,6 +147,25 @@ can justify zero rather than a missing value. Which metrics qualify and how
 observation and disconnection boundaries constrain that inference remain to be
 specified; a missing observation alone is not proof of a stopped state.
 
+On 2026-11-23 the owner requested container state tracking presented as a
+tab/section alongside logs in Observability, with timeline indications inspired
+by offline periods in the supplied UI references. Track meaningful changes
+rather than writing identical status events every second. This adds a bounded
+state-history presentation/storage direction, not an approved complete state
+taxonomy or permission to infer uninterrupted state between observations.
+Existing lifecycle/health events and repeated discrete state snapshots are
+implementation evidence; they do not already fulfill transition-only history.
+Lifecycle, health and observation availability must not be conflated: running
+does not establish healthy, and a failed observation does not establish stopped.
+Exact state vocabulary, transition reconciliation, baseline retention and
+uncertain-span presentation remain to be refined.
+
+The owner raised possible other change-based container information, such as
+update status, without approving an update checker or additional history source.
+Image changes, exit details and update-availability history remain candidates,
+not approved integrations. A sparse history must not manufacture change times
+for changes first discovered during reconciliation.
+
 The initial observability view defaults to the last hour, with a timeline whose
 selected time is reflected across the charts, inspired by the owner's reference
 view. The owner wants event markers on the timeline and an event list for

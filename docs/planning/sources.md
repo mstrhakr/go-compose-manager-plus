@@ -259,6 +259,16 @@ controls freshness, not timestamp resolution or intentional message sampling;
 Docker retention/rotation still limits recovery. Custom transport options and
 resource/recovery policies remain unresolved.
 
+On 2026-11-23 the owner requested state tracking in a tab/section alongside logs
+in Observability and on its timeline, inspired by offline-state reference views.
+The owner wants sparse changes, not an identical event every second. Existing
+code captures lifecycle/health events and saves discrete state snapshots each
+sampling cycle; transition-only state history is not implemented. Lifecycle,
+health and observation availability are distinct; taxonomy, reconciliation,
+retention baselines and uncertainty presentation need refinement. Other
+change-based information such as update status is tentative, not approval to
+add registry checks or other sources.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
