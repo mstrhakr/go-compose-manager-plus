@@ -236,6 +236,14 @@ missing choices. Overall Off preserves last child settings, and returning
 directly to Custom restores them even where a child has no Off position.
 Concrete per-setting preset mappings remain undecided.
 
+The owner approved the first log preset mapping: Low/Medium use Activated
+stacks, High uses All containers, and Custom exposes the two named scope
+choices. Include readable backlog for stopped containers within that scope;
+numeric stats continue to sample running containers. Off preserves scope
+rather than inventing an Off scope position. Existing activation/resolved
+project-name association is reused; no Compose effects, complete-history
+guarantee or concrete log interval/budget is approved by this answer.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

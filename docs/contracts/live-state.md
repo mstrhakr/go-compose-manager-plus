@@ -248,6 +248,17 @@ with defaults or fabricate disabled values in leaf controls. This extends the
 approved Off-preservation rule to the category level, not the separate
 explicit-preset-to-Custom behavior.
 
+The owner approved the log scope mapping on 2026-11-23: Low and Medium select
+containers associated with activated stacks; High selects all containers.
+Custom offers Activated stacks and All containers as explicit scope choices.
+Within either scope, include stopped containers when Docker still exposes
+readable log backlog. This differs intentionally from running-container stats
+sampling and does not imply complete or available historical logs. Off disables
+the source while retaining its scope choice; scope itself has no Off position.
+The existing resolved-project-name/activation association boundary applies,
+without claiming filesystem ownership or authorizing Compose operations.
+Concrete log collection intervals and other preset budgets remain undecided.
+
 The existing storage-pressure owner evicts
 metric samples only, so production capture requires an explicit shared-budget policy
 rather than pretending that sample eviction already bounds log storage.

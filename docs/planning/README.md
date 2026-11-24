@@ -135,6 +135,9 @@ Leaf edits mark source/category Custom without changing siblings. Parent
 presets use explicit per-setting mappings, not necessarily matching labels;
 overall Off preserves children for direct restoration under Custom, including
 children without an Off position. Concrete mappings remain to be selected.
+Log scope is approved: Low/Medium activated stacks, High all containers,
+including readable stopped-container backlog; Custom exposes named scope
+choices. Collection intervals and other budget mappings remain undecided.
 Not every future setting must conform to this pattern.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
