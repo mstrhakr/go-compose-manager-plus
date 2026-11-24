@@ -206,6 +206,14 @@ that cannot reasonably conform. Hidden-child preservation/reset, custom-value
 restoration and nested preset propagation remain undecided; no runtime/component
 implementation is authorized merely by approval of this interaction pattern.
 
+The owner answered "1 for sure" to preserving saved child preferences while a
+parent is Off: stop collection, hide dependent controls without erasing values,
+and restore them on returning to Custom. Explicit source presets apply their
+own values. This does not settle retained-data deletion or preservation across
+explicit preset changes. The owner also required visible descriptions of what
+each preset selects. Subtext and visible-but-disabled Custom inputs were offered
+as possible presentations, not a settled widget choice.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

@@ -205,8 +205,11 @@ same discrete slider/selector presentation for individual settings, with
 setting-specific labels and only meaningful choices. Off and Medium may be
 omitted where inappropriate; scope uses named choices such as Activated stacks
 and All containers rather than misleading intensity labels. Parent enablement
-controls dependent-setting visibility. This presentation does not settle whether
-hidden child preferences are preserved or reset.
+controls dependent-setting visibility. The owner selected preserving child
+preferences when a parent is Off: disabling stops that source without erasing
+its saved settings, and returning to Custom restores them. Selecting an explicit
+Low/Medium/High preset applies its values instead. This settings decision does
+not approve deletion of retained history.
 
 Storage uses the same selector pattern with sensible preset amounts and Custom;
 Custom reveals the existing exact amount/unit input, extracted as a reusable
@@ -216,8 +219,13 @@ decimal-unit validation and exact-byte persistence. The selector and size-input
 patterns should be reusable across suitable future settings, but not forced onto
 every setting. This is approval of a consistent interaction pattern, not
 authorization for new future features, exact widgets or speculative components.
-How individual-setting changes propagate Custom through source/category presets
-and how custom values survive preset changes remain to be refined.
+Each selector must display what its chosen preset actually configures, including
+concrete values or scope, rather than only an intensity label. The owner suggested
+subtext or keeping the corresponding Custom input visible but disabled for
+preset display; neither specific widget is selected yet. Preset summaries must
+remain readable without entering Custom. How individual-setting changes propagate
+Custom through source/category presets and how custom values survive explicit
+preset changes remain to be refined; Off preservation is settled separately.
 
 The existing storage-pressure owner evicts
 metric samples only, so production capture requires an explicit shared-budget policy

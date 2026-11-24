@@ -125,7 +125,9 @@ defaults and Off-history effects still require refinement before implementation.
 Individual settings reuse the selector style with meaningful setting-specific
 choices (including named scopes), optional positions and parent-dependent
 visibility. Storage presets reveal a reusable exact amount/unit input under
-Custom; concrete default sizes and child-value lifecycle remain undecided.
+Custom; concrete default sizes remain undecided. Off preserves saved child
+preferences for restoration under Custom. Every preset must show its concrete
+effects; subtext versus visible noneditable inputs remains a presentation choice.
 Not every future setting must conform to this pattern.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
