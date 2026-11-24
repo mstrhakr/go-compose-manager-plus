@@ -173,6 +173,13 @@ Use accessible descriptions beyond color alone. Exact styling and precedence
 when an unhealthy observation intersects an observation gap remain to be refined;
 do not imply continuous knowledge where observation is unavailable.
 
+The owner selected unknown-gap precedence: grey unavailable-observation spans
+override red unhealthy spans while Docker observation is lost. Preserve the
+last known health as context without extending an asserted unhealthy interval
+through the gap. If reconnect inspection finds Healthy, record "Observed
+healthy on reconnect" at observation time, not a fabricated exact recovery time
+inside the gap. Exact visual styling remains to be aligned separately.
+
 The owner further distinguished overall action/activity history from selected
 container history on 2026-11-23. Up, Down, Stop, Restart and Update are distinct
 manager actions to record on the overall timeline and in an activity record,

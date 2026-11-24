@@ -303,6 +303,12 @@ disconnect areas. The primary goal is quickly understanding container behavior
 over time, not a status label alone. Color must not be the only explanation;
 uncertainty/overlap precedence and exact reference alignment remain unresolved.
 
+The owner selected "unknown-overrides": grey observation gaps override red
+unhealthy areas until observation resumes. Last-known health remains context.
+A healthy reconnect observation is labeled as observed on reconnect, never a
+claimed exact recovery time within the gap. This resolves overlap precedence,
+not exact rendering or all reconnect/retention mechanics.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
