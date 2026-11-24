@@ -375,6 +375,17 @@ All screenshots remain a toolbox of optional patterns rather than a mandatory
 widget inventory. Exact geometry, pictured actions, assets, automatic saving,
 new capabilities and implementation fulfillment are not approved by this answer.
 
+On 2026-11-23 the owner answered "yes, i agree" to the bounded default/migration
+proposal: all three history sources Off on new installations; upgrades preserve
+existing stats settings, state/event capture enablement and storage budget;
+logs Off until explicitly enabled and saved. Mixed sources use overall Custom
+rather than automatically applying a log-enabling preset. LIVE-003 owns this
+standalone approval. Existing state/event persistence follows legacy metrics
+enablement; preserve its effective behavior when splitting the controls.
+This does not settle child preference seed values, state/event preset mappings,
+Custom delivery, shared pressure or disable/history-retention policy, and no
+migration/runtime outcome has been verified by recording the answer.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

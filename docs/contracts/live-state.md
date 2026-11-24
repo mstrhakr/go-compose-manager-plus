@@ -318,8 +318,22 @@ visible before Save; selecting a control does not itself apply collection change
 This approval replaces the tentative overall-selector proposal and permits
 explicit category-wide log enablement on Save, not automatic enablement through
 migration or merely because existing numeric metrics were enabled.
-New log defaults and the effects of Off on retained history and other observed
-state/event collection remain separate lifecycle decisions.
+At that stage, new log defaults and the effects of Off on retained history and
+other observed state/event collection remained separate lifecycle decisions.
+
+On 2026-11-23 the owner approved the new-install/upgrade policy under LIVE-003:
+new installations start with Container stats, Container state & events and
+Container logs all Off until explicitly configured. Upgrades preserve existing
+stats settings, existing state/event capture enablement and the storage budget;
+logs remain Off until explicitly enabled and saved. Existing state/event capture
+currently follows the legacy metrics enablement, so splitting controls must
+preserve that effective enablement rather than silently adding or removing it.
+Mixed source settings are represented as overall Custom, not coerced into a
+preset that enables logs. An explicit overall non-Off preset saved later can
+still enable logs as approved above. This settles the default/migration policy,
+not child preference seed values, state/event preset mappings, Custom delivery,
+storage pressure or disable/history-retention effects. Migration and runtime
+enforcement are not yet implemented or verified.
 
 The owner further refined the Settings interaction on 2026-11-23: reuse the
 same discrete slider/selector presentation for individual settings, with
@@ -614,6 +628,10 @@ LIVE contract or authorize implementation of future settings.
 - A leaf override marks its source and overall collection profile Custom,
   leaving siblings unchanged. Changes are staged until Save, with actual
   effects, especially newly enabled logs, visible before saving.
+- New installations start all history sources Off. Upgrades preserve existing
+  stats settings, state/event capture enablement and storage budget; logs stay
+  Off until explicitly enabled and saved. Mixed sources show overall Custom,
+  without automatically applying a preset during migration.
 - Low logs uses activated-stack scope with 60-second backlog reads; Medium
   uses that scope with 30-second reads; High uses all-container scope and live
   following. Include readable stopped-container backlog. Original Docker
@@ -663,7 +681,8 @@ full-display size or scroll test.
 
 #### Remaining Implementation Gates
 
-- New-install/migration defaults and concrete state/event preset mappings.
+- Concrete state/event preset mappings and initial child preference values;
+  approved new-install/upgrade policy still needs migration/runtime verification.
 - Custom log delivery design: the owner proposed an Off/Low/Medium/Live/Custom
   delivery selector, with Custom poll interval 0 meaning Live and a save interval
   shown only for Live. Terminology, save cadence, periodic flush behavior and

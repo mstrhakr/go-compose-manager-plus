@@ -108,8 +108,9 @@ reduced advanced views to be designed later rather than requiring desktop
 parity. The next requested observability slice is container-log collection in
 the same local SQLite history store, retaining one hour, followed by an
 aggregated dashboard log view. TimescaleDB is deferred for longer metric/log
-history. Collection defaults/migration and shared log/metric storage-pressure behavior
-remain production-collection gates under [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
+history. Shared log/metric storage-pressure behavior and implementation of the
+approved defaults/migration policy remain production-collection gates under
+[LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
 a dedicated log view and network-aware filters remain follow-up ideas.
 The owner subsequently approved beginning the Docker API implementation that
 preserves original messages and metadata. The first bounded API/SQLite
@@ -121,8 +122,12 @@ own card/panel. The owner then selected a category-wide overall preset:
 Low/Medium/High sets the collection sources, including enabling logs when saved;
 Off disables their collection and individual source changes make the overall
 value Custom. Effects must be visible before Save. Log scope/delivery mappings
-were subsequently selected; migration defaults, state/event mappings and
-Off-history effects still require refinement before implementation.
+were subsequently selected. The owner approved all sources Off on new installs;
+upgrades preserve existing stats settings, state/event capture enablement and
+storage budget while leaving logs Off until explicitly enabled and saved.
+Mixed sources show overall Custom without applying a preset during migration.
+Child preference seeds, state/event preset mappings and Off-history effects
+still require refinement; migration/runtime enforcement remains unverified.
 Individual settings reuse the selector style with meaningful setting-specific
 choices (including named scopes), optional positions and parent-dependent
 visibility. Storage presets reveal a reusable exact amount/unit input under
