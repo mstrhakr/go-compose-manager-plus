@@ -266,7 +266,13 @@ connected live source. Streams require cancellation, bounded buffering/writes
 and explicit disconnect/reconnect reporting, without promising complete replay.
 The owner prefers streaming over polling for High where applicable; this does
 not silently change the existing stats collector or approve other streaming
-integrations. Low/Medium log intervals and other preset budgets remain undecided.
+integrations. The owner selected periodic backlog fetching for Low every
+60 seconds and Medium every 30 seconds. These intervals are scheduling targets,
+not log timestamp resolution or a guarantee of timely/complete ingestion.
+Original Docker timestamps are preserved; reads between rotation or removal
+can miss output. Collection must not silently sample log messages merely
+because it fetches less frequently. Custom transport choices and other preset
+budgets/lifecycle policies remain undecided.
 
 The existing storage-pressure owner evicts
 metric samples only, so production capture requires an explicit shared-budget policy

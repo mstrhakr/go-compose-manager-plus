@@ -252,6 +252,13 @@ backlog; stopped EOF must not be presented as ongoing live continuity.
 Low/Medium intervals, bounded stream/reconnect policies and any stats transport
 change remain unapproved; this is not approval of a generic new streaming layer.
 
+The owner selected "periodic-60-30": Low fetches available backlog every
+60 seconds, Medium every 30 seconds, and High follows live logs. Low/Medium
+keep the approved activated scope, High the all-container scope. Frequency
+controls freshness, not timestamp resolution or intentional message sampling;
+Docker retention/rotation still limits recovery. Custom transport options and
+resource/recovery policies remain unresolved.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
