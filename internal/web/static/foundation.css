@@ -44,7 +44,7 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 .resource-detail-link { color: var(--text); border-radius: 2px; }
 .resource-detail-link:hover, .resource-detail-link[aria-current] { color: var(--blue); }
 tr[data-resource-row] { cursor: pointer; }
-tr:has(.resource-detail-link[aria-current]) { background: var(--blue-soft); }
+.data-table tbody tr:has(.resource-detail-link[aria-current]) { background: var(--blue-soft); }
 .resource-details { position: fixed; inset: 44px 0 0 auto; z-index: 20; width: min(400px, 100vw); height: calc(100dvh - 44px); max-width: 100vw; max-height: none; margin: 0; padding: 0; color: var(--text); background: var(--sidebar); border: 0; border-left: 1px solid var(--border); box-shadow: -12px 0 32px #0002; font-size: 12px; }
 .resource-details[open] { display: flex; flex-direction: column; }
 .resource-details::backdrop { background: #0005; }

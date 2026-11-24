@@ -60,6 +60,11 @@ test('stack details overlay the shared inventory table without displacement and 
   expect(bounds.width).toBe(400);
   expect(bounds.y).toBe(44);
   await expect(link).toHaveAttribute('aria-current', 'true');
+  await dialog.locator('.resource-details-header').hover();
+  const row = main.getByRole('row').filter({ has: link });
+  const selectedColor = await row.evaluate(element => getComputedStyle(element).backgroundColor);
+  await link.hover();
+  await expect(row).toHaveCSS('background-color', selectedColor);
   await expect(page.locator('.inventory-item')).toHaveCount(0);
   await expect(main.getByRole('table')).toHaveCount(1);
   await expect(dialog.getByRole('heading', { name: 'media-services', exact: true })).toBeVisible();

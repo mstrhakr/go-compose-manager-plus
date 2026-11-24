@@ -1632,6 +1632,9 @@ labeled as synthetic. Successive captures were opened and compared with the
 private references: narrower overlay, segmented tabs, card separation and a
 bounded long-name header were refined. No numerical similarity claim is made.
 The screenshots do not prove live Docker host behavior or approve future actions.
+Final capture inspection also found the existing table hover rule overriding the
+new selected-row background. The drawer selection rule now retains its visual
+priority while hovered, with an outcome assertion in the shared-table browser case.
 Final gate evidence and limits:
 
 - The first `make check` passed all Go race packages, vet, build, 17 Node tests
