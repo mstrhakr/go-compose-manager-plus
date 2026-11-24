@@ -169,6 +169,31 @@ func (s *Store) ExpireHistoryBefore(ctx context.Context, cutoff time.Time) (Expi
 	}
 	defer func() { _ = tx.Rollback() }()
 	var counts ExpiredHistory
+	if s.kind != logsDatabase {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO container_state_baselines
+			(container_id, observed_ns, state, health, reconnect_observed)
+			SELECT container_id, observed_ns, state, health, reconnect_observed
+			FROM container_states AS expiring
+			WHERE observed_ns < ?
+				AND observed_ns = (
+					SELECT MAX(observed_ns) FROM container_states
+					WHERE container_id = expiring.container_id AND observed_ns < ?
+				)
+			ON CONFLICT(container_id) DO UPDATE SET
+				observed_ns = excluded.observed_ns,
+				state = excluded.state,
+				health = excluded.health,
+				reconnect_observed = excluded.reconnect_observed
+			WHERE excluded.observed_ns > container_state_baselines.observed_ns`, ns, ns); err != nil {
+			return ExpiredHistory{}, fmt.Errorf("preserve pre-window state baselines: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM container_state_gaps WHERE ended_ns IS NOT NULL AND ended_ns < ?`, ns); err != nil {
+			return ExpiredHistory{}, fmt.Errorf("expire closed state observation gaps: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, `DELETE FROM state_source_gaps WHERE ended_ns IS NOT NULL AND ended_ns < ?`, ns); err != nil {
+			return ExpiredHistory{}, fmt.Errorf("expire closed shared state-source gaps: %w", err)
+		}
+	}
 	steps := []struct {
 		query string
 		count *int64

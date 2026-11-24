@@ -122,6 +122,7 @@ func TestVersionFiveMigrationCreatesPendingWrite(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	removeCurrentStateSchema(t, store.db)
 	if _, err := store.db.ExecContext(ctx, `DROP TABLE pending_write`); err != nil {
 		t.Fatal(err)
 	}
@@ -159,6 +160,7 @@ func TestEventReplayDeduplicatesAndMigrationPreservesHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	removeCurrentStateSchema(t, store.db)
 	id := strings.Repeat("b", 64)
 	at := time.Now().UTC().Truncate(time.Nanosecond)
 	for range 2 {

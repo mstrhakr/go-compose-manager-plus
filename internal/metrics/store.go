@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 8
+const schemaVersion = 10
 
 // ErrWriteOutcomeUnknown means a database commit failed and its outcome must
 // be reconciled before retrying the same batch.
@@ -306,6 +306,52 @@ func initialize(ctx context.Context, db *sql.DB) error {
 				return fmt.Errorf("migrate metrics schema to version 8: %w", err)
 			}
 		}
+		version = 8
+	}
+	if version == 8 {
+		for _, statement := range []string{
+			`ALTER TABLE container_states ADD COLUMN reconnect_observed INTEGER NOT NULL DEFAULT 0 CHECK (reconnect_observed IN (0, 1))`,
+			`CREATE TABLE container_state_baselines (
+				container_id TEXT PRIMARY KEY,
+				observed_ns INTEGER NOT NULL,
+				state TEXT NOT NULL,
+				health TEXT NOT NULL,
+				reconnect_observed INTEGER NOT NULL CHECK (reconnect_observed IN (0, 1))
+			) WITHOUT ROWID`,
+			`CREATE TABLE container_state_gaps (
+				sequence INTEGER PRIMARY KEY,
+				container_id TEXT NOT NULL,
+				started_ns INTEGER NOT NULL,
+				ended_ns INTEGER,
+				CHECK (ended_ns IS NULL OR ended_ns > started_ns)
+			)`,
+			`CREATE INDEX container_state_gaps_range ON container_state_gaps(container_id, started_ns, ended_ns)`,
+			`CREATE UNIQUE INDEX container_state_gaps_open ON container_state_gaps(container_id) WHERE ended_ns IS NULL`,
+			`PRAGMA user_version = 9`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 9: %w", err)
+			}
+		}
+		version = 9
+	}
+	if version == 9 {
+		for _, statement := range []string{
+			`CREATE TABLE state_source_gaps (
+				sequence INTEGER PRIMARY KEY,
+				started_ns INTEGER NOT NULL,
+				ended_ns INTEGER,
+				CHECK (ended_ns IS NULL OR ended_ns > started_ns)
+			)`,
+			`CREATE INDEX state_source_gaps_range ON state_source_gaps(started_ns, ended_ns)`,
+			`CREATE UNIQUE INDEX state_source_gaps_open ON state_source_gaps((1)) WHERE ended_ns IS NULL`,
+			`PRAGMA user_version = 10`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 10: %w", err)
+			}
+		}
+		version = 10
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit metrics migration: %w", err)

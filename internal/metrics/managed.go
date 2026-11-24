@@ -504,6 +504,17 @@ func (m *ManagedStore) SelectObservedContainers(ctx context.Context, start, end 
 	return m.store.SelectObservedContainers(ctx, start, end)
 }
 
+func (m *ManagedStore) SelectObservedContainersForSources(ctx context.Context, start, end time.Time, samples, states, events, logs bool) ([]string, error) {
+	if err := m.acquire(ctx); err != nil {
+		return nil, err
+	}
+	defer m.release()
+	if m.closed {
+		return nil, errors.New("history store is closed")
+	}
+	return m.store.SelectObservedContainersForSources(ctx, start, end, samples, states, events, logs)
+}
+
 func (m *ManagedStore) SelectStates(ctx context.Context, id string, start, end time.Time, limit int) ([]State, error) {
 	if err := m.acquire(ctx); err != nil {
 		return nil, err
@@ -513,6 +524,98 @@ func (m *ManagedStore) SelectStates(ctx context.Context, id string, start, end t
 		return nil, errors.New("metrics store is closed")
 	}
 	return m.store.SelectStates(ctx, id, start, end, limit)
+}
+
+func (m *ManagedStore) SelectLatestState(ctx context.Context, id string) (*State, error) {
+	if err := m.acquire(ctx); err != nil {
+		return nil, err
+	}
+	defer m.release()
+	if m.closed {
+		return nil, errors.New("history store is closed")
+	}
+	return m.store.SelectLatestState(ctx, id)
+}
+
+func (m *ManagedStore) SelectStateHistory(ctx context.Context, id string, start, end time.Time, limit int) (StateHistory, error) {
+	if err := m.acquire(ctx); err != nil {
+		return StateHistory{}, err
+	}
+	defer m.release()
+	if m.closed {
+		return StateHistory{}, errors.New("metrics store is closed")
+	}
+	return m.store.SelectStateHistory(ctx, id, start, end, limit)
+}
+
+func (m *ManagedStore) StartStateGaps(ctx context.Context, ids []string, at time.Time) error {
+	if m.store.kind != metricsDatabase {
+		return errors.New("state observation gaps require metrics.db")
+	}
+	if _, err := timestamp(at); err != nil {
+		return fmt.Errorf("invalid state gap start: %w", err)
+	}
+	for _, id := range ids {
+		if err := validateID(id); err != nil {
+			return fmt.Errorf("invalid state gap identity: %w", err)
+		}
+	}
+	return m.write(ctx, at, "states", func() error { return m.store.startStateGaps(ctx, ids, at, true) })
+}
+
+func (m *ManagedStore) EndStateGap(ctx context.Context, id string, at time.Time) error {
+	if m.store.kind != metricsDatabase {
+		return errors.New("state observation gaps require metrics.db")
+	}
+	if err := validateID(id); err != nil {
+		return err
+	}
+	if _, err := timestamp(at); err != nil {
+		return fmt.Errorf("invalid state gap end: %w", err)
+	}
+	return m.write(ctx, at, "states", func() error { return m.store.endStateGap(ctx, id, at, true) })
+}
+
+func (m *ManagedStore) StartGlobalStateGap(ctx context.Context, at time.Time) error {
+	if m.store.kind != metricsDatabase {
+		return errors.New("shared state-source gaps require metrics.db")
+	}
+	if _, err := timestamp(at); err != nil {
+		return fmt.Errorf("invalid shared state gap start: %w", err)
+	}
+	return m.write(ctx, at, "states", func() error { return m.store.startGlobalStateGap(ctx, at, true) })
+}
+
+func (m *ManagedStore) EndGlobalStateGap(ctx context.Context, at time.Time) error {
+	if m.store.kind != metricsDatabase {
+		return errors.New("shared state-source gaps require metrics.db")
+	}
+	if _, err := timestamp(at); err != nil {
+		return fmt.Errorf("invalid shared state gap end: %w", err)
+	}
+	return m.write(ctx, at, "states", func() error { return m.store.endGlobalStateGap(ctx, at, true) })
+}
+
+func (m *ManagedStore) HasOpenStateGap(ctx context.Context, id string) (bool, error) {
+	if err := m.acquire(ctx); err != nil {
+		return false, err
+	}
+	defer m.release()
+	if m.closed {
+		return false, errors.New("metrics store is closed")
+	}
+	return m.store.HasOpenStateGap(ctx, id)
+}
+
+func (m *ManagedStore) HasOpenGlobalStateGap(ctx context.Context) (bool, error) {
+	if err := m.acquire(ctx); err != nil {
+		return false, err
+	}
+	defer m.release()
+	if m.closed {
+		return false, errors.New("metrics store is closed")
+	}
+	return m.store.HasOpenGlobalStateGap(ctx)
 }
 
 func (m *ManagedStore) Close() error {

@@ -2,8 +2,10 @@ package metrics
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -13,7 +15,11 @@ const (
 	EventStart   EventKind = "start"
 	EventStop    EventKind = "stop"
 	EventExit    EventKind = "die"
+	EventCreate  EventKind = "create"
+	EventDestroy EventKind = "destroy"
 	EventRestart EventKind = "restart"
+	EventPause   EventKind = "pause"
+	EventUnpause EventKind = "unpause"
 	EventOOM     EventKind = "oom"
 	EventHealth  EventKind = "health_status"
 )
@@ -37,10 +43,11 @@ type Event struct {
 }
 
 type State struct {
-	ContainerID string
-	Time        time.Time
-	State       string
-	Health      Health
+	ContainerID       string
+	Time              time.Time
+	State             string
+	Health            Health
+	ReconnectObserved bool
 }
 
 func validHealth(health Health) bool {
@@ -61,7 +68,7 @@ func validateEvent(event Event) (int64, error) {
 		if event.Health != HealthStarting && event.Health != HealthHealthy && event.Health != HealthUnhealthy {
 			return 0, errors.New("invalid health event status")
 		}
-	case EventStart, EventStop, EventExit, EventRestart, EventOOM:
+	case EventCreate, EventStart, EventStop, EventExit, EventDestroy, EventRestart, EventPause, EventUnpause, EventOOM:
 		if event.Health != "" {
 			return 0, errors.New("health status is only valid for a health event")
 		}
@@ -166,13 +173,13 @@ func (s *Store) insertStates(ctx context.Context, states []State, pending bool) 
 		return fmt.Errorf("begin state insert: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	stmt, err := tx.PrepareContext(ctx, `INSERT INTO container_states(container_id, observed_ns, state, health) VALUES (?, ?, ?, ?)`)
+	stmt, err := tx.PrepareContext(ctx, `INSERT INTO container_states(container_id, observed_ns, state, health, reconnect_observed) VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
 		return fmt.Errorf("prepare state insert: %w", err)
 	}
 	defer stmt.Close()
 	for i, state := range states {
-		if _, err := stmt.ExecContext(ctx, state.ContainerID, times[i], state.State, state.Health); err != nil {
+		if _, err := stmt.ExecContext(ctx, state.ContainerID, times[i], state.State, state.Health, state.ReconnectObserved); err != nil {
 			return fmt.Errorf("insert state %d: %w", i, err)
 		}
 	}
@@ -278,6 +285,10 @@ func (s *Store) SelectTimelineEvents(ctx context.Context, id string, start, end 
 
 // SelectObservedContainers includes history-only identities without a live snapshot.
 func (s *Store) SelectObservedContainers(ctx context.Context, start, end time.Time) ([]string, error) {
+	return s.SelectObservedContainersForSources(ctx, start, end, true, true, true, true)
+}
+
+func (s *Store) SelectObservedContainersForSources(ctx context.Context, start, end time.Time, samples, states, events, logs bool) ([]string, error) {
 	from, to, err := historyTimeRange(start, end, 1)
 	if err != nil {
 		return nil, err
@@ -285,17 +296,34 @@ func (s *Store) SelectObservedContainers(ctx context.Context, start, end time.Ti
 	if end.Sub(start) > time.Hour {
 		return nil, errors.New("observed container range exceeds one hour")
 	}
-	query := `SELECT container_id FROM samples WHERE observed_ns >= ? AND observed_ns < ?
-		UNION SELECT container_id FROM container_events WHERE observed_ns >= ? AND observed_ns < ?
-		UNION SELECT container_id FROM container_states WHERE observed_ns >= ? AND observed_ns < ?
-		UNION SELECT container_id FROM container_logs WHERE observed_ns >= ? AND observed_ns < ?
-		ORDER BY container_id`
-	args := []any{from, to, from, to, from, to, from, to}
-	if s.kind == logsDatabase {
-		query = `SELECT DISTINCT container_id FROM container_logs
-			WHERE observed_ns >= ? AND observed_ns < ? ORDER BY container_id`
-		args = []any{from, to}
+	var sources []string
+	var args []any
+	appendSource := func(table string) {
+		sources = append(sources, `SELECT DISTINCT container_id FROM `+table+` WHERE observed_ns >= ? AND observed_ns < ?`)
+		args = append(args, from, to)
 	}
+	if s.kind == logsDatabase {
+		if logs {
+			appendSource("container_logs")
+		}
+	} else {
+		if samples {
+			appendSource("samples")
+		}
+		if events {
+			appendSource("container_events")
+		}
+		if states {
+			appendSource("container_states")
+		}
+		if logs {
+			appendSource("container_logs")
+		}
+	}
+	if len(sources) == 0 {
+		return []string{}, nil
+	}
+	query := strings.Join(sources, " UNION ") + " ORDER BY container_id"
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query observed containers: %w", err)
@@ -324,7 +352,7 @@ func (s *Store) SelectStates(ctx context.Context, id string, start, end time.Tim
 	if err != nil {
 		return nil, err
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT observed_ns, state, health FROM container_states
+	rows, err := s.db.QueryContext(ctx, `SELECT observed_ns, state, health, reconnect_observed FROM container_states
 		WHERE container_id = ? AND observed_ns >= ? AND observed_ns < ?
 		ORDER BY observed_ns LIMIT ?`, id, from, to, limit)
 	if err != nil {
@@ -335,7 +363,7 @@ func (s *Store) SelectStates(ctx context.Context, id string, start, end time.Tim
 	for rows.Next() {
 		var ns int64
 		state := State{ContainerID: id}
-		if err := rows.Scan(&ns, &state.State, &state.Health); err != nil {
+		if err := rows.Scan(&ns, &state.State, &state.Health, &state.ReconnectObserved); err != nil {
 			return nil, fmt.Errorf("read container state: %w", err)
 		}
 		state.Time = time.Unix(0, ns).UTC()
@@ -348,4 +376,26 @@ func (s *Store) SelectStates(ctx context.Context, id string, start, end time.Tim
 		return nil, fmt.Errorf("read container states: %w", err)
 	}
 	return result, nil
+}
+
+func (s *Store) SelectLatestState(ctx context.Context, id string) (*State, error) {
+	if err := validateID(id); err != nil {
+		return nil, err
+	}
+	var ns int64
+	state := State{ContainerID: id}
+	err := s.db.QueryRowContext(ctx, `SELECT observed_ns, state, health, reconnect_observed FROM container_states
+		WHERE container_id = ? ORDER BY observed_ns DESC LIMIT 1`, id).
+		Scan(&ns, &state.State, &state.Health, &state.ReconnectObserved)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("query latest container state: %w", err)
+	}
+	state.Time = time.Unix(0, ns).UTC()
+	if _, err := validateState(state); err != nil {
+		return nil, fmt.Errorf("invalid stored container state: %w", err)
+	}
+	return &state, nil
 }

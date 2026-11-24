@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { test, expect } from '@playwright/test';
 
@@ -8,7 +7,9 @@ let fixture;
 let observabilityFixtures;
 let settingsFixture;
 test.beforeAll(() => {
-  const directory = mkdtempSync(join(tmpdir(), 'cmp-dashboard-preview-'));
+  const outputDirectory = join(process.cwd(), 'test-results');
+  mkdirSync(outputDirectory, { recursive: true });
+  const directory = mkdtempSync(join(outputDirectory, 'cmp-dashboard-preview-'));
   try {
     execFileSync('go', ['test', './internal/web', '-run', '^TestSyntheticDashboardPreview$', '-count=1'], {
       env: { ...process.env, CMP_UI_PREVIEW_DIR: directory },
@@ -76,6 +77,16 @@ test('single-container observability has a vertical synchronized timeline and st
   await expect(containers.getByRole('link')).toHaveCount(4);
   await expect(containers.getByRole('link').first()).toHaveAttribute('aria-current', 'page');
   await expect(timeline).toHaveAttribute('data-container', 'a'.repeat(64));
+  const unhealthySpan = page.locator('[data-timeline-span="unhealthy"]');
+  const unavailableSpan = page.locator('[data-timeline-span="unavailable"]');
+  await expect(unhealthySpan).toHaveAttribute('aria-label', 'Observed unhealthy');
+  await expect(unavailableSpan).toHaveAttribute('aria-label', 'Observation unavailable');
+  const spanLayers = await page.evaluate(() => [
+    getComputedStyle(document.querySelector('[data-timeline-span="unhealthy"]')).zIndex,
+    getComputedStyle(document.querySelector('[data-timeline-span="unavailable"]')).zIndex,
+  ]);
+  expect(Number(spanLayers[1])).toBeGreaterThan(Number(spanLayers[0]));
+  await expect(page.locator('.timeline-event').filter({ hasText: 'Observed healthy on reconnect' })).toBeVisible();
   const charts = page.locator('[data-chart]');
   await expect(charts).toHaveCount(3);
   const assertIsolation = async letter => {
@@ -155,7 +166,7 @@ test('single-container observability has a vertical synchronized timeline and st
   if (testInfo.project.name === 'mobile-chromium') await logsLabel.tap();
   else await logsLabel.click();
   await expect(page.locator('.observability-logs')).toBeVisible();
-  await expect(page.locator('.observability-logs')).toContainText('Container logs are not collected');
+  await expect(page.locator('.observability-logs')).toContainText('Container-log collection is Off');
   await expect(page.locator('.timeline-events')).toBeHidden();
   await containers.getByRole('link').nth(1).click();
   await expect(timeline).toHaveAttribute('data-container', 'b'.repeat(64));
@@ -244,34 +255,62 @@ test('stats settings show preset values and unlock only the current values under
   const serveSettings = route => route.fulfill({ status: 200, contentType: 'text/html', body: settingsFixture });
   await page.route('**/settings', serveSettings);
   await page.goto('/settings');
-  const scope = page.getByLabel('Collection scope');
-  const interval = page.getByLabel('Sampling interval (for example 5s)');
+  const statsSettings = page.getByRole('group', { name: 'Container stats' });
+  const scope = page.locator('#metrics-scope');
+  const interval = page.getByLabel('Sampling interval');
   await expect(page.getByRole('navigation', { name: 'Settings categories' })
     .getByRole('link', { name: 'Containers' })).toHaveAttribute('aria-current', 'page');
   await expect(interval).toHaveValue('1s');
   await expect(interval).toHaveAttribute('readonly', '');
   await expect(scope).toBeHidden();
-  await page.getByRole('radio', { name: 'Low', exact: true }).press('Space');
+  await statsSettings.getByRole('radio', { name: 'Low', exact: true }).press('Space');
   await expect(interval).toHaveValue('15s');
-  await page.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+  await statsSettings.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
   await expect(scope).toBeVisible();
   await expect(interval).toBeEditable();
-  await expect(page.getByLabel('Collection scope')).toHaveValue('activated');
-  await expect(page.getByLabel('Sampling interval (for example 5s)')).toHaveValue('15s');
+  await expect(scope).toHaveValue('activated');
+  await expect(page.getByLabel('Sampling interval')).toHaveValue('15s');
   await expect(page.locator('[data-metrics-preset]:visible')).toHaveCount(0);
-  await page.getByLabel('Collection scope').selectOption('all');
-  await page.getByLabel('Sampling interval (for example 5s)').fill('3s');
-  await page.getByRole('radio', { name: 'Medium', exact: true }).press('Space');
+  await scope.selectOption('all');
+  await page.getByLabel('Sampling interval').fill('3s');
+  await statsSettings.getByRole('radio', { name: 'Medium', exact: true }).press('Space');
   await expect(interval).toHaveValue('5s');
-  await page.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
-  await expect(page.getByLabel('Collection scope')).toHaveValue('activated');
-  await expect(page.getByLabel('Sampling interval (for example 5s)')).toHaveValue('5s');
-  await expect(page.getByLabel('Storage target')).toHaveValue('10.48576');
-  await page.getByRole('radio', { name: 'High', exact: true }).press('Space');
-  await page.getByLabel('Storage target').fill('20');
-  await expect(page.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
-  await expect(page.getByLabel('Collection scope')).toHaveValue('all');
-  await expect(page.getByLabel('Sampling interval (for example 5s)')).toHaveValue('1s');
+  await statsSettings.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+  await expect(scope).toHaveValue('activated');
+  await expect(page.getByLabel('Sampling interval')).toHaveValue('5s');
+  await expect(page.locator('#metrics-limit')).toHaveValue('10.48576');
+  await statsSettings.getByRole('radio', { name: 'High', exact: true }).press('Space');
+  await page.locator('#metrics-limit').fill('20');
+  await expect(statsSettings.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+  await expect(scope).toHaveValue('all');
+  await expect(page.getByLabel('Sampling interval')).toHaveValue('1s');
+  const overall = page.getByRole('group', { name: 'Overall collection profile' });
+  const logsSettings = page.getByRole('group', { name: 'Container logs' });
+  await expect(statsSettings.getByRole('radio')).toHaveCount(5);
+  await page.locator('#state-scope').selectOption('all');
+  await logsSettings.getByRole('radio', { name: 'Low', exact: true }).press('Space');
+  await overall.getByRole('radio', { name: 'Off', exact: true }).press('Space');
+  await expect(statsSettings.getByRole('radio', { name: 'Off', exact: true })).toBeChecked();
+  await expect(logsSettings.getByRole('radio', { name: 'Off', exact: true })).toBeChecked();
+  await expect(page.locator('#state-scope')).toHaveValue('off');
+  await expect(interval).toBeHidden();
+  await overall.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+  await expect(statsSettings.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+  await expect(interval).toHaveValue('1s');
+  await expect(scope).toHaveValue('all');
+  await expect(page.locator('#state-scope')).toHaveValue('all');
+  await expect(logsSettings.getByRole('radio', { name: 'Low', exact: true })).toBeChecked();
+  await statsSettings.getByRole('radio', { name: 'Off', exact: true }).press('Space');
+  await expect(page.locator('#state-scope')).toHaveValue('all');
+  await expect(logsSettings.getByRole('radio', { name: 'Low', exact: true })).toBeChecked();
+  await statsSettings.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+  await expect(interval).toHaveValue('1s');
+  await overall.getByRole('radio', { name: 'High', exact: true }).press('Space');
+  await page.locator('#logs-limit').fill('40');
+  await expect(logsSettings.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+  await expect(statsSettings.getByRole('radio', { name: 'High', exact: true })).toBeChecked();
+  await expect(page.locator('#state-scope')).toHaveValue('all');
+  await expect(overall.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
   if (testInfo.project.name === 'chromium') {
     for (const theme of ['light', 'dark']) {
       await page.emulateMedia({ colorScheme: theme });
@@ -287,12 +326,12 @@ test('stats settings show preset values and unlock only the current values under
     const fallback = await context.newPage();
     await fallback.route('**/settings', serveSettings);
     await fallback.goto('/settings');
-    await fallback.getByRole('radio', { name: 'Medium', exact: true }).press('Space');
+    await fallback.getByRole('group', { name: 'Container stats' }).getByRole('radio', { name: 'Medium', exact: true }).press('Space');
     await expect(fallback.getByRole('textbox', { name: 'Sampling interval', exact: true })).toHaveValue('5s');
-    await fallback.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
-    await expect(fallback.getByLabel('Collection scope')).toBeVisible();
+    await fallback.getByRole('group', { name: 'Container stats' }).getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+    await expect(fallback.locator('#metrics-scope')).toBeVisible();
     await expect(fallback.locator('noscript .metrics-help')).toBeVisible();
-    await expect(fallback.locator('noscript .metrics-help')).toContainText('save a preset before selecting Custom');
+    await expect(fallback.locator('noscript .metrics-help')).toContainText('restore sources after overall Off');
   } finally {
     await context.close();
   }

@@ -171,7 +171,8 @@
         <output class="timeline-selected-time" data-timeline-output for="observability-time" title="{{.Timeline.EndLabel}}">{{.Timeline.EndClock}}</output>
         <div class="timeline-selection" data-timeline-cursor aria-hidden="true" hidden></div>
         <div class="timeline-axis" aria-hidden="true"><span>Now</span><span>−15m</span><span>−30m</span><span>−45m</span><span>−60m</span></div>
-        <div class="timeline-track" role="group" aria-label="Observed container events">
+        <div class="timeline-track" role="group" aria-label="Observed container events and state">
+          {{range .Timeline.StateSpans}}<span class="timeline-span timeline-span-{{.Kind}}" data-timeline-span="{{.Kind}}" style="top:{{printf "%.3f" .StartPosition}}%;height:{{printf "%.3f" .SpanHeight}}%" role="img" aria-label="{{.Label}}" title="{{.Label}}"></span>{{end}}
           {{range .Timeline.Events}}<button class="timeline-marker" type="button" data-timeline-select="{{.Time}}" data-timeline-marker data-position="{{printf "%.3f" .Position}}" data-kind="{{.Kind}}" aria-label="Select {{.Description}} at {{.TimeLabel}} for {{.Container}}" title="{{.Description}} · {{.Container}} · {{.TimeLabel}}"><span aria-hidden="true"></span></button>{{end}}
         </div>
         <input id="observability-time" class="timeline-slider" type="range" min="{{.Timeline.Start}}" max="{{.Timeline.End}}" step="1000" value="{{.Timeline.SelectedTime}}" data-timeline-slider aria-label="Selected time in the last hour" aria-orientation="vertical">
@@ -190,7 +191,7 @@
           <label><input class="visually-hidden" type="radio" name="container-records" value="logs"><span>Container logs</span></label>
         </fieldset>
       <div class="timeline-events" aria-labelledby="timeline-events-title">
-        <div class="section-heading"><h2 class="visually-hidden" id="timeline-events-title">Observed events</h2><span>{{.Timeline.Status}} · newest first</span></div>
+        <div class="section-heading"><h2 class="visually-hidden" id="timeline-events-title">Observed events and state</h2><span>{{.Timeline.Status}} · newest first</span></div>
         <div class="observability-record-columns" aria-hidden="true"><span>Description</span><span>Date / Time (UTC)</span></div>
         {{if .Timeline.Truncated}}<p class="timeline-hint">Showing the newest 200 recorded events in this hour.</p>{{end}}
         {{if .Timeline.RecentEvents}}
@@ -201,9 +202,20 @@
         </ol>
         {{else}}<p class="timeline-empty">No recorded events for this container in this hour.</p>{{end}}
         <p class="timeline-message" data-timeline-message>{{.Timeline.Message}}</p>
-        <p class="timeline-hint">Only recorded observations are shown. Docker event history may have gaps; missing events are not inferred.</p>
+        <p class="timeline-hint">Only recorded observations are shown. Docker event history may have gaps; missing events or transitions are not inferred.</p>
       </div>
-      <div class="observability-logs"><h2 class="visually-hidden">Container logs</h2><p class="timeline-empty">Container logs are not collected. Historical log sources and retention are not configured; lifecycle events are available in Observed events.</p></div>
+      <div class="observability-logs" aria-label="Container logs">
+        <div class="section-heading"><h2>Container logs</h2><span>{{.LogHistory.Status}} · newest first</span></div>
+        {{if .LogHistory.Truncated}}<p class="timeline-hint">Showing the newest 200 log records in this hour.</p>{{end}}
+        {{if .LogHistory.Entries}}
+        <ol class="container-log-list">
+          {{range .LogHistory.Entries}}<li class="container-log-entry">
+            <time>{{.TimeLabel}}</time><span class="container-log-stream">{{.Stream}}{{if .Truncated}} · truncated{{end}}</span><span class="container-log-message">{{.Message}}</span>
+          </li>{{end}}
+        </ol>
+        {{else}}<p class="timeline-empty">{{.LogHistory.Message}}</p>{{end}}
+        {{if .LogHistory.Entries}}<p class="timeline-message">{{.LogHistory.Message}}</p>{{end}}
+      </div>
       </section>
       </div>
       </div>

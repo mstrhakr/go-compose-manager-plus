@@ -16,6 +16,20 @@ import (
 	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 )
 
+func removeCurrentStateSchema(t *testing.T, db *sql.DB) {
+	t.Helper()
+	for _, statement := range []string{
+		`DROP TABLE state_source_gaps`,
+		`DROP TABLE container_state_gaps`,
+		`DROP TABLE container_state_baselines`,
+		`ALTER TABLE container_states DROP COLUMN reconnect_observed`,
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatalf("reset metrics schema for synthetic downgrade: %v", err)
+		}
+	}
+}
+
 func TestSamplesPersistExpireAndPreserveMissing(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -184,6 +198,41 @@ func TestFullUnsignedMemoryRangePersists(t *testing.T) {
 	}
 }
 
+func TestVersionNineMigrationCreatesSharedStateGaps(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	store, err := Open(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err := sql.Open("sqlite", filepath.Join(dir, "metrics.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `DROP TABLE state_source_gaps; PRAGMA user_version = 9`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	store, err = Open(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	var version int
+	if err := store.db.QueryRowContext(ctx, `PRAGMA user_version`).Scan(&version); err != nil || version != 10 {
+		t.Fatalf("migrated metrics version = %d, error %v", version, err)
+	}
+	var tableCount int
+	if err := store.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='state_source_gaps'`).Scan(&tableCount); err != nil || tableCount != 1 {
+		t.Fatalf("shared state gap table count = %d, error %v", tableCount, err)
+	}
+}
+
 func TestVersionOneMigrationPreservesSamples(t *testing.T) {
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -297,6 +346,7 @@ func TestVersionThreeMigrationRecordsEviction(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	removeCurrentStateSchema(t, store.db)
 	id := strings.Repeat("c", 64)
 	base := time.Date(2026, 11, 22, 21, 0, 0, 0, time.UTC)
 	if err := store.Insert(ctx, []Sample{{ContainerID: id, Observation: runtime.Observations{Time: base}}}); err != nil {

@@ -93,7 +93,7 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 	}
 	response = perform(handler, http.MethodGet, "/containers/observability", nil, cookies, "")
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "data-timeline-vertical") ||
-		!strings.Contains(response.Body.String(), "Observability") || !strings.Contains(response.Body.String(), "Metrics collection is disabled") ||
+		!strings.Contains(response.Body.String(), "Observability") || !strings.Contains(response.Body.String(), "Collection <span>Disabled</span>") ||
 		!strings.Contains(response.Body.String(), "Docker status unavailable: no socket configured.") ||
 		strings.Contains(response.Body.String(), "No containers available in the snapshot") {
 		t.Fatalf("observability page = %d %q", response.Code, response.Body.String())

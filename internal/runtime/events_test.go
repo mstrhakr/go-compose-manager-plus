@@ -83,6 +83,34 @@ func TestWatchContainerEventFailures(t *testing.T) {
 	}
 }
 
+func TestWatchContainerEventsAcceptsLifecycleActions(t *testing.T) {
+	id := strings.Repeat("a", 64)
+	actions := []string{"create", "pause", "unpause", "destroy"}
+	var body strings.Builder
+	for index, action := range actions {
+		fmt.Fprintf(&body, `{"Type":"container","Action":%q,"Actor":{"ID":%q},"timeNano":%d}`+"\n", action, id, index+1)
+	}
+	client := &Client{stream: &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body.String()))}, nil
+	})}}
+	var got []ContainerEvent
+	err := client.WatchContainerEvents(context.Background(), func(event ContainerEvent) error {
+		got = append(got, event)
+		return nil
+	})
+	if err == nil || !strings.Contains(err.Error(), "ended unexpectedly") {
+		t.Fatalf("EOF error = %v", err)
+	}
+	if len(got) != len(actions) {
+		t.Fatalf("lifecycle events = %#v", got)
+	}
+	for index, action := range actions {
+		if got[index].Action != action {
+			t.Fatalf("lifecycle event %d = %#v", index, got[index])
+		}
+	}
+}
+
 func TestWatchContainerEventsCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	client := &Client{stream: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {

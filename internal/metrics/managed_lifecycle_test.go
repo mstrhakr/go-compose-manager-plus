@@ -38,6 +38,7 @@ func TestVersionFourMigrationCreatesPressureGate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	removeCurrentStateSchema(t, store.db)
 	if _, err := store.db.ExecContext(ctx, `DROP TABLE pressure_gate`); err != nil {
 		t.Fatal(err)
 	}

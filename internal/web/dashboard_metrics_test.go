@@ -29,6 +29,7 @@ type dashboardMetricsCollectorStub struct {
 	series   []metrics.ContainerChartSeries
 	events   []metrics.Event
 	chartIDs *[]string
+	states   map[string]metrics.StateHistory
 }
 
 func (collector dashboardMetricsCollectorStub) Status() metrics.CollectorStatus {
@@ -63,6 +64,10 @@ func (collector dashboardMetricsCollectorStub) SelectTimelineEvents(_ context.Co
 	return events, nil
 }
 
+func (collector dashboardMetricsCollectorStub) SelectStateHistory(_ context.Context, id string, _, _ time.Time, _ int) (metrics.StateHistory, error) {
+	return collector.states[id], nil
+}
+
 func (collector dashboardMetricsCollectorStub) SelectObservedContainers(context.Context, time.Time, time.Time) ([]string, error) {
 	seen := map[string]bool{}
 	for _, series := range collector.series {
@@ -91,10 +96,19 @@ func TestSyntheticDashboardPreview(t *testing.T) {
 		}
 	})
 	settings := metrics.NewSettingsStore(database.SQL)
-	if _, err := settings.Save(ctx, metrics.Settings{
+	savedSettings, err := settings.Save(ctx, metrics.Settings{
 		Enabled: true, Profile: metrics.ProfileHigh, Scope: metrics.ScopeAll,
 		Interval: time.Second, StorageLimit: 10 << 20,
-	}); err != nil {
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, err := settings.LoadSources(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources.StateEnabled = true
+	if _, _, err := settings.SaveConfiguration(ctx, savedSettings, sources); err != nil {
 		t.Fatal(err)
 	}
 	start, end := dashboardTimeRange()
@@ -127,6 +141,22 @@ func TestSyntheticDashboardPreview(t *testing.T) {
 		metricsSettings: settings,
 		collector: dashboardMetricsCollectorStub{
 			status: metrics.CollectorStatus{Enabled: true, Collecting: true, EventConnected: true}, series: containers,
+			states: map[string]metrics.StateHistory{
+				containers[0].ContainerID: {
+					Baseline: &metrics.State{
+						ContainerID: containers[0].ContainerID, Time: start.Add(-time.Minute),
+						State: "running", Health: metrics.HealthUnhealthy,
+					},
+					States: []metrics.State{{
+						ContainerID: containers[0].ContainerID, Time: start.Add(30 * time.Minute),
+						State: "running", Health: metrics.HealthHealthy, ReconnectObserved: true,
+					}},
+					Gaps: []metrics.StateGap{{
+						ContainerID: containers[0].ContainerID, Start: start.Add(20 * time.Minute),
+						End: start.Add(30 * time.Minute),
+					}},
+				},
+			},
 			events: []metrics.Event{
 				{ContainerID: containers[0].ContainerID, Time: start.Add(20 * time.Minute), Kind: metrics.EventStart},
 				{ContainerID: containers[1].ContainerID, Time: start.Add(25 * time.Minute), Kind: metrics.EventOOM},
@@ -252,6 +282,7 @@ func TestSyntheticDashboardPreview(t *testing.T) {
 		server.render(response, pageData{
 			Title: "Synthetic observability preview", View: "observability", Username: "Preview", Initial: "P",
 			ObservedContainers: choices, SelectedContainer: selected, Filters: filters, Charts: charts, MetricsStatus: status, Timeline: timeline,
+			LogHistory:     server.dashboardLogs(ctx, start, end, selected),
 			RuntimeMessage: "Synthetic read-only snapshot; no Docker connection.",
 			Notice:         "Synthetic preview data only. No Docker connection or production data.",
 			SubviewNav: viewNavigation{Label: "Container views", Tabs: []viewTab{
@@ -439,6 +470,27 @@ func TestBuildAggregateDashboardChartSumsCompleteBucketsAndPreservesGaps(t *test
 	}
 }
 
+func TestTimelineStateSpansKeepUnavailableOverUnhealthyAndLabelReconnect(t *testing.T) {
+	start := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	baseline := &metrics.State{Time: start.Add(-time.Minute), Health: metrics.HealthUnhealthy}
+	states := []metrics.State{{
+		Time: start.Add(30 * time.Minute), State: "running",
+		Health: metrics.HealthHealthy, ReconnectObserved: true,
+	}}
+	gaps := []metrics.StateGap{{Start: start.Add(20 * time.Minute), End: start.Add(30 * time.Minute)}}
+	spans := stateTimelineSpans(start, end, baseline, states, gaps)
+	if len(spans) != 2 || spans[0].Kind != "unhealthy" || math.Abs(spans[0].StartPosition) > 1e-9 ||
+		math.Abs(spans[0].SpanHeight-50) > 1e-9 || spans[1].Kind != "unavailable" ||
+		math.Abs(spans[1].StartPosition-100.0/3) > 1e-9 || math.Abs(spans[1].SpanHeight-100.0/6) > 1e-9 {
+		t.Fatalf("state spans = %#v", spans)
+	}
+	description, kind := timelineStateDescription(states[0])
+	if description != "Observed healthy on reconnect · Running" || kind != "state" {
+		t.Fatalf("reconnect snapshot label = %q (%s)", description, kind)
+	}
+}
+
 func TestDashboardTimelineBoundsAndLabelsRecentObservedEvents(t *testing.T) {
 	ctx := context.Background()
 	database, err := auth.OpenDatabase(ctx, t.TempDir())
@@ -451,10 +503,19 @@ func TestDashboardTimelineBoundsAndLabelsRecentObservedEvents(t *testing.T) {
 		}
 	})
 	settings := metrics.NewSettingsStore(database.SQL)
-	if _, err := settings.Save(ctx, metrics.Settings{
+	savedSettings, err := settings.Save(ctx, metrics.Settings{
 		Enabled: true, Profile: metrics.ProfileLow, Scope: metrics.ScopeActivated,
 		Interval: 15 * time.Second, StorageLimit: 10 << 20,
-	}); err != nil {
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, err := settings.LoadSources(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources.StateEnabled = true
+	if _, _, err := settings.SaveConfiguration(ctx, savedSettings, sources); err != nil {
 		t.Fatal(err)
 	}
 	start := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
@@ -494,6 +555,58 @@ func TestDashboardTimelineBoundsAndLabelsRecentObservedEvents(t *testing.T) {
 	}
 }
 
+func TestTimelineSuppressesSpansWhenStateBoundsAreTruncated(t *testing.T) {
+	ctx := context.Background()
+	database, err := auth.OpenDatabase(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := database.SQL.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	settings := metrics.NewSettingsStore(database.SQL)
+	savedSettings, err := settings.Save(ctx, metrics.Settings{
+		Enabled: true, Profile: metrics.ProfileLow, Scope: metrics.ScopeActivated,
+		Interval: 15 * time.Second, StorageLimit: 10 << 20,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources, err := settings.LoadSources(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources.StateEnabled = true
+	if _, _, err := settings.SaveConfiguration(ctx, savedSettings, sources); err != nil {
+		t.Fatal(err)
+	}
+	start := time.Date(2026, 11, 23, 12, 0, 0, 0, time.UTC)
+	end := start.Add(time.Hour)
+	containerID := strings.Repeat("b", 64)
+	collector := dashboardMetricsCollectorStub{
+		status: metrics.CollectorStatus{Enabled: true, Collecting: true, EventConnected: true},
+		states: map[string]metrics.StateHistory{containerID: {
+			Baseline: &metrics.State{ContainerID: containerID, Time: start.Add(-time.Minute), State: "running", Health: metrics.HealthUnhealthy},
+			States: []metrics.State{{
+				ContainerID: containerID, Time: start.Add(30 * time.Minute), State: "running", Health: metrics.HealthHealthy,
+			}},
+			Gaps:      []metrics.StateGap{{ContainerID: containerID, Start: start.Add(10 * time.Minute), End: start.Add(20 * time.Minute)}},
+			Truncated: true,
+		}},
+	}
+	server := &authServer{
+		metricsSettings: settings, collector: collector,
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	got := server.dashboardTimeline(ctx, start, end, containerID)
+	if !got.StateBoundsTruncated || !got.Truncated || len(got.StateSpans) != 0 ||
+		!strings.Contains(got.Message, "interval overlays are suppressed") {
+		t.Fatalf("truncated state bounds were presented as continuous intervals: %#v", got)
+	}
+}
+
 func TestObservabilityTemplateRendersTimelineMarkersAndEventList(t *testing.T) {
 	pages := template.Must(template.ParseFS(content, "templates/*.html", "templates/partials/*.html"))
 	server := &authServer{pages: pages}
@@ -511,6 +624,10 @@ func TestObservabilityTemplateRendersTimelineMarkersAndEventList(t *testing.T) {
 			Start: 1000, End: 3000, SelectedTime: 3000, StartLabel: "Start", EndLabel: "End",
 			Status: "1 observed event", Message: "Observed lifecycle events only.",
 			Events: []dashboardTimelineEvent{event}, RecentEvents: []dashboardTimelineEvent{event},
+			StateSpans: []dashboardTimelineSpan{
+				{StartPosition: 10, SpanHeight: 40, Kind: "unhealthy", Label: "Observed unhealthy"},
+				{StartPosition: 20, SpanHeight: 20, Kind: "unavailable", Label: "Observation unavailable"},
+			},
 		},
 		Charts: emptyDashboardCharts("Collecting", "No recorded values.", false),
 	}
@@ -520,6 +637,7 @@ func TestObservabilityTemplateRendersTimelineMarkersAndEventList(t *testing.T) {
 	for _, expected := range []string{
 		`data-timeline-select="2000"`, `data-position="50.000"`,
 		`data-kind="oom"`, "Out of memory", "Container aaaaaaaaaaaa",
+		`data-timeline-span="unhealthy"`, `data-timeline-span="unavailable"`,
 		`aria-current="page"`,
 	} {
 		if !strings.Contains(body, expected) {

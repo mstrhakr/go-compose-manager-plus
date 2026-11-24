@@ -181,6 +181,7 @@ func TestVersionSevenLogMigrationPreservesExistingHistoryAndPendingWrite(t *test
 	if err := store.InsertEvents(ctx, []Event{event}); err != nil {
 		t.Fatal(err)
 	}
+	removeCurrentStateSchema(t, store.db)
 	for _, statement := range []string{
 		`DROP TABLE container_logs`,
 		`INSERT INTO pending_write VALUES (1, 'events', 123, 0)`,

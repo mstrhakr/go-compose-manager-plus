@@ -86,7 +86,7 @@ func (c *Client) WatchContainerEventsWithConnect(ctx context.Context, connected 
 			}
 		}
 		switch action {
-		case "start", "stop", "die", "restart", "oom", "health_status":
+		case "create", "start", "stop", "die", "destroy", "restart", "pause", "unpause", "oom", "health_status":
 		default:
 			continue
 		}

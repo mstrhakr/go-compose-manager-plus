@@ -69,6 +69,10 @@ func (options LogOptions) validate(now time.Time) error {
 // the caller, including a retained-window backfill start for live following;
 // Docker supplies no stable log-record ID.
 func (c *Client) ReadContainerLogs(ctx context.Context, id string, options LogOptions, consume func(ContainerLog) error) error {
+	return c.ReadContainerLogsWithConnect(ctx, id, options, nil, consume)
+}
+
+func (c *Client) ReadContainerLogsWithConnect(ctx context.Context, id string, options LogOptions, connected func(), consume func(ContainerLog) error) error {
 	if consume == nil {
 		return errors.New("container log callback is required")
 	}
@@ -109,6 +113,9 @@ func (c *Client) ReadContainerLogs(ctx context.Context, id string, options LogOp
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("Docker logs returned HTTP %d", response.StatusCode)
+	}
+	if connected != nil {
+		connected()
 	}
 	err = decodeContainerLogs(response.Body, *inspection.TTY, func(stream LogStream, line []byte, truncated bool) error {
 		prefix, message, found := strings.Cut(string(line), " ")
