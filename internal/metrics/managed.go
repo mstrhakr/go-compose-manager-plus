@@ -597,25 +597,35 @@ func (m *ManagedStore) EndGlobalStateGap(ctx context.Context, at time.Time) erro
 }
 
 func (m *ManagedStore) HasOpenStateGap(ctx context.Context, id string) (bool, error) {
+	_, exists, err := m.OpenStateGap(ctx, id)
+	return exists, err
+}
+
+func (m *ManagedStore) OpenStateGap(ctx context.Context, id string) (time.Time, bool, error) {
 	if err := m.acquire(ctx); err != nil {
-		return false, err
+		return time.Time{}, false, err
 	}
 	defer m.release()
 	if m.closed {
-		return false, errors.New("metrics store is closed")
+		return time.Time{}, false, errors.New("metrics store is closed")
 	}
-	return m.store.HasOpenStateGap(ctx, id)
+	return m.store.OpenStateGap(ctx, id)
 }
 
 func (m *ManagedStore) HasOpenGlobalStateGap(ctx context.Context) (bool, error) {
+	_, exists, err := m.OpenGlobalStateGap(ctx)
+	return exists, err
+}
+
+func (m *ManagedStore) OpenGlobalStateGap(ctx context.Context) (time.Time, bool, error) {
 	if err := m.acquire(ctx); err != nil {
-		return false, err
+		return time.Time{}, false, err
 	}
 	defer m.release()
 	if m.closed {
-		return false, errors.New("metrics store is closed")
+		return time.Time{}, false, errors.New("metrics store is closed")
 	}
-	return m.store.HasOpenGlobalStateGap(ctx)
+	return m.store.OpenGlobalStateGap(ctx)
 }
 
 func (m *ManagedStore) Close() error {

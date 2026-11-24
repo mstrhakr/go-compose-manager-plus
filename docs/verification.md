@@ -1411,3 +1411,26 @@ transport/save cadence, destructive legacy-log migration, explicit clear-history
 controls, identity/baseline cleanup lifetime and manager lifecycle actions are
 not implemented or approved by these checks. Private visual references and
 synthetic screenshots are not Docker/native-platform verification.
+
+### Production-CSP And State-Capture PR Corrections
+
+PR #24's Copilot review identified eight concrete issues. The timeline
+correction uses data coordinates with self-hosted initialization, not CSP-blocked
+inline styles, and positions spans from the bottom to match the vertical axis.
+The browser fixture now sends the production CSP; geometry assertions exercise
+both span kinds and fragment initialization. All 20 preview checks passed across
+Chromium, Firefox, WebKit and mobile Chromium. Final light/dark captures also
+confirmed that an opaque grey overlay fully masks unhealthy striping.
+
+State-capture corrections admit new-container events by configured scope rather
+than a stale stats snapshot, reconcile event-driven lifecycle observations, and
+refresh activated-project scope while the stream stays connected. Shared
+outages close only after successful snapshot reconciliation, with target-specific
+unavailability preserved until each persisted observation; all-failed inspection
+is not treated as an empty successful scope. Watcher/settings/storage health are
+separate, so successful maintenance cannot disguise a failed capture operation.
+The Stats Off status reset preserves an independently active state connection.
+Focused deterministic regressions and combined auth/metrics/web race suites
+passed. The initial hosted CI and a later timeline-fix revision passed Linux,
+Windows, both macOS jobs, browser, docs/contracts, container and security checks;
+final state-fix hosted checks remain required before merge.

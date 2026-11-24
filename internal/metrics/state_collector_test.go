@@ -2,12 +2,16 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -102,6 +106,9 @@ func TestStateHistoryRunsWithoutNumericStats(t *testing.T) {
 			if statsRequested.Load() {
 				t.Fatal("state-only collection requested numeric Docker stats")
 			}
+			if !collector.Status().EventConnected {
+				t.Fatalf("Stats Off reset discarded the active state event connection: %#v", collector.Status())
+			}
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -150,7 +157,7 @@ func TestStateReconnectRecordsGapAndObservedSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	collector := &Collector{docker: runtime.NewClient(socket), logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	if err := collector.reconcileStateSnapshot(ctx, store, ScopeAll, nil, known, false); err != nil {
+	if err := collector.reconcileStateSnapshot(ctx, store, ScopeAll, nil, known); err != nil {
 		t.Fatal(err)
 	}
 	history, err := store.SelectStateHistory(ctx, id, base.Add(-time.Second), time.Now().UTC().Add(time.Second), 10)
@@ -161,6 +168,135 @@ func TestStateReconnectRecordsGapAndObservedSnapshot(t *testing.T) {
 	if !last.ReconnectObserved || last.Health != HealthHealthy ||
 		!history.Gaps[0].End.After(history.Gaps[0].Start) {
 		t.Fatalf("reconnect observation/gap = %#v", history)
+	}
+}
+
+func TestStateReconciliationKeepsSharedGapUntilFailureFreeRestartSnapshot(t *testing.T) {
+	ctx := context.Background()
+	firstID, secondID := strings.Repeat("b", 64), strings.Repeat("c", 64)
+	firstOK, secondOK := atomic.Bool{}, atomic.Bool{}
+	listener, socket := newDockerSocket(t)
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1.40/containers/json":
+			fmt.Fprintf(w, `[{"Id":%q,"State":"running","Labels":{}},{"Id":%q,"State":"paused","Labels":{}}]`, firstID, secondID)
+		case "/v1.40/containers/" + firstID + "/json":
+			if !firstOK.Load() {
+				http.Error(w, "inspection unavailable", http.StatusInternalServerError)
+				return
+			}
+			fmt.Fprintf(w, `{"Id":%q,"Config":{"Healthcheck":{"Test":["NONE"]}},"State":{"Status":"running"}}`, firstID)
+		case "/v1.40/containers/" + secondID + "/json":
+			if !secondOK.Load() {
+				http.Error(w, "inspection unavailable", http.StatusInternalServerError)
+				return
+			}
+			fmt.Fprintf(w, `{"Id":%q,"Config":{"Healthcheck":{"Test":["NONE"]}},"State":{"Status":"paused"}}`, secondID)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	server.Listener = listener
+	server.Start()
+	defer server.Close()
+	store, err := OpenManaged(ctx, t.TempDir(), 10<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Maintain(ctx, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	base := time.Now().UTC().Add(-time.Minute)
+	if err := store.InsertStates(ctx, time.Now().UTC(), []State{
+		{ContainerID: firstID, Time: base, State: "running", Health: HealthNone},
+		{ContainerID: secondID, Time: base, State: "paused", Health: HealthNone},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	gapStart := time.Now().UTC().Add(-time.Second)
+	if err := store.StartGlobalStateGap(ctx, gapStart); err != nil {
+		t.Fatal(err)
+	}
+	collector := &Collector{docker: runtime.NewClient(socket), logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	known := make(map[string]State)
+	if err := collector.reconcileStateSnapshot(ctx, store, ScopeAll, nil, known); err == nil {
+		t.Fatal("all-failed inspection reconciliation reported success")
+	}
+	if open, err := store.HasOpenGlobalStateGap(ctx); err != nil || !open {
+		t.Fatalf("all-failed reconciliation closed shared gap: open=%t err=%v", open, err)
+	}
+	for _, id := range []string{firstID, secondID} {
+		if open, err := store.HasOpenStateGap(ctx, id); err != nil || !open {
+			t.Fatalf("restart did not preserve failed-target gap for %s: open=%t err=%v", id, open, err)
+		}
+	}
+
+	firstOK.Store(true)
+	if err := collector.reconcileStateSnapshot(ctx, store, ScopeAll, nil, known); err == nil {
+		t.Fatal("partially successful inspection reconciliation reported success")
+	}
+	if open, err := store.HasOpenGlobalStateGap(ctx); err != nil || !open {
+		t.Fatalf("first successful target closed shared gap: open=%t err=%v", open, err)
+	}
+	if open, err := store.HasOpenStateGap(ctx, firstID); err != nil || open {
+		t.Fatalf("successful target retained its local gap: open=%t err=%v", open, err)
+	}
+	firstHistory, err := store.SelectStates(ctx, firstID, base.Add(-time.Second), time.Now().UTC().Add(time.Second), 10)
+	if err != nil || len(firstHistory) != 2 || !firstHistory[1].ReconnectObserved {
+		t.Fatalf("first reconnect observation = %#v, error %v", firstHistory, err)
+	}
+
+	secondOK.Store(true)
+	if err := collector.reconcileStateSnapshot(ctx, store, ScopeAll, nil, known); err != nil {
+		t.Fatal(err)
+	}
+	if open, err := store.HasOpenGlobalStateGap(ctx); err != nil || open {
+		t.Fatalf("failure-free reconciliation did not close shared gap: open=%t err=%v", open, err)
+	}
+	if open, err := store.HasOpenStateGap(ctx, secondID); err != nil || open {
+		t.Fatalf("successful target retained its local gap: open=%t err=%v", open, err)
+	}
+	firstHistory, err = store.SelectStates(ctx, firstID, base.Add(-time.Second), time.Now().UTC().Add(time.Second), 10)
+	if err != nil || len(firstHistory) != 2 {
+		t.Fatalf("repeated refresh duplicated successful reconnect state: %#v, error %v", firstHistory, err)
+	}
+	secondHistory, err := store.SelectStates(ctx, secondID, base.Add(-time.Second), time.Now().UTC().Add(time.Second), 10)
+	if err != nil || len(secondHistory) != 2 || !secondHistory[1].ReconnectObserved {
+		t.Fatalf("failed target reconnect observation = %#v, error %v", secondHistory, err)
+	}
+}
+
+func TestEmptySuccessfulStateReconciliationClosesSharedGap(t *testing.T) {
+	ctx := context.Background()
+	listener, socket := newDockerSocket(t)
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1.40/containers/json" {
+			_, _ = fmt.Fprint(w, `[]`)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	server.Listener = listener
+	server.Start()
+	defer server.Close()
+	store, err := OpenManaged(ctx, t.TempDir(), 10<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Maintain(ctx, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.StartGlobalStateGap(ctx, time.Now().UTC().Add(-time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	collector := &Collector{docker: runtime.NewClient(socket), logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	if err := collector.reconcileStateSnapshot(ctx, store, ScopeAll, nil, map[string]State{}); err != nil {
+		t.Fatal(err)
+	}
+	if open, err := store.HasOpenGlobalStateGap(ctx); err != nil || open {
+		t.Fatalf("failure-free empty reconciliation did not close shared gap: open=%t err=%v", open, err)
 	}
 }
 
@@ -303,6 +439,9 @@ func TestStateOnlyScopeResolutionFailureRemainsVisible(t *testing.T) {
 	for time.Now().Before(deadline) {
 		status := collector.Status()
 		if status.EventConnected && strings.Contains(status.StateProblem, "partially resolved state collection scope") {
+			if status.StateCollecting {
+				t.Fatalf("scope failure was reported as active collection: %#v", status)
+			}
 			cancel()
 			<-done
 			return
@@ -312,6 +451,126 @@ func TestStateOnlyScopeResolutionFailureRemainsVisible(t *testing.T) {
 	cancel()
 	<-done
 	t.Fatalf("state scope failure was discarded: %#v", collector.Status())
+}
+
+func TestStateMaintenanceRecoveryDoesNotClearWatcherFailure(t *testing.T) {
+	collector := &Collector{}
+	collector.stateWatcherHealthy = true
+	collector.status.StateCollecting = true
+	collector.status.EventConnected = true
+	collector.setStateWatcherProblem(errors.New("activated project scope is unavailable"))
+	collector.setStateStorageProblem(errors.New("metrics storage is paused"))
+	collector.beginStateOnlySession()
+	collector.clearStateStorageProblem()
+	status := collector.Status()
+	if status.StateCollecting || status.EventConnected || !strings.Contains(status.StateProblem, "activated project scope is unavailable") ||
+		strings.Contains(status.StateProblem, "storage: metrics storage is paused") {
+		t.Fatalf("storage recovery masked watcher health: %#v", status)
+	}
+}
+
+func TestStateWatchersRefreshActivatedScopeWithoutReconnect(t *testing.T) {
+	for _, mode := range []string{"state-only", "stats-enabled"} {
+		t.Run(mode, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			id := strings.Repeat("d", 64)
+			root := t.TempDir()
+			projectPath := filepath.Join(root, "app")
+			if err := os.Mkdir(projectPath, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(projectPath, "compose.yaml"), []byte("name: app\nservices:\n  web:\n    image: example\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			var active atomic.Bool
+			var inspections atomic.Int64
+			connected := make(chan struct{})
+			var connectedOnce sync.Once
+			listener, socket := newDockerSocket(t)
+			server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/v1.40/containers/json":
+					fmt.Fprintf(w, `[{"Id":%q,"Names":["/web"],"State":"running","Labels":{"com.docker.compose.project":"app"}}]`, id)
+				case "/v1.40/containers/" + id + "/json":
+					inspections.Add(1)
+					fmt.Fprintf(w, `{"Id":%q,"Config":{"Healthcheck":{"Test":["NONE"]}},"State":{"Status":"running"}}`, id)
+				case "/v1.40/events":
+					flusher := w.(http.Flusher)
+					flusher.Flush()
+					connectedOnce.Do(func() { close(connected) })
+					<-r.Context().Done()
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			server.Listener = listener
+			server.Start()
+			defer server.Close()
+			store, err := OpenManaged(ctx, t.TempDir(), 10<<20)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer store.Close()
+			if err := store.Maintain(ctx, time.Now().UTC()); err != nil {
+				t.Fatal(err)
+			}
+			collector := &Collector{
+				docker: runtime.NewClient(socket),
+				projects: projectReaderFunc(func(context.Context) ([]discovery.Project, error) {
+					if !active.Load() {
+						return nil, nil
+					}
+					return []discovery.Project{{Root: root, Path: projectPath, Active: true, Available: true}}, nil
+				}),
+				logger:               slog.New(slog.NewTextHandler(io.Discard, nil)),
+				stateRefreshInterval: 10 * time.Millisecond,
+			}
+			done := make(chan struct{})
+			go func() {
+				if mode == "state-only" {
+					collector.watchStateEvents(ctx, store, ScopeActivated)
+				} else {
+					collector.watchEvents(ctx, store, &eventContinuity{}, true, ScopeActivated)
+				}
+				close(done)
+			}()
+			select {
+			case <-connected:
+			case <-time.After(5 * time.Second):
+				cancel()
+				<-done
+				t.Fatal("event stream did not connect")
+			}
+			active.Store(true)
+			if !waitForAtomicValue(ctx, &inspections, 1) {
+				cancel()
+				<-done
+				t.Fatal("newly activated container was not reconciled while the event stream stayed open")
+			}
+			deadline := time.Now().Add(time.Second)
+			for time.Now().Before(deadline) {
+				states, err := store.SelectStates(ctx, id, time.Now().UTC().Add(-time.Minute), time.Now().UTC().Add(time.Minute), 10)
+				if err != nil {
+					cancel()
+					<-done
+					t.Fatal(err)
+				}
+				if len(states) != 0 {
+					if !collector.Status().StateCollecting {
+						t.Fatalf("successful scope reconciliation was not reported active: %#v", collector.Status())
+					}
+					cancel()
+					<-done
+					return
+				}
+				time.Sleep(time.Millisecond)
+			}
+			cancel()
+			<-done
+			t.Fatalf("activated scope refresh did not persist state: %#v", collector.Status())
+		})
+	}
 }
 
 func waitForAtomicValue(ctx context.Context, value *atomic.Int64, minimum int64) bool {

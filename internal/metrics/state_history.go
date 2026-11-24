@@ -246,34 +246,46 @@ func (s *Store) endGlobalStateGap(ctx context.Context, at time.Time, pending boo
 }
 
 func (s *Store) HasOpenGlobalStateGap(ctx context.Context) (bool, error) {
+	_, exists, err := s.OpenGlobalStateGap(ctx)
+	return exists, err
+}
+
+func (s *Store) OpenGlobalStateGap(ctx context.Context) (time.Time, bool, error) {
 	if s.kind != metricsDatabase {
-		return false, errors.New("shared state-source gaps require metrics.db")
+		return time.Time{}, false, errors.New("shared state-source gaps require metrics.db")
 	}
-	var exists int
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(
-		SELECT 1 FROM state_source_gaps WHERE ended_ns IS NULL
-	)`).Scan(&exists)
+	var started int64
+	err := s.db.QueryRowContext(ctx, `SELECT started_ns FROM state_source_gaps WHERE ended_ns IS NULL LIMIT 1`).Scan(&started)
+	if errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, false, nil
+	}
 	if err != nil {
-		return false, fmt.Errorf("check shared state-source gap: %w", err)
+		return time.Time{}, false, fmt.Errorf("read shared state-source gap: %w", err)
 	}
-	return exists != 0, nil
+	return time.Unix(0, started).UTC(), true, nil
 }
 
 func (s *Store) HasOpenStateGap(ctx context.Context, id string) (bool, error) {
+	_, exists, err := s.OpenStateGap(ctx, id)
+	return exists, err
+}
+
+func (s *Store) OpenStateGap(ctx context.Context, id string) (time.Time, bool, error) {
 	if s.kind != metricsDatabase {
-		return false, errors.New("state observation gaps require metrics.db")
+		return time.Time{}, false, errors.New("state observation gaps require metrics.db")
 	}
 	if err := validateID(id); err != nil {
-		return false, err
+		return time.Time{}, false, err
 	}
-	var exists int
-	err := s.db.QueryRowContext(ctx, `SELECT EXISTS(
-		SELECT 1 FROM container_state_gaps WHERE container_id = ? AND ended_ns IS NULL
-	)`, id).Scan(&exists)
+	var started int64
+	err := s.db.QueryRowContext(ctx, `SELECT started_ns FROM container_state_gaps WHERE container_id = ? AND ended_ns IS NULL`, id).Scan(&started)
+	if errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, false, nil
+	}
 	if err != nil {
-		return false, fmt.Errorf("check open state observation gap: %w", err)
+		return time.Time{}, false, fmt.Errorf("read open state observation gap: %w", err)
 	}
-	return exists != 0, nil
+	return time.Unix(0, started).UTC(), true, nil
 }
 
 func (s *Store) selectStatesNewest(ctx context.Context, id string, from, to int64, limit int) ([]State, bool, error) {

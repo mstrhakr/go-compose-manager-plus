@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
@@ -41,19 +42,25 @@ type CollectorStatus struct {
 }
 
 type Collector struct {
-	dataDir    string
-	settings   *SettingsStore
-	projects   projectReader
-	docker     *runtime.Client
-	logger     *slog.Logger
-	storeMu    sync.RWMutex
-	store      *ManagedStore
-	logStoreMu sync.RWMutex
-	logStore   *ManagedStore
-	stateMu    sync.Mutex
-	stateCache map[string]State
-	mu         sync.RWMutex
-	status     CollectorStatus
+	dataDir              string
+	settings             *SettingsStore
+	projects             projectReader
+	docker               *runtime.Client
+	logger               *slog.Logger
+	stateRefreshInterval time.Duration
+	storeMu              sync.RWMutex
+	store                *ManagedStore
+	logStoreMu           sync.RWMutex
+	logStore             *ManagedStore
+	statePersistMu       sync.Mutex
+	stateMu              sync.Mutex
+	stateCache           map[string]State
+	stateWatcherProblem  string
+	stateControlProblem  string
+	stateStorageProblem  string
+	stateWatcherHealthy  bool
+	mu                   sync.RWMutex
+	status               CollectorStatus
 }
 
 func NewCollector(dataDir string, settings *SettingsStore, projects projectReader, docker *runtime.Client, logger *slog.Logger) (*Collector, error) {
@@ -106,11 +113,13 @@ func (c *Collector) Run(ctx context.Context) error {
 		}
 		if !settings.Enabled {
 			c.updateStatus(func(status *CollectorStatus) {
+				eventConnected := status.EventConnected
 				logsEnabled, logsCollecting := status.LogsEnabled, status.LogsCollecting
 				logContainers, logCycle, logProblem, logEvictions := status.LogsContainers, status.LogsLastCycle, status.LogsProblem, status.LogEvictions
 				stateEnabled, stateCollecting, stateProblem := status.StateEnabled, status.StateCollecting, status.StateProblem
 				*status = CollectorStatus{
-					LogsEnabled: logsEnabled, LogsCollecting: logsCollecting, LogsContainers: logContainers,
+					EventConnected: eventConnected,
+					LogsEnabled:    logsEnabled, LogsCollecting: logsCollecting, LogsContainers: logContainers,
 					LogsLastCycle: logCycle, LogsProblem: logProblem, LogEvictions: logEvictions,
 					StateEnabled: stateEnabled, StateCollecting: stateCollecting, StateProblem: stateProblem,
 				}
@@ -162,11 +171,9 @@ func (c *Collector) problem(err error) {
 }
 
 type eventContinuity struct {
-	mu            sync.RWMutex
-	connected     bool
-	generation    uint64
-	eligible      map[string]bool
-	stateEligible map[string]bool
+	mu         sync.RWMutex
+	connected  bool
+	generation uint64
 }
 
 func (state *eventContinuity) setConnected(connected bool) {
@@ -180,30 +187,6 @@ func (state *eventContinuity) snapshot() (bool, uint64) {
 	state.mu.RLock()
 	defer state.mu.RUnlock()
 	return state.connected, state.generation
-}
-
-func (state *eventContinuity) setEligible(ids map[string]bool) {
-	state.mu.Lock()
-	defer state.mu.Unlock()
-	state.eligible = ids
-}
-
-func (state *eventContinuity) setStateEligible(ids map[string]bool) {
-	state.mu.Lock()
-	defer state.mu.Unlock()
-	state.stateEligible = ids
-}
-
-func (state *eventContinuity) contains(id string) bool {
-	state.mu.RLock()
-	defer state.mu.RUnlock()
-	return state.eligible[id]
-}
-
-func (state *eventContinuity) containsState(id string) bool {
-	state.mu.RLock()
-	defer state.mu.RUnlock()
-	return state.stateEligible[id]
 }
 
 func (c *Collector) collect(ctx context.Context, settings Settings, sources SourceSettings) error {
@@ -253,7 +236,7 @@ func (c *Collector) collect(ctx context.Context, settings Settings, sources Sour
 		return err
 	}
 
-	continuity := &eventContinuity{eligible: make(map[string]bool)}
+	continuity := &eventContinuity{}
 	samplers := make(map[string]*Sampler)
 	c.stateMu.Lock()
 	c.stateCache = make(map[string]State)
@@ -269,7 +252,7 @@ func (c *Collector) collect(ctx context.Context, settings Settings, sources Sour
 	streamDone := make(chan struct{})
 	go func() {
 		defer close(streamDone)
-		c.watchEvents(streamCtx, store, continuity, sources.StateEnabled)
+		c.watchEvents(streamCtx, store, continuity, sources.StateEnabled, sources.StateScope)
 	}()
 	defer func() {
 		cancelStream()
@@ -312,6 +295,7 @@ func (c *Collector) collect(ctx context.Context, settings Settings, sources Sour
 					}
 					status.StoragePaused = false
 				})
+				c.clearStateStorageProblem()
 			}
 			if err := c.refreshEvictions(ctx, store); err != nil {
 				c.recordCycleError(err)
@@ -398,8 +382,11 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 		*previousCycleOK = false
 	}
 	stateProjects := metricsProjects
+	var stateScopeErr error
+	if persistStates && stateScope == settings.Scope {
+		stateScopeErr = scopeErr
+	}
 	if persistStates && stateScope != settings.Scope {
-		var stateScopeErr error
 		stateProjects, stateScopeErr = c.eligibleProjects(ctx, stateScope)
 		if stateScopeErr != nil {
 			c.logger.WarnContext(ctx, "partially resolved state collection scope", "error", stateScopeErr)
@@ -417,6 +404,7 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 	stateEligible := make(map[string]bool)
 	seen := make(map[string]bool, len(snapshot.Containers))
 	cycleErr := scopeErr
+	stateReconciliationOK := persistStates && stateScopeErr == nil
 	for _, container := range snapshot.Containers {
 		collectStats := containerInScope(container, settings.Scope, metricsProjects) &&
 			(settings.Scope != ScopeAll || container.State == "running")
@@ -426,6 +414,9 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 		}
 		if seen[container.ID] {
 			cycleErr = errors.Join(cycleErr, fmt.Errorf("Docker snapshot repeats container ID %s", container.ID))
+			if collectState {
+				stateReconciliationOK = false
+			}
 			continue
 		}
 		seen[container.ID] = true
@@ -452,8 +443,6 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 			delete(samplers, id)
 		}
 	}
-	continuity.setEligible(metricsEligible)
-	continuity.setStateEligible(stateEligible)
 	connected, generation := continuity.snapshot()
 	isContinuous := connected && *previousCycleOK && generation == *previousGeneration
 	states := make([]State, 0, len(stateEligible))
@@ -517,6 +506,7 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 				states = append(states, result.state)
 			} else if result.stateTarget && result.err != nil {
 				unavailableStateIDs = append(unavailableStateIDs, result.id)
+				stateReconciliationOK = false
 			}
 			if result.err != nil {
 				cycleErr = errors.Join(cycleErr, fmt.Errorf("observe container %s: %w", result.id, result.err))
@@ -543,45 +533,51 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 	}
 	now := time.Now().UTC()
 	var stateErr error
-	if persistStates && len(unavailableStateIDs) > 0 {
-		stateErr = store.StartStateGaps(ctx, unavailableStateIDs, now)
-		if stateErr != nil {
-			stateErr = fmt.Errorf("record unavailable state observations: %w", stateErr)
+	if persistStates {
+		c.statePersistMu.Lock()
+		for _, id := range unavailableStateIDs {
+			if err := startStateGapIfPreviouslyObserved(ctx, store, nil, id, now); err != nil {
+				stateErr = errors.Join(stateErr, fmt.Errorf("record unavailable state observation for %s: %w", id, err))
+			}
 		}
-	}
-	if len(states) != 0 && persistStates {
-		changed, err := c.changedStates(ctx, store, states)
-		if err != nil {
-			stateErr = errors.Join(stateErr, err)
-		} else if len(changed) != 0 {
-			writeErr := store.InsertStates(ctx, now, changed)
-			if writeErr == nil {
-				for _, state := range changed {
-					gapOpen, err := store.HasOpenStateGap(ctx, state.ContainerID)
-					if err != nil {
-						writeErr = errors.Join(writeErr, fmt.Errorf("read state observation gap for %s: %w", state.ContainerID, err))
-						continue
-					}
-					if gapOpen {
-						if err := store.EndStateGap(ctx, state.ContainerID, state.Time); err != nil {
-							writeErr = errors.Join(writeErr, fmt.Errorf("end state observation gap for %s: %w", state.ContainerID, err))
+		if len(states) != 0 {
+			changed, err := c.changedStates(ctx, store, states)
+			if err != nil {
+				stateErr = errors.Join(stateErr, err)
+			} else if len(changed) != 0 {
+				writeErr := store.InsertStates(ctx, now, changed)
+				if writeErr == nil {
+					for _, state := range changed {
+						gapOpen, err := store.HasOpenStateGap(ctx, state.ContainerID)
+						if err != nil {
+							writeErr = errors.Join(writeErr, fmt.Errorf("read state observation gap for %s: %w", state.ContainerID, err))
+							continue
+						}
+						if gapOpen {
+							if err := store.EndStateGap(ctx, state.ContainerID, state.Time); err != nil {
+								writeErr = errors.Join(writeErr, fmt.Errorf("end state observation gap for %s: %w", state.ContainerID, err))
+							}
 						}
 					}
 				}
-				globalGapOpen, err := store.HasOpenGlobalStateGap(ctx)
-				if err != nil {
-					writeErr = errors.Join(writeErr, fmt.Errorf("read shared state observation gap: %w", err))
-				} else if globalGapOpen {
-					if err := store.EndGlobalStateGap(ctx, now); err != nil {
-						writeErr = errors.Join(writeErr, fmt.Errorf("end shared state observation gap: %w", err))
-					}
+				if writeErr == nil {
+					c.rememberStates(changed)
+					c.clearStateStorageProblem()
+				}
+				stateErr = errors.Join(stateErr, writeErr)
+			}
+		}
+		if stateReconciliationOK && stateErr == nil {
+			globalGapOpen, err := store.HasOpenGlobalStateGap(ctx)
+			if err != nil {
+				stateErr = errors.Join(stateErr, fmt.Errorf("read shared state observation gap: %w", err))
+			} else if globalGapOpen {
+				if err := store.EndGlobalStateGap(ctx, now); err != nil {
+					stateErr = errors.Join(stateErr, fmt.Errorf("end shared state observation gap: %w", err))
 				}
 			}
-			if writeErr == nil {
-				c.rememberStates(changed)
-			}
-			stateErr = errors.Join(stateErr, writeErr)
 		}
+		c.statePersistMu.Unlock()
 		if stateErr != nil {
 			stateErr = c.reconcileWrite(ctx, store, stateErr)
 			cycleErr = errors.Join(cycleErr, fmt.Errorf("persist container states: %w", stateErr))
@@ -621,7 +617,7 @@ func (c *Collector) changedStates(ctx context.Context, store *ManagedStore, stat
 	if c.stateCache == nil {
 		c.stateCache = make(map[string]State)
 	}
-	globalGapOpen, err := store.HasOpenGlobalStateGap(ctx)
+	globalGapStart, globalGapOpen, err := store.OpenGlobalStateGap(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("read shared state observation gap: %w", err)
 	}
@@ -639,7 +635,7 @@ func (c *Collector) changedStates(ctx context.Context, store *ManagedStore, stat
 				c.stateCache[current.ContainerID] = previous
 			}
 		}
-		gapOpen, err := store.HasOpenStateGap(ctx, current.ContainerID)
+		gapStart, gapOpen, err := store.OpenStateGap(ctx, current.ContainerID)
 		if err != nil {
 			return nil, fmt.Errorf("read open state gap for %s: %w", current.ContainerID, err)
 		}
@@ -647,8 +643,22 @@ func (c *Collector) changedStates(ctx context.Context, store *ManagedStore, stat
 			current.ReconnectObserved = true
 			states[i] = current
 		}
-		if known && previous.State == current.State && previous.Health == current.Health && !gapOpen && !globalGapOpen {
-			continue
+		if known && previous.State == current.State && previous.Health == current.Health {
+			if !gapOpen && !globalGapOpen {
+				continue
+			}
+			relevantGapStart := gapStart
+			if globalGapStart.After(relevantGapStart) {
+				relevantGapStart = globalGapStart
+			}
+			if previous.ReconnectObserved && !previous.Time.Before(relevantGapStart) {
+				if gapOpen {
+					if err := store.EndStateGap(ctx, current.ContainerID, previous.Time); err != nil {
+						return nil, fmt.Errorf("end state observation gap for %s: %w", current.ContainerID, err)
+					}
+				}
+				continue
+			}
 		}
 		changed = append(changed, current)
 	}
@@ -695,34 +705,107 @@ func (c *Collector) refreshEvictions(ctx context.Context, store *ManagedStore) e
 	return nil
 }
 
-func (c *Collector) watchEvents(ctx context.Context, store *ManagedStore, continuity *eventContinuity, persistEvents bool) {
+func (c *Collector) watchEvents(ctx context.Context, store *ManagedStore, continuity *eventContinuity, persistEvents bool, scope CollectionScope) {
+	known := make(map[string]State)
+	var stateWatchMu sync.Mutex
+	projectsByName := make(map[string]bool)
+	var connected atomic.Bool
+	refresh := func() error {
+		projects, scopeErr := c.eligibleProjects(ctx, scope)
+		if scopeErr != nil {
+			err := fmt.Errorf("partially resolved state collection scope: %w", scopeErr)
+			c.setStateWatcherProblem(err)
+			return err
+		}
+		stateWatchMu.Lock()
+		defer stateWatchMu.Unlock()
+		projectsByName = projects
+		c.statePersistMu.Lock()
+		err := c.reconcileStateSnapshot(ctx, store, scope, projectsByName, known)
+		c.statePersistMu.Unlock()
+		if err != nil {
+			c.setStateWatcherProblem(err)
+			return err
+		}
+		c.setStateWatcherHealthy()
+		return nil
+	}
+	refreshTicker := time.NewTicker(c.stateRefreshEvery())
+	defer refreshTicker.Stop()
+	refreshDone := make(chan struct{})
+	go func() {
+		defer close(refreshDone)
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-refreshTicker.C:
+				if persistEvents && scope == ScopeActivated && connected.Load() {
+					_ = refresh()
+				}
+			}
+		}
+	}()
+	defer func() { <-refreshDone }()
 	for ctx.Err() == nil {
 		err := c.docker.WatchContainerEventsWithConnect(ctx, func() {
 			continuity.setConnected(true)
+			connected.Store(true)
 			c.updateStatus(func(status *CollectorStatus) {
 				status.EventConnected = true
 				if status.Problem == "Docker event stream disconnected" {
 					status.Problem = ""
 				}
-				if persistEvents && status.StateProblem == "Docker event stream disconnected; state history may have gaps." {
-					status.StateProblem = ""
-					status.StateCollecting = true
-				}
 			})
+			if persistEvents {
+				_ = refresh()
+			}
 		}, func(event runtime.ContainerEvent) error {
-			if !continuity.containsState(event.ID) || event.Time.Before(time.Now().Add(-time.Hour)) {
+			if event.Time.Before(time.Now().Add(-time.Hour)) {
 				return nil
 			}
 			if !persistEvents {
+				return nil
+			}
+			stateWatchMu.Lock()
+			defer stateWatchMu.Unlock()
+			if !containerInScope(runtime.Container{ID: event.ID, Project: event.Project}, scope, projectsByName) {
 				return nil
 			}
 			converted, ok := convertEvent(event)
 			if !ok {
 				return nil
 			}
-			err := store.InsertEvents(ctx, time.Now().UTC(), []Event{converted})
-			return c.reconcileWrite(ctx, store, err)
+			err := c.reconcileWrite(ctx, store, store.InsertEvents(ctx, time.Now().UTC(), []Event{converted}))
+			if err != nil {
+				c.setStateStorageProblem(err)
+				return err
+			}
+			c.clearStateStorageProblem()
+			switch event.Action {
+			case "create", "start", "stop", "die", "restart", "pause", "unpause", "health_status":
+				inspection, err := c.docker.InspectContainer(ctx, event.ID)
+				if err != nil {
+					c.statePersistMu.Lock()
+					gapErr := startStateGapIfPreviouslyObserved(ctx, store, known, event.ID, time.Now().UTC())
+					c.statePersistMu.Unlock()
+					if gapErr != nil {
+						c.setStateStorageProblem(gapErr)
+					}
+					c.setStateWatcherProblem(fmt.Errorf("inspect container %s after Docker event: %w", event.ID, err))
+					return nil
+				}
+				c.statePersistMu.Lock()
+				err = c.persistObservedState(ctx, store, known, stateFromInspection(inspection, time.Now().UTC()))
+				c.statePersistMu.Unlock()
+				if err != nil {
+					c.setStateStorageProblem(err)
+					return err
+				}
+			}
+			return nil
 		})
+		connected.Store(false)
 		continuity.setConnected(false)
 		if ctx.Err() != nil {
 			return
@@ -732,6 +815,7 @@ func (c *Collector) watchEvents(ctx context.Context, store *ManagedStore, contin
 			gapErr = store.StartGlobalStateGap(ctx, time.Now().UTC())
 			if gapErr != nil {
 				c.logger.ErrorContext(ctx, "record shared state-source disconnect", "error", gapErr)
+				c.setStateStorageProblem(gapErr)
 			}
 		}
 		c.updateStatus(func(status *CollectorStatus) {
@@ -739,12 +823,11 @@ func (c *Collector) watchEvents(ctx context.Context, store *ManagedStore, contin
 			status.Problem = "Docker event stream disconnected"
 			if persistEvents {
 				status.StateCollecting = false
-				status.StateProblem = "Docker event stream disconnected; state history may have gaps."
-				if gapErr != nil {
-					status.StateProblem += " Gap persistence failed: " + gapErr.Error()
-				}
 			}
 		})
+		if persistEvents {
+			c.setStateWatcherProblem(errors.New("Docker event stream disconnected; state history may have gaps."))
+		}
 		c.logger.WarnContext(ctx, "Docker metrics event stream disconnected", "error", err)
 		timer := time.NewTimer(time.Second)
 		select {
@@ -754,6 +837,13 @@ func (c *Collector) watchEvents(ctx context.Context, store *ManagedStore, contin
 		case <-timer.C:
 		}
 	}
+}
+
+func (c *Collector) stateRefreshEvery() time.Duration {
+	if c.stateRefreshInterval > 0 {
+		return c.stateRefreshInterval
+	}
+	return stateScopeRefreshInterval
 }
 
 func convertEvent(event runtime.ContainerEvent) (Event, bool) {

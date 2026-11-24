@@ -137,7 +137,7 @@ func TestCollectorPersistsReadOnlySamplesAndStates(t *testing.T) {
 	collector := &Collector{docker: docker, projects: projectReaderFunc(func(context.Context) ([]discovery.Project, error) {
 		return nil, nil
 	}), logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	continuity := &eventContinuity{eligible: make(map[string]bool)}
+	continuity := &eventContinuity{}
 	continuity.setConnected(true)
 	_, generation := continuity.snapshot()
 	settings := Settings{Enabled: true, Scope: ScopeAll, Interval: time.Second, StorageLimit: 10 << 20}
@@ -231,6 +231,82 @@ func TestStatsCollectionKeepsStateScopeIndependentAndOffHidesWrites(t *testing.T
 	}
 }
 
+func TestStatsEventWatcherAdmitsLifecycleEventsBetweenSampleCycles(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	id := strings.Repeat("9", 64)
+	root := t.TempDir()
+	projectPath := filepath.Join(root, "app")
+	if err := os.Mkdir(projectPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectPath, "compose.yaml"), []byte("name: app\nservices:\n  web:\n    image: example\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	listener, socket := newDockerSocket(t)
+	eventTime := time.Now().UTC()
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1.40/containers/json":
+			_, _ = fmt.Fprint(w, `[]`)
+		case "/v1.40/containers/" + id + "/json":
+			fmt.Fprintf(w, `{"Id":%q,"Config":{"Healthcheck":{"Test":["NONE"]}},"State":{"Status":"created"}}`, id)
+		case "/v1.40/events":
+			flusher := w.(http.Flusher)
+			fmt.Fprintf(w, `{"Type":"container","Action":"create","Actor":{"ID":%q,"Attributes":{"com.docker.compose.project":"app"}},"timeNano":%d}`+"\n", id, eventTime.UnixNano())
+			flusher.Flush()
+			<-r.Context().Done()
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	server.Listener = listener
+	server.Start()
+	defer server.Close()
+	store, err := OpenManaged(ctx, t.TempDir(), 10<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Maintain(ctx, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	collector := &Collector{
+		docker: runtime.NewClient(socket),
+		projects: projectReaderFunc(func(context.Context) ([]discovery.Project, error) {
+			return []discovery.Project{{Root: root, Path: projectPath, Active: true, Available: true}}, nil
+		}),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	done := make(chan struct{})
+	go func() {
+		collector.watchEvents(ctx, store, &eventContinuity{}, true, ScopeActivated)
+		close(done)
+	}()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		states, stateErr := store.SelectStates(ctx, id, eventTime.Add(-time.Minute), time.Now().UTC().Add(time.Minute), 10)
+		events, eventErr := store.SelectEvents(ctx, id, eventTime.Add(-time.Minute), time.Now().UTC().Add(time.Minute), 10)
+		if stateErr != nil || eventErr != nil {
+			cancel()
+			<-done
+			t.Fatalf("read event-driven state history: %v / %v", stateErr, eventErr)
+		}
+		if len(states) == 1 && len(events) == 1 {
+			if states[0].State != "created" || events[0].Kind != EventCreate {
+				t.Fatalf("between-cycle event history = states %#v, events %#v", states, events)
+			}
+			cancel()
+			<-done
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+	t.Fatalf("event was not admitted independently of sampling snapshots: %#v", collector.Status())
+}
+
 func TestCollectorStatusTracksStoragePressureEvictions(t *testing.T) {
 	ctx := context.Background()
 	store, now := newCollectorTestStore(t)
@@ -280,7 +356,7 @@ func TestCollectorActivatedScopeMatchesSharedComposeName(t *testing.T) {
 		}),
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
-	continuity := &eventContinuity{eligible: make(map[string]bool)}
+	continuity := &eventContinuity{}
 	previousCycleOK := false
 	var generation uint64
 	settings := Settings{Enabled: true, Scope: ScopeActivated, Interval: time.Second, StorageLimit: 10 << 20}
