@@ -158,7 +158,7 @@ and metric history. An aggregated dashboard log view is requested; a separate
 logs navigation view with stack/container/network filtering remains a tentative
 follow-up. At that stage, Docker stdout/stderr and an additional default-off
 log-collection option were proposals, not settled source/consent policy. The
-log opt-in question has not received an owner answer. Shared storage-pressure
+log opt-in question had not received an owner answer at that stage. Shared storage-pressure
 handling currently evicts samples only and needs a bounded policy for logs
 before production capture.
 
@@ -171,6 +171,19 @@ one-hour expiry without enabling capture or selecting managed pressure/replay
 policy. Optional JSON parsing and production collector/web integration remain
 pending. Dedicated log infrastructure such as Loki is a later option justified
 by actual volume/search needs, not a new prototype dependency.
+
+On 2026-11-23 the owner requested log settings in the Metrics category with
+separate Off/Low/Medium/High/Custom source selectors matching Docker stats.
+When expanded, each source's selector and controls should stay contained in its
+own card/panel. This supplies the next bounded presentation direction and
+replaces the earlier unapproved separate-checkbox proposal; it does not settle
+log preset values or collection defaults. An overarching selector for Metrics
+as a whole was suggested tentatively ("we could also"), not approved as a
+particular master/preset mechanism. Its inclusion, whether a preset enables
+previously disabled log collection, and whether it overwrites source preferences
+need refinement before implementation. Existing code still has one four-choice
+metrics profile plus a separate enabled checkbox, no independent log settings,
+and no production log collector.
 
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)

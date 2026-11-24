@@ -115,6 +115,11 @@ The owner subsequently approved beginning the Docker API implementation that
 preserves original messages and metadata. The first bounded API/SQLite
 foundation does not enable production collection or resolve the unanswered
 consent/pressure gates.
+The owner next requested separate five-position Docker stats and Container logs
+controls under Metrics, with each source's expanded settings contained in its
+own card/panel. An optional overall five-position selector remains a proposal;
+its effects on source profiles and log consent, log preset values and migration
+defaults require refinement before implementing the new settings model.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,

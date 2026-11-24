@@ -172,11 +172,31 @@ and truncation reporting. Do not read arbitrary host/container log files or
 change logging drivers. Driver/cache availability, rotation and disconnects
 prevent a guarantee of complete history.
 
-Application output can contain sensitive data. An additional default-off
-"Collect container logs" option, within the existing collection opt-in and
-selected-container scope, is recommended but
-not owner-approved; enabling numeric metrics must not be treated as evidence
-of a separate log-consent decision. The existing storage-pressure owner evicts
+Application output can contain sensitive data. The earlier recommendation for
+an additional default-off "Collect container logs" checkbox was not approved.
+On 2026-11-23 the owner instead requested log settings inside the Metrics
+category, with separate Docker stats and Container logs controls using five
+discrete positions: Off, Low, Medium, High and Custom. Off represents disabled
+collection for that source, not merely hiding its view. Each source's selector
+and expanded settings must remain contained together in its own card/panel;
+exact card styling, dimensions and disclosure behavior are not yet selected.
+This approves the category, per-source profile-control direction and containment,
+not log preset values, default/migration behavior or production capture.
+The existing Docker stats sampling targets remain unchanged by this presentation
+decision.
+
+The owner also suggested an overarching Off/Low/Medium/High/Custom selector for
+Metrics as a whole. Its inclusion and interaction with source controls remain
+proposed: applying presets to both sources, separately gating their saved
+preferences, or initially omitting the overall selector are distinct choices.
+For example, with Docker stats High and Container logs Off, choosing overall
+Low could enable logs under an all-source preset but leave them disabled under
+a gate. This consent effect must be settled before implementation; existing
+numeric-metrics enablement is not permission to silently start capturing logs.
+New log defaults and the effects of Off on retained history and other observed
+state/event collection remain separate lifecycle decisions.
+
+The existing storage-pressure owner evicts
 metric samples only, so production capture requires an explicit shared-budget policy
 rather than pretending that sample eviction already bounds log storage.
 
@@ -360,6 +380,13 @@ does not implement these behaviors.
   remains usable on desktop, narrow screens, keyboard and touch.
 - Preset profiles hide Custom-only scope and interval controls; selecting
   Custom reveals them. Editing an individual setting selects Custom.
+- On 2026-11-23 the owner requested Docker stats and Container logs profile
+  controls together in Metrics, each with Off/Low/Medium/High/Custom positions.
+  Expanded source settings stay contained with their own selector in a
+  card/panel rather than spilling into another source's controls. The optional
+  overall selector and its effects remain proposed; no log preset, default,
+  migration, shared-budget or collection implementation is approved merely by
+  approving this presentation.
 - Storage targets accept B, KB, MB and GB, convert using decimal units to exact
   whole bytes, default to MB for initial setup, and reject invalid or
   overflowing amounts without saving. The unit selector appears within the
