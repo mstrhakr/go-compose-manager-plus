@@ -352,7 +352,7 @@ func (c *Collector) watchStateEvents(ctx context.Context, store *ManagedStore, s
 			return
 		}
 		var gapErr error
-		if gapErr = store.StartGlobalStateGap(ctx, time.Now().UTC()); gapErr != nil {
+		if gapErr = c.startGlobalStateGap(ctx, store, time.Now().UTC()); gapErr != nil {
 			c.logger.ErrorContext(ctx, "record shared state-source disconnect", "error", gapErr)
 			c.setStateStorageProblem(gapErr)
 		}

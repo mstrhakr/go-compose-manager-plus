@@ -390,7 +390,7 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 	if err != nil {
 		*previousCycleOK = false
 		if persistStates {
-			if gapErr := store.StartGlobalStateGap(ctx, time.Now().UTC()); gapErr != nil {
+			if gapErr := c.startGlobalStateGap(ctx, store, time.Now().UTC()); gapErr != nil {
 				err = errors.Join(err, fmt.Errorf("record unavailable state observation: %w", gapErr))
 			}
 		}
@@ -638,6 +638,12 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 	return cycleErr
 }
 
+func (c *Collector) startGlobalStateGap(ctx context.Context, store *ManagedStore, at time.Time) error {
+	c.statePersistMu.Lock()
+	defer c.statePersistMu.Unlock()
+	return store.StartGlobalStateGap(ctx, at)
+}
+
 func (c *Collector) changedStates(ctx context.Context, store *ManagedStore, states []State) ([]State, error) {
 	c.stateMu.Lock()
 	defer c.stateMu.Unlock()
@@ -662,14 +668,14 @@ func (c *Collector) changedStates(ctx context.Context, store *ManagedStore, stat
 				c.stateCache[current.ContainerID] = previous
 			}
 		}
-		if known && !current.Time.After(previous.Time) {
-			continue
-		}
 		gapStart, gapOpen, err := store.OpenStateGap(ctx, current.ContainerID)
 		if err != nil {
 			return nil, fmt.Errorf("read open state gap for %s: %w", current.ContainerID, err)
 		}
 		if gapOpen && !current.Time.After(gapStart) || globalGapOpen && !current.Time.After(globalGapStart) {
+			return nil, fmt.Errorf("state observation for %s does not follow its open observation gap", current.ContainerID)
+		}
+		if known && !current.Time.After(previous.Time) {
 			continue
 		}
 		if gapOpen || globalGapOpen {
@@ -846,7 +852,7 @@ func (c *Collector) watchEvents(ctx context.Context, store *ManagedStore, contin
 		}
 		var gapErr error
 		if persistEvents {
-			gapErr = store.StartGlobalStateGap(ctx, time.Now().UTC())
+			gapErr = c.startGlobalStateGap(ctx, store, time.Now().UTC())
 			if gapErr != nil {
 				c.logger.ErrorContext(ctx, "record shared state-source disconnect", "error", gapErr)
 				c.setStateStorageProblem(gapErr)

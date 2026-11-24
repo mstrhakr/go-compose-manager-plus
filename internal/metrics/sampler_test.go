@@ -11,12 +11,16 @@ import (
 )
 
 type fakeSamplerSource struct {
-	inspections []runtime.ContainerInspection
-	stats       runtime.Stats
-	err         error
+	inspections   []runtime.ContainerInspection
+	stats         runtime.Stats
+	err           error
+	beforeInspect func()
 }
 
 func (f *fakeSamplerSource) InspectContainer(context.Context, string) (runtime.ContainerInspection, error) {
+	if f.beforeInspect != nil {
+		f.beforeInspect()
+	}
 	if len(f.inspections) == 0 {
 		return runtime.ContainerInspection{}, errors.New("no inspection")
 	}

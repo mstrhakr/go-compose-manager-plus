@@ -165,6 +165,59 @@ func TestCollectorPersistsReadOnlySamplesAndStates(t *testing.T) {
 	}
 }
 
+func TestSamplingKeepsSharedGapUntilFreshObservations(t *testing.T) {
+	ctx := context.Background()
+	store, start := newCollectorTestStore(t)
+	id := strings.Repeat("a", 64)
+	collector := &Collector{logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	initial := State{ContainerID: id, Time: start.Add(-time.Minute), State: "running", Health: HealthHealthy}
+	if err := collector.persistObservedState(ctx, store, make(map[string]State), initial); err != nil {
+		t.Fatal(err)
+	}
+	collector.docker = newCollectorDocker(t, []runtime.Container{{ID: id, State: "running"}})
+	inspection := runtime.ContainerInspection{ID: id, State: "running", Health: "healthy"}
+	source := &fakeSamplerSource{inspections: []runtime.ContainerInspection{inspection, inspection, inspection, inspection}}
+	disconnected := false
+	source.beforeInspect = func() {
+		source.stats.Read = time.Now().UTC()
+		if disconnected {
+			return
+		}
+		disconnected = true
+		newer := initial
+		newer.Time, newer.Health = time.Now().UTC(), HealthUnhealthy
+		if err := collector.persistObservedState(ctx, store, make(map[string]State), newer); err != nil {
+			t.Errorf("persist concurrent observation: %v", err)
+		}
+		if err := collector.startGlobalStateGap(ctx, store, time.Now().UTC()); err != nil {
+			t.Errorf("open disconnect gap during sampling: %v", err)
+		}
+	}
+	settings := Settings{Enabled: true, Scope: ScopeAll, Interval: 15 * time.Second, StorageLimit: 10 << 20}
+	samplers := map[string]*Sampler{id: newSampler(source)}
+	continuity := &eventContinuity{}
+	previousCycleOK := false
+	var generation uint64
+	err := collector.collectCycleWithScopes(ctx, settings, ScopeAll, store, continuity, samplers, &previousCycleOK, &generation, true)
+	if open, gapErr := store.HasOpenGlobalStateGap(ctx); gapErr != nil || !open {
+		t.Fatalf("pre-disconnect sampling closed shared gap: open=%v, error=%v, cycle=%v", open, gapErr, err)
+	}
+	if err == nil {
+		t.Fatal("sampling did not report incomplete reconnect reconciliation")
+	}
+	if err := collector.collectCycleWithScopes(ctx, settings, ScopeAll, store, continuity, samplers, &previousCycleOK, &generation, true); err != nil {
+		t.Fatal(err)
+	}
+	history, err := store.SelectStateHistory(ctx, id, initial.Time, time.Now().UTC().Add(time.Second), 10)
+	if err != nil || len(history.States) != 3 || len(history.Gaps) != 1 {
+		t.Fatalf("reconnected state history = %#v, %v", history, err)
+	}
+	last := history.States[len(history.States)-1]
+	if !last.ReconnectObserved || !last.Time.After(history.Gaps[0].Start) || history.Gaps[0].End.IsZero() {
+		t.Fatalf("shared gap closed without a fresh reconnect observation: %#v", history)
+	}
+}
+
 func TestStatsCollectionKeepsStateScopeIndependentAndOffHidesWrites(t *testing.T) {
 	activeID, inactiveID := strings.Repeat("c", 64), strings.Repeat("d", 64)
 	root := t.TempDir()
