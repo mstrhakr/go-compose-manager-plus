@@ -202,6 +202,8 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 	for _, project := range projects {
 		views = append(views, projectView{Project: project, DisplayName: filepath.Base(project.Path)})
 	}
+	detailsKey := r.URL.Query().Get("details")
+	detailsFragment := r.Header.Get("HX-Request") == "true" && detailsKey != "" && (view == "projects" || view == "containers")
 	requested := r.URL.Query().Get("runtime") == "1" || view == "projects" || view == "containers" || view == "observability"
 	containerList := listPanel{ID: "containers-title", Title: "Containers", Customize: true, Columns: []string{"Name", "State", "Compose project", "Service"}, Empty: "No containers found in this snapshot."}
 	var containers []runtime.Container
@@ -226,6 +228,9 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 			if view == "projects" || view == "dashboard" {
 				for i := range views {
 					project := &views[i]
+					if detailsFragment && project.Path != detailsKey {
+						continue
+					}
 					name, resolveErr := discovery.ResolveProjectName(r.Context(), project.Root, project.Path)
 					if resolveErr != nil {
 						project.RuntimeError = "Runtime status unknown: unable to resolve Compose inputs."
@@ -236,6 +241,45 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 				}
 			}
 			containers = snapshot.Containers
+		}
+	}
+	var details *resourceDetails
+	if view == "projects" {
+		for i := range views {
+			views[i].DetailsHref = resourceDetailsURL(view, r.URL.Query(), views[i].Path)
+			if views[i].Path == detailsKey {
+				details = stackDetails(views[i], r.URL.Query(), runtimeMessage)
+				if !views[i].Active {
+					details.Activation = &resourceDetailActivation{
+						Path: views[i].Path, CSRFToken: nosurf.Token(r),
+						Disabled: !views[i].Available || views[i].ResolutionError != "" || views[i].Root != settings.Root,
+					}
+					if views[i].Root != settings.Root {
+						details.Activation.Reason = "Outside the current discovery root; save its root to activate."
+					}
+				}
+			}
+		}
+	} else if view == "containers" && detailsKey != "" {
+		if runtimeState != "Snapshot" {
+			http.Error(w, "Container details unavailable. Check the Docker connection and refresh inventory.", http.StatusServiceUnavailable)
+			return
+		}
+		for _, container := range containers {
+			if container.ID == detailsKey {
+				details = containerDetails(container, r.URL.Query(), runtimeMessage)
+				break
+			}
+		}
+	}
+	if (view == "projects" || view == "containers") && detailsKey != "" {
+		if details == nil {
+			http.Error(w, "Selected resource is no longer available. Refresh inventory.", http.StatusNotFound)
+			return
+		}
+		if detailsFragment {
+			server.renderResourceDetails(w, r, details)
+			return
 		}
 	}
 	var filters inventoryFilters
@@ -269,7 +313,11 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 			case "created", "exited", "dead":
 				indicator = "stopped"
 			}
-			containerList.Rows = append(containerList.Rows, listRow{Cells: []string{name, container.State, project, service}, Indicator: indicator})
+			href := ""
+			if container.ID != "" {
+				href = resourceDetailsURL(view, r.URL.Query(), container.ID)
+			}
+			containerList.Rows = append(containerList.Rows, listRow{Cells: []string{name, container.State, project, service}, Indicator: indicator, DetailsHref: href})
 		}
 	}
 	if runtimeState != "Snapshot" {
@@ -336,15 +384,16 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 	if historyError != "" {
 		pageError = strings.TrimSpace(pageError + " " + historyError)
 	}
-	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, ProjectColumns: listPanel{ID: "projects-title", Title: "Projects", Columns: []string{"Project", "Discovery", "Activation", "Containers"}}, Filters: filters, SubviewNav: subviews,
+	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, ProjectList: projectInventoryList(views, filters.Total, runtimeState), Filters: filters, SubviewNav: subviews,
 		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: views, RuntimeMessage: runtimeMessage, RuntimeState: runtimeState,
 		Charts: charts, MetricsStatus: metricsStatus, Timeline: timeline, LogHistory: logHistory, ObservedContainers: observed, SelectedContainer: selected,
 		Metrics: []metricPanel{
 			{ID: "restart-title", Title: "Container restart & OOM rate", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
 			{ID: "health-title", Title: "Stack health & readiness", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
 		},
-		Error:  pageError,
-		Notice: server.manager.SessionManager().PopString(r.Context(), "discovery_notice")})
+		ResourceDetails: details,
+		Error:           pageError,
+		Notice:          server.manager.SessionManager().PopString(r.Context(), "discovery_notice")})
 }
 
 func (server *authServer) requireUser(allowPasswordChange bool, next http.Handler) http.Handler {
@@ -355,10 +404,20 @@ func (server *authServer) requireUser(allowPasswordChange bool, next http.Handle
 			return
 		}
 		if !authenticated {
+			if r.Header.Get("HX-Request") == "true" {
+				w.Header().Set("HX-Redirect", "/login")
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
 			http.Redirect(w, r, "/login", http.StatusSeeOther)
 			return
 		}
 		if user.MustChange && !allowPasswordChange {
+			if r.Header.Get("HX-Request") == "true" {
+				w.Header().Set("HX-Redirect", "/setup/password")
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
 			http.Redirect(w, r, "/setup/password", http.StatusSeeOther)
 			return
 		}

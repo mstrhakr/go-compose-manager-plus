@@ -1584,3 +1584,105 @@ findings; deployment-specific uncertainty and local gate failures remain noted.
 The corrected scenario then passed in all four local browser projects with the
 previously disclosed 90-second shared-host budget; Firefox took 51.8 seconds and
 WebKit 32.0 seconds. The repository's default CI timeout remains unchanged.
+
+## Resource Details Drawer (LIVE-004)
+
+**2026-11-24, `feat/resource-details-drawer`, based on `969437b`:** the owner
+authorized the reusable base and relevant read-only stack/container information,
+then explicitly removed stack-row expansion in favor of the shared container-style
+table. No new lifecycle actions, editable settings or tags/groups are implemented.
+The owner's unrelated workspace edit is preserved and excluded.
+
+The shared Go model/escaped partial displays Overview and read-only Configuration.
+Selection matches only a registered stack path or an exact current Docker ID,
+independently of list filters; stale/unknown selections fail explicitly.
+Container image, status, creation and ports come from the existing bounded
+read-only list response, not additional inspect calls or arbitrary labels/env.
+HTMX fragment reads resolve only the selected registered stack, not every stack's
+Compose inputs again. The existing Activate form retains its permission-only
+backend/CSRF/eligibility behavior, including the previous-root disabled state.
+
+Desktop details overlay a 400px right panel without changing main-content bounds.
+On narrow screens the native dialog is full-width and modal. Tests exercise
+keyboard tabs, focus return, Escape/close, pointer/touch entry, long-name/port
+overflow, independent scrolling, ordinary no-JS links, CSP, stale request replacement,
+explicit request failures and closing an in-flight request without late reopening.
+The first close implementation used a plain event where htmx expects event
+details; the cancellation regression caught it and the CustomEvent correction
+passes. The full gate also caught the separately owned UI-fixture row shape;
+its optional details href now matches the production list model.
+
+Executed on Linux:
+
+- `CGO_ENABLED=1 go test -race ./internal/web ./internal/runtime -count=1`
+  passed after updating the affected discovery/activation assertions.
+- All four new drawer cases passed in Chromium, WebKit and mobile Chromium at
+  the normal timeout. All four passed in Firefox with local
+  `--workers=1 --timeout=90000`; earlier Firefox cold page setup/navigation
+  exceeded the repository's unchanged 30-second default.
+- The real authenticated `first login` browser flow passed with its existing
+  no-JS phase plus desktop and touch contexts (11.7 seconds). An earlier run
+  correctly failed because the updated row locator still matched a full folder
+  path rather than its display-only basename; selection now uses the actual name.
+- `make docs` and `make check-security` passed; audit and govulncheck reported
+  no vulnerabilities.
+
+Synthetic previews use the actual templates/assets and production CSP, clearly
+labeled as synthetic. Successive captures were opened and compared with the
+private references: narrower overlay, segmented tabs, card separation and a
+bounded long-name header were refined. No numerical similarity claim is made.
+The screenshots do not prove live Docker host behavior or approve future actions.
+Final capture inspection also found the existing table hover rule overriding the
+new selected-row background. The drawer selection rule now retains its visual
+priority while hovered, with an outcome assertion in the shared-table browser case.
+Final gate evidence and limits:
+
+- The first `make check` passed all Go race packages, vet, build, 17 Node tests
+  and seven HTTP tests before browser collection exposed the UI-fixture mismatch.
+  The fixture was corrected rather than weakening the component template.
+- A second `make check` failed the unchanged
+  `TestCollectorRunOptInPersistsEventsAndStopsOnDisable` five-second startup
+  deadline during a 526-second metrics-package run. The same isolated failure
+  was reproduced on untouched merged main `5f75bba` in a temporary detached
+  worktree; that worktree was removed. It is not attributed to the drawer, and
+  no collector policy or startup timeout was changed to hide it.
+- The complete browser suite then passed with the disclosed local
+  `--workers=2 --timeout=90000`: **101 passed, three existing single-bootstrap
+  account skips**, across Chromium, Firefox, WebKit and mobile Chromium. This
+  does not establish a default-timeout CI pass.
+- Final standalone `go vet ./...`, `go build ./...`, `make check-assets`,
+  `make check-contracts`, `make docs` and `git diff --check` passed.
+
+The full default local gate is therefore **not green**. Native macOS/Windows
+and hosted CI on this branch, live Docker-host checks, and packaging/workflow
+checks were not executed for this slice. No platform support or production-host
+recovery is inferred from Linux tests or synthetic previews.
+
+## Main CI Chart-History Deadline Correction
+
+**2026-11-24, same branch:** the owner explicitly included the post-merge
+[main CI failure](https://github.com/mstrhakr/go-compose-manager-plus/actions/runs/45423136665)
+at `5f75bba`. Its macOS Intel race job failed
+`TestChartSeriesLargeHistory` at `store_test.go:196` with
+`read chart metrics: context deadline exceeded`, after 30.01 seconds.
+
+The test created its 30-second context before opening the database, constructing
+43,200 observations and inserting/indexing the fixture. The chart read inherited
+only the remaining time. A local race-enabled CPU profile of the uncorrected
+test took 27.76 seconds total; fixture insertion accounted for substantially
+more CPU than chart selection. This is evidence of a shared preparation/read
+budget, not proof of a failing SQL query or a new production timeout requirement.
+
+The fixture now uses the test lifecycle context. Only after insertion does the
+test start its **unchanged 30-second chart-read deadline**. Preparation and read
+durations are logged separately. All 12 containers, 120 buckets per container
+and exact latest-recorded CPU values are still checked. No samples were removed,
+assertions skipped, SQL/window sorting reintroduced, or production/CI timeout
+increased.
+
+`CGO_ENABLED=1 go test -race ./internal/metrics -run
+'^TestChartSeriesLargeHistory$' -count=3 -v` passed on Linux: preparation took
+15.36, 15.48 and 16.68 seconds; reads took 4.52, 4.49 and 4.33 seconds.
+The corrected test also passed in the first full Go race suite described above.
+Native macOS Intel reproduction and hosted CI verification on this branch remain
+unexecuted; local success does not establish a native-platform CI pass.

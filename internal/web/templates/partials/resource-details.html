@@ -1,0 +1,33 @@
+{{define "resource-details"}}
+<dialog open id="resource-details" class="resource-details" data-resource-details data-resource-key="{{.Key}}" aria-labelledby="resource-details-title">
+  <header class="resource-details-header">
+    <div><p>{{.Kind}}</p><h2 id="resource-details-title" tabindex="-1">{{.Title}}</h2></div>
+    <a class="resource-details-close" href="{{.CloseHref}}" data-resource-details-close aria-label="Close details" title="Close details">&#215;</a>
+  </header>
+  <nav class="resource-details-tabs" aria-label="Resource detail views">
+    {{range .Tabs}}<a id="resource-tab-{{.ID}}" href="#resource-panel-{{.ID}}" data-resource-tab="{{.ID}}">{{if eq .ID "overview"}}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>{{else}}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v1"/></svg>{{end}}<span>{{.Label}}</span></a>{{end}}
+  </nav>
+  <div class="resource-details-body">
+    <p class="resource-details-feedback" data-resource-details-feedback role="alert" hidden></p>
+    <div class="resource-details-identity"><span class="resource-details-glyph" aria-hidden="true">{{if eq .Kind "Stack"}}&#9636;{{else}}&#9635;{{end}}</span><div><strong>{{.Title}}</strong><p>{{.Subtitle}}</p></div></div>
+    {{range .Tabs}}
+    <section id="resource-panel-{{.ID}}" data-resource-panel="{{.ID}}" aria-labelledby="resource-tab-{{.ID}}">
+      <h3 class="resource-details-fallback-heading">{{.Label}}</h3>
+      {{range .Sections}}<details class="resource-details-card" open>
+        <summary>{{.Title}}</summary>
+        {{if .Fields}}<dl>{{range .Fields}}<div><dt>{{.Label}}</dt><dd>{{if .Href}}<a href="{{.Href}}">{{.Value}}</a>{{else}}{{.Value}}{{end}}</dd></div>{{end}}</dl>{{end}}
+        {{if .Note}}<p>{{.Note}}</p>{{end}}
+      </details>{{end}}
+    </section>
+    {{end}}
+    {{with .Activation}}<form class="resource-details-activation" action="/discovery/activate" method="post">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><input type="hidden" name="path" value="{{.Path}}"><input type="hidden" name="return_to" value="/projects">
+      <button class="quiet-button" type="submit" {{if .Disabled}}disabled{{end}}>Activate</button>
+      {{if .Reason}}<p>{{.Reason}}</p>{{end}}
+      <p>Grants permission only; no Compose operation is performed. The folder must be available, valid and in the current discovery root.</p>
+    </form>{{end}}
+    <p class="resource-details-notice">{{.Notice}}</p>
+    <a class="quiet-button resource-details-refresh" href="{{.Href}}" data-resource-details-open hx-get="{{.Href}}" hx-target="#resource-details-host" hx-swap="innerHTML" hx-sync="#resource-details-host:replace">Refresh details</a>
+  </div>
+</dialog>
+{{end}}

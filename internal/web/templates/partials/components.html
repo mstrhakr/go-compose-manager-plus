@@ -48,9 +48,9 @@
   {{if .Rows}}
   <div class="list-scroll" role="region" aria-label="{{.Title}} table" tabindex="0"><table class="data-table">
     <thead><tr>{{if .Selectable}}<th class="selection-cell"><label data-select-all-control hidden><input type="checkbox" data-select-all aria-label="Select all {{.Title}}"></label></th>{{end}}{{range .Columns}}<th scope="col"{{if $.Customize}} data-column="{{.}}"{{end}}>{{.}}</th>{{end}}</tr></thead>
-    <tbody>{{range $row := .Rows}}<tr>
+    <tbody>{{range $row := .Rows}}<tr{{if .DetailsHref}} data-resource-row{{end}}>
       {{if $.Selectable}}<td class="selection-cell"><label><input type="checkbox" data-select-item value="{{.Value}}" aria-label="Select {{.Label}}" {{if .Disabled}}disabled{{end}}></label></td>{{end}}
-      {{range $index, $cell := .Cells}}<td{{if $.Customize}} data-column="{{index $.Columns $index}}"{{end}}>{{if and (eq $index 0) $row.Indicator}}<span class="state-dot state-dot-{{$row.Indicator}}" aria-hidden="true"></span>{{end}}{{$cell}}</td>{{end}}
+      {{range $index, $cell := .Cells}}<td{{if $.Customize}} data-column="{{index $.Columns $index}}"{{end}}>{{if and (eq $index 0) $row.Indicator}}<span class="state-dot state-dot-{{$row.Indicator}}" aria-hidden="true"></span>{{end}}{{if and (eq $index 0) $row.DetailsHref}}<a class="resource-detail-link" href="{{$row.DetailsHref}}" data-resource-details-open hx-get="{{$row.DetailsHref}}" hx-target="#resource-details-host" hx-swap="innerHTML" hx-sync="#resource-details-host:replace">{{$cell}}</a>{{else}}{{$cell}}{{end}}</td>{{end}}
     </tr>{{end}}</tbody>
   </table></div>
   {{else}}<div class="list-empty">{{.Empty}}</div>{{end}}

@@ -3,6 +3,7 @@ package web
 import (
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
@@ -24,6 +25,25 @@ type inventoryFilters struct {
 	Projects []filterOption
 	Total    int
 	Shown    int
+}
+
+func projectInventoryList(projects []projectView, total int, status string) listPanel {
+	list := listPanel{ID: "projects-title", Title: "Projects", Status: status, Customize: true,
+		Columns: []string{"Project", "Discovery", "Activation", "Containers"}, Empty: "No projects discovered. Set a discovery root and scan from the overview."}
+	if total > 0 {
+		list.Empty = "No projects match these filters."
+	}
+	for _, project := range projects {
+		count := "Unknown"
+		if project.RuntimeName != "" {
+			count = strconv.Itoa(len(project.Containers))
+		}
+		list.Rows = append(list.Rows, listRow{
+			Cells:       []string{project.DisplayName, project.DiscoveryStatus(), project.ActivationStatus(), count},
+			DetailsHref: project.DetailsHref,
+		})
+	}
+	return list
 }
 
 func selected(values url.Values, key string) map[string]bool {

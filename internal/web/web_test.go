@@ -234,8 +234,13 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 		t.Fatalf("scan = %d", response.Code)
 	}
 	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
-	if !strings.Contains(response.Body.String(), "Inactive") || !strings.Contains(response.Body.String(), html.EscapeString(project)) {
+	if !strings.Contains(response.Body.String(), "Inactive") || !strings.Contains(response.Body.String(), "details="+url.QueryEscape(project)) {
 		t.Fatalf("discovered project missing: %s", response.Body.String())
+	}
+	response = perform(handler, http.MethodGet, "/projects?details="+url.QueryEscape(project), nil, cookies, "")
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), html.EscapeString(project)) ||
+		!strings.Contains(response.Body.String(), `action="/discovery/activate"`) {
+		t.Fatalf("stack details or existing activation missing: %d %s", response.Code, response.Body.String())
 	}
 	later := filepath.Join(root, "later")
 	if err := os.Mkdir(later, 0o700); err != nil {
@@ -253,7 +258,7 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	if !strings.Contains(response.Body.String(), "Active") || !strings.Contains(response.Body.String(), "No Compose operation was performed") {
 		t.Fatalf("activation not reflected: %s", response.Body.String())
 	}
-	if strings.Contains(response.Body.String(), html.EscapeString(later)) {
+	if strings.Contains(response.Body.String(), "details="+url.QueryEscape(later)) {
 		t.Fatal("activation unexpectedly discovered another project")
 	}
 	if err := os.Rename(root, root+"-temporarily-unavailable"); err != nil {
@@ -294,7 +299,7 @@ func TestDiscoveryAuthenticatedFlow(t *testing.T) {
 	}
 	laterToken := tokenFromBody(t, response.Body.String())
 	perform(handler, http.MethodPost, "/discovery/root", url.Values{"root": {t.TempDir()}}, cookies, laterToken)
-	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
+	response = perform(handler, http.MethodGet, "/projects?details="+url.QueryEscape(later), nil, cookies, "")
 	if !strings.Contains(response.Body.String(), "Outside the current discovery root") || !strings.Contains(response.Body.String(), `disabled>Activate</button>`) {
 		t.Fatalf("previous-root activation should be disabled: %s", response.Body.String())
 	}
@@ -354,15 +359,34 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 		}
 	}
 	cookies := make(map[string]*http.Cookie)
+	detailFragment := func(path string) *httptest.ResponseRecorder {
+		request := httptest.NewRequest(http.MethodGet, testOrigin+path, nil)
+		request.RemoteAddr = "127.0.0.1:23456"
+		request.Header.Set("HX-Request", "true")
+		for _, cookie := range cookies {
+			request.AddCookie(cookie)
+		}
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, request)
+		return response
+	}
+	response := detailFragment("/containers?details=" + strings.Repeat("a", 64))
+	if response.Code != http.StatusUnauthorized || response.Header().Get("HX-Redirect") != "/login" {
+		t.Fatalf("anonymous details request = %d, redirect %q", response.Code, response.Header().Get("HX-Redirect"))
+	}
 	for _, path := range []string{"/?runtime=1", "/projects", "/containers", "/containers/observability"} {
 		perform(handler, http.MethodGet, path, nil, cookies, "")
 	}
 	if calls.Load() != 0 {
 		t.Fatal("anonymous request reached Docker")
 	}
-	response := perform(handler, http.MethodGet, "/login", nil, cookies, "")
+	response = perform(handler, http.MethodGet, "/login", nil, cookies, "")
 	token := tokenFromBody(t, response.Body.String())
 	perform(handler, http.MethodPost, "/login", url.Values{"username": {"operator"}, "password": {"bootstrap-password-123"}}, cookies, token)
+	response = detailFragment("/projects?details=anything")
+	if response.Code != http.StatusForbidden || response.Header().Get("HX-Redirect") != "/setup/password" || calls.Load() != 0 {
+		t.Fatalf("password-change gate = %d, redirect %q, Docker calls %d", response.Code, response.Header().Get("HX-Redirect"), calls.Load())
+	}
 	response = perform(handler, http.MethodGet, "/setup/password", nil, cookies, "")
 	token = tokenFromBody(t, response.Body.String())
 	perform(handler, http.MethodPost, "/setup/password", url.Values{"password": {"new-local-password-456"}, "confirm_password": {"new-local-password-456"}}, cookies, token)
@@ -391,21 +415,16 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	}
 	response = perform(handler, http.MethodGet, "/projects?runtime=1", nil, cookies, "")
 	body := response.Body.String()
-	if response.Code != http.StatusOK || strings.Count(body, "Docker project: <strong>shared</strong>") != 2 ||
-		strings.Count(body, "&lt;script&gt;") != 2 ||
-		!strings.Contains(body, ">Unavailable</span>") || !strings.Contains(body, ">Inactive</span>") ||
-		strings.Count(body, "No matching containers in this snapshot.") != 1 ||
-		strings.Count(body, "Runtime status unknown: unable to resolve Compose inputs.") != 1 || calls.Load() != 1 {
+	if response.Code != http.StatusOK || strings.Count(body, `data-resource-row`) != 4 ||
+		strings.Contains(body, "Docker project:") || strings.Contains(body, `class="inventory-item"`) ||
+		!strings.Contains(body, ">Unavailable</td>") || !strings.Contains(body, ">Inactive</td>") || calls.Load() != 1 {
 		t.Fatalf("snapshot: code=%d calls=%d body=%s", response.Code, calls.Load(), body)
 	}
 	response = perform(handler, http.MethodGet, "/projects", nil, cookies, "")
 	body = response.Body.String()
 	if response.Code != http.StatusOK || calls.Load() != 2 ||
-		strings.Count(body, "Docker project: <strong>shared</strong>") != 2 ||
-		strings.Count(body, "&lt;script&gt;") != 2 ||
-		strings.Count(body, "No matching containers in this snapshot.") != 1 ||
-		!strings.Contains(body, "Runtime status unknown: unable to resolve Compose inputs.") ||
-		!strings.Contains(body, "<details") || strings.Contains(body, "unmanaged") {
+		strings.Count(body, `data-resource-row`) != 4 ||
+		!strings.Contains(body, `data-column-manager="projects-title"`) || strings.Contains(body, "unmanaged") {
 		t.Fatalf("project inventory: code=%d calls=%d body=%s", response.Code, calls.Load(), body)
 	}
 	response = perform(handler, http.MethodGet, "/containers", nil, cookies, "")
@@ -432,7 +451,7 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	response = perform(handler, http.MethodGet, "/projects?q=one&group=Inactive", nil, cookies, "")
 	body = response.Body.String()
 	if response.Code != http.StatusOK || !strings.Contains(body, "1 of 4 projects") ||
-		!strings.Contains(body, filepath.Join(root, "one")) || strings.Contains(body, filepath.Join(root, "two")) {
+		!strings.Contains(body, ">one</a>") || strings.Contains(body, ">two</a>") {
 		t.Fatalf("filtered projects: %d %s", response.Code, body)
 	}
 	response = perform(handler, http.MethodGet, "/containers?q=does-not-exist", nil, cookies, "")
@@ -457,7 +476,47 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("all-container view was available: %d", response.Code)
 	}
+	for _, tt := range []struct {
+		name string
+		path string
+		want string
+	}{
+		{"registered stack outside search", "/projects?q=missing&details=" + url.QueryEscape(filepath.Join(root, "one")), ">one</h2>"},
+		{"empty stack snapshot", "/projects?details=" + url.QueryEscape(filepath.Join(root, "empty")), "No matching containers in this snapshot."},
+		{"unresolved Compose inputs", "/projects?details=" + url.QueryEscape(filepath.Join(root, "broken")), "Runtime status unknown: unable to resolve Compose inputs."},
+		{"exact container ID outside search", "/containers?q=missing&details=" + strings.Repeat("a", 64), "&lt;script&gt;"},
+		{"unmanaged container", "/containers?details=" + strings.Repeat("b", 64), ">unmanaged</h2>"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			response := detailFragment(tt.path)
+			body := response.Body.String()
+			if response.Code != http.StatusOK || !strings.Contains(body, `id="resource-details"`) ||
+				!strings.Contains(body, tt.want) || strings.Contains(body, "<!doctype") || strings.Contains(body, "<script>") {
+				t.Fatalf("details fragment: %d %s", response.Code, body)
+			}
+		})
+	}
+	response = detailFragment("/projects?details=" + url.QueryEscape(filepath.Join(root, "two")))
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), `type="submit" disabled>Activate`) {
+		t.Fatalf("unavailable stack activation should remain disabled: %d %s", response.Code, response.Body.String())
+	}
+	for _, path := range []string{
+		"/projects?details=" + url.QueryEscape(filepath.Join(root, "unregistered")),
+		"/containers?details=unmanaged", "/containers?details=" + strings.Repeat("c", 64),
+	} {
+		if response := detailFragment(path); response.Code != http.StatusNotFound {
+			t.Fatalf("unknown identity %s = %d", path, response.Code)
+		}
+	}
+	response = perform(handler, http.MethodGet, "/projects?q=one&details="+url.QueryEscape(filepath.Join(root, "one")), nil, cookies, "")
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "<!doctype") ||
+		!strings.Contains(response.Body.String(), `id="resource-details"`) {
+		t.Fatalf("non-JavaScript details: %d %s", response.Code, response.Body.String())
+	}
 	empty.Store(true)
+	if response := detailFragment("/containers?details=" + strings.Repeat("a", 64)); response.Code != http.StatusNotFound {
+		t.Fatalf("removed container = %d", response.Code)
+	}
 	response = perform(handler, http.MethodGet, "/containers", nil, cookies, "")
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "No containers found in this snapshot.") {
 		t.Fatalf("empty inventory = %d %s", response.Code, response.Body.String())
@@ -468,6 +527,15 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	}
 	empty.Store(false)
 	failure.Store(true)
+	response = detailFragment("/containers?details=" + strings.Repeat("a", 64))
+	if response.Code != http.StatusServiceUnavailable || !strings.Contains(response.Body.String(), "Check the Docker connection") {
+		t.Fatalf("unavailable container snapshot: %d %s", response.Code, response.Body.String())
+	}
+	response = detailFragment("/projects?details=" + url.QueryEscape(filepath.Join(root, "one")))
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Runtime association is unavailable") ||
+		strings.Contains(response.Body.String(), "No matching containers") {
+		t.Fatalf("registered stack without Docker: %d %s", response.Code, response.Body.String())
+	}
 	for _, path := range []string{"/?runtime=1", "/projects", "/containers", "/containers/observability"} {
 		response = perform(handler, http.MethodGet, path, nil, cookies, "")
 		body = response.Body.String()

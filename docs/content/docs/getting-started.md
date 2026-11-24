@@ -67,6 +67,21 @@ lifecycle management operations are not connected.</p>
 to choose visible columns and restore the defaults. Preferences are saved
 separately for each view in your browser; the identifying column always stays
 visible. Without JavaScript, all columns remain visible.</p>
+<p>Both inventories use the same table. Select a stack or container name to
+open its details; stack rows no longer expand inline. The right-hand drawer
+overlays the desktop inventory without resizing it, so you can select another
+row directly. On narrow screens it fills the screen. Use the close control or
+Escape to return to the list.</p>
+<p><strong>Overview</strong> shows current discovery/runtime information and
+associations. <strong>Configuration</strong> shows read-only identity/location
+information and, for containers, image and reported ports. These are snapshots;
+use <strong>Refresh details</strong> for a new read. Unavailable Docker status
+does not imply an empty stack. A removed/recreated container may no longer be
+available when selected. Environment values and arbitrary Docker labels are
+not displayed. The existing permission-only <strong>Activate</strong> control
+is in stack details; lifecycle actions, editing and tags/groups are not yet
+available. Without JavaScript, name links open a page with both detail sections
+and a normal close link.</p>
 
 ## Metrics and container observability
 

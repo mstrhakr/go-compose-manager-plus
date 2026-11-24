@@ -4,8 +4,8 @@ weight = 8
 +++
 # LIVE: Dashboard And Live State
 
-**Status:** Draft / bounded dashboard, container-history and Settings design
-decisions recorded; detailed collection, storage and recovery policies remain
+**Status:** Draft / bounded dashboard, container-history, resource-drawer and
+Settings design decisions recorded; detailed collection, storage and recovery policies remain
 partially unresolved. Approval is not implementation verification.
 
 **Baseline:** 2026-11-19, product `68ab9d2`, documentation-only planning. Plugin
@@ -623,6 +623,56 @@ test-only Docker/tstorage feasibility spike is recorded in
 [verification](../verification.md#docker-metrics-storage-proof-of-concept); it
 does not implement these behaviors.
 
+### LIVE-004: Shared Resource Details Drawer
+
+Provide a right-hand details drawer for a selected stack or container as the
+resource-specific home for details, settings and approved actions. On desktop
+it overlays the current screen content rather than resizing or displacing that
+content. Follow the supplied UniFi references approximately for placement,
+proportions and design vocabulary; their device/network fields and capabilities
+are not standalone feature requirements or assets to ship.
+
+**Approval:** Owner-requested presentation direction on 2026-11-24, followed by
+explicit authorization to implement the reusable base and relevant read-only
+stack/container information, refining as implementation proceeds. A final visual
+alignment pass may follow. Overview and read-only Configuration, an interactive
+desktop background and a full-width narrow-screen dialog are implementation
+defaults for this bounded slice, not separately approved permanent policies.
+Action placement, editable settings and unsaved-edit handling remain to refine.
+**Owner decision, 2026-11-24:** Future manual quick actions must open a
+confirmation popup/modal before execution. The owner's suggestion that all
+actions should require confirmation is tentative, not an adopted universal
+policy; other entry points, action types and unattended CI remain to refine.
+This decision does not authorize implementing actions or changing the existing
+permission-only Activate control.
+During implementation the owner explicitly requested removing stack-row
+expansion: stacks and containers use the same list component, and the drawer
+is the single resource-details surface. The existing permission-only Activate
+control moves into stack details with its eligibility and POST/CSRF checks
+unchanged; it is not a new lifecycle action.
+This does not authorize management
+operations, arbitrary configuration editing or new telemetry. Tags/groups are
+requested future organization capability, explicitly deferrable from this slice.
+
+**Source provenance:** Seven owner-provided reference images, preserved unchanged
+and privately; see the [source register](../planning/sources.md).
+
+**Enforcement:** The bounded base/read-only information slice is implemented on
+`feat/resource-details-drawer`, based on `969437b`; the unrelated owner workspace
+edit is excluded. Authenticated inventory selection matches a saved project path
+or an exact current container ID before filtering; an arbitrary path is never
+resolved as a new project. Go owns the escaped model/partial; a small JS module
+owns tabs, responsive dialog mode, request replacement/abort and focus restoration.
+Stack/container tables share the list component. The existing permission-only
+activation POST retains its backend rules.
+
+**Verification:** Linux web/runtime race suites, targeted desktop Chromium,
+WebKit and mobile/touch browser cases, Firefox cases with the disclosed local
+90-second startup budget, and the authenticated no-JS/desktop/mobile activation
+flow passed. Full-gate results and remaining platform qualifications are recorded
+in the [verification record](../verification.md#resource-details-drawer-live-004).
+This is not whole-LIVE approval or fulfillment.
+
 ## Dependencies
 
 - Depends on [AUTH-001 through AUTH-006](authentication.md) for user-bound local-session
@@ -638,6 +688,20 @@ does not implement these behaviors.
   Desktop/mobile presentation does not grant authority to execute actions.
 
 ## Acceptance Cases
+
+### Resource Details Drawer (LIVE-004)
+
+- Opening stack/container details on desktop overlays a right-hand drawer while
+  the underlying content keeps its layout; it does not open a new layout column.
+- Stack rows do not expand into a second details surface. Both resource
+  inventories use the shared list component; keyboard-accessible name links
+  open details, with whole-row selection as a pointer enhancement.
+- When a future manual quick action is offered, choosing it opens a confirmation
+  popup/modal; the action is not executed without confirmation. Quick actions
+  are not implemented or verified in the current slice.
+- Resource settings/actions must retain their owning permission and execution
+  policies. Reference-only controls and deferred tags/groups are not presented
+  as working capabilities merely to fill the drawer.
 
 ### Current Settings Design Summary
 

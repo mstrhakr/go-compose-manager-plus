@@ -229,6 +229,8 @@
       <footer class="dashboard-footer"><span>Application online</span><a href="/healthz">Health</a></footer>
     </main>
   </div>
+  <div id="resource-details-host">{{if .ResourceDetails}}{{template "resource-details" .ResourceDetails}}{{end}}</div>
+  <div class="resource-details-request" data-resource-details-request role="status" hidden><span data-resource-details-message></span><button type="button" data-resource-details-close>Dismiss</button></div>
 </div>
 {{end}}
 {{end}}

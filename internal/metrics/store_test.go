@@ -165,12 +165,12 @@ func TestSelectChartSeriesRejectsUnboundedRanges(t *testing.T) {
 }
 
 func TestChartSeriesLargeHistory(t *testing.T) {
+	setupStarted := time.Now()
 	dir := os.Getenv("CMP_SQLITE_FIXTURE_DIR")
 	if dir == "" {
 		dir = t.TempDir()
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
+	ctx := t.Context()
 	store, err := Open(ctx, dir)
 	if err != nil {
 		t.Fatal(err)
@@ -191,7 +191,12 @@ func TestChartSeriesLargeHistory(t *testing.T) {
 	if err := store.Insert(ctx, samples); err != nil {
 		t.Fatal(err)
 	}
-	series, err := store.SelectChartSeries(ctx, "", start, start.Add(time.Hour), 30*time.Second)
+	t.Logf("prepared %d samples in %s", len(samples), time.Since(setupStarted))
+	queryCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	queryStarted := time.Now()
+	series, err := store.SelectChartSeries(queryCtx, "", start, start.Add(time.Hour), 30*time.Second)
+	t.Logf("selected chart history in %s", time.Since(queryStarted))
 	if err != nil {
 		t.Fatal(err)
 	}
