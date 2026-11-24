@@ -273,6 +273,14 @@ screenshots and offering another if needed. This identifies an observation-gap
 presentation, not a container-down inference or approval of all proposed state
 baseline/reconciliation mechanics. Exact visual alignment remains pending.
 
+The owner clarified on 2026-11-23 that Up/Down/Stop/Restart/Update are distinct
+overall action/activity records, while container Observability should show
+container-level observed events such as Created, Started and health changes.
+Do not conflate requested manager actions with observed state or manufacture
+that sequence for every Up. Container-operation linking and activity lifetime
+remain unresolved; the request does not authorize action execution. Existing
+Docker event ingestion lacks Created events and no manager executor exists.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

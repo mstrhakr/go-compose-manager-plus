@@ -160,6 +160,23 @@ does not establish healthy, and a failed observation does not establish stopped.
 Exact state vocabulary, transition reconciliation, baseline retention and
 uncertain-span presentation remain to be refined.
 
+The owner further distinguished overall action/activity history from selected
+container history on 2026-11-23. Up, Down, Stop, Restart and Update are distinct
+manager actions to record on the overall timeline and in an activity record,
+not interchangeable container states. A container's Observability records should
+show its actual observed lifecycle/health events, such as Created, Started and
+a health change where they occur. Do not fabricate a fixed Created/Started/
+Healthy sequence for every Up request or equate operation completion with health.
+Exact action effects remain outside LIVE and unimplemented; this presentation
+direction does not authorize a mutation executor or settle operation-history
+retention, durability, actor fields or result semantics.
+
+Manager operation status is owned by [OPS](operation-coordination.md), not
+deduced from Docker events. Whether a selected-container activity tab also shows
+associated manager operations, and the evidence required to link those records,
+remain to be refined. Temporal proximity alone does not establish causation.
+Created-event ingestion is not implemented by the existing event collector.
+
 The owner further specified a distinct grey timeline area for Docker
 disconnections, following the supplied reference presentation. This area
 represents unavailable Docker observation, not proof that the container was
