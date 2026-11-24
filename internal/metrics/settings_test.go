@@ -59,6 +59,193 @@ func TestSettingsDefaultOffAndPersist(t *testing.T) {
 	}
 }
 
+func TestConfigurationPreservesExplicitCustomAndOffRestoreAcrossReopen(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	db, err := auth.OpenDatabase(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := NewSettingsStore(db.SQL)
+	sources, err := store.LoadSources(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stats := Settings{Enabled: true, Profile: ProfileLow, Scope: ScopeActivated,
+		Interval: 15 * time.Second, StorageLimit: DefaultMetricsStorageLimit}
+	sources.StateEnabled = true
+	sources.Logs.Configured, sources.Logs.Enabled = true, true
+	sources.Logs.Profile, sources.Logs.DeliveryPreset = ProfileLow, ProfileLow
+	sources.OverallProfile = ProfileCustom
+	stats, sources, err = store.SaveConfiguration(ctx, stats, sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SQL.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = auth.OpenDatabase(ctx, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.SQL.Close()
+	store = NewSettingsStore(db.SQL)
+	stats, sources, err = store.LoadConfiguration(ctx)
+	if err != nil || sources.OverallProfile != ProfileCustom {
+		t.Fatalf("explicit Custom reverted to a matching preset: %#v, %v", sources, err)
+	}
+	sources.RestoreStats, sources.RestoreState, sources.RestoreLogs = stats.Enabled, sources.StateEnabled, sources.Logs.Enabled
+	stats.Enabled, sources.StateEnabled, sources.Logs.Enabled = false, false, false
+	sources.OverallProfile = ProfileOff
+	stats, sources, err = store.SaveConfiguration(ctx, stats, sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stats, sources, err = store.LoadConfiguration(ctx)
+	if err != nil || sources.OverallProfile != ProfileOff || stats.Enabled || sources.StateEnabled || sources.Logs.Enabled ||
+		!sources.RestoreStats || !sources.RestoreState || !sources.RestoreLogs ||
+		stats.Interval != 15*time.Second || sources.Logs.DeliveryPreset != ProfileLow {
+		t.Fatalf("Off lost preferences/restore bits: %#v %#v, %v", stats, sources, err)
+	}
+}
+
+func TestStaleOverallRevisionRollsBackEverySource(t *testing.T) {
+	ctx := context.Background()
+	db, err := auth.OpenDatabase(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.SQL.Close()
+	store := NewSettingsStore(db.SQL)
+	sources, err := store.LoadSources(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stats := Settings{Profile: ProfileLow, Scope: ScopeActivated, Interval: 15 * time.Second,
+		StorageLimit: DefaultMetricsStorageLimit}
+	stats, sources, err = store.SaveConfiguration(ctx, stats, sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeStats, beforeSources := stats, sources
+	stats.Enabled, sources.StateEnabled = true, true
+	sources.OverallProfile = ProfileCustom
+	sources.CollectionRevision--
+	if _, _, err := store.SaveConfiguration(ctx, stats, sources); !errors.Is(err, ErrStaleSettings) {
+		t.Fatalf("stale overall revision accepted: %v", err)
+	}
+	afterStats, afterSources, err := store.LoadConfiguration(ctx)
+	if err != nil || !reflect.DeepEqual(beforeStats, afterStats) || !reflect.DeepEqual(beforeSources, afterSources) {
+		t.Fatalf("stale save partially updated sources: %#v %#v, %v", afterStats, afterSources, err)
+	}
+}
+
+func TestIndependentSourceSettingsDefaultOffAndPreserveLogPreferences(t *testing.T) {
+	ctx := context.Background()
+	db, err := auth.OpenDatabase(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.SQL.Close()
+	store := NewSettingsStore(db.SQL)
+	sources, err := store.LoadSources(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sources.StateEnabled || sources.StateScope != ScopeActivated || sources.Logs.Enabled ||
+		sources.Logs.Configured || sources.Logs.StorageLimit != DefaultLogsStorageLimit {
+		t.Fatalf("new source defaults = %#v", sources)
+	}
+
+	stats := Settings{
+		Profile: ProfileLow, Scope: ScopeActivated, Interval: 15 * time.Second,
+		StorageLimit: DefaultMetricsStorageLimit,
+	}
+	sources.StateEnabled, sources.StateScope = true, ScopeAll
+	sources.Logs = LogSettings{
+		Configured: true, Enabled: true, Profile: ProfileLow, Scope: ScopeActivated,
+		DeliveryPreset: ProfileLow, StorageLimit: DefaultLogsStorageLimit, Revision: sources.Logs.Revision,
+	}
+	stats, sources, err = store.SaveConfiguration(ctx, stats, sources)
+	if err != nil || stats.Revision != 1 || sources.StateRevision != 1 || sources.Logs.Revision != 2 {
+		t.Fatalf("save sources stats=%#v sources=%#v error=%v", stats, sources, err)
+	}
+	sources.StateEnabled = false
+	sources.Logs.Enabled = false
+	stats, sources, err = store.SaveConfiguration(ctx, stats, sources)
+	if err != nil || stats.Revision != 2 || sources.StateRevision != 2 || sources.Logs.Revision != 3 {
+		t.Fatalf("disable sources stats=%#v sources=%#v error=%v", stats, sources, err)
+	}
+	loadedStats, err := store.Load(ctx)
+	if err != nil || loadedStats.Enabled || loadedStats.StorageLimit != DefaultMetricsStorageLimit {
+		t.Fatalf("loaded stats=%#v error=%v", loadedStats, err)
+	}
+	loaded, err := store.LoadSources(ctx)
+	if err != nil || loaded.StateEnabled || loaded.StateScope != ScopeAll ||
+		loaded.Logs.Enabled || !loaded.Logs.Configured || loaded.Logs.Profile != ProfileLow ||
+		loaded.Logs.Scope != ScopeActivated || loaded.Logs.DeliveryPreset != ProfileLow ||
+		loaded.Logs.StorageLimit != DefaultLogsStorageLimit {
+		t.Fatalf("disabled sources did not preserve preferences: %#v error=%v", loaded, err)
+	}
+}
+
+func TestUnconfiguredLogBudgetPersistsWhileOff(t *testing.T) {
+	ctx := context.Background()
+	db, err := auth.OpenDatabase(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.SQL.Close()
+	store := NewSettingsStore(db.SQL)
+	stats := Settings{Profile: ProfileLow, Scope: ScopeActivated, Interval: 15 * time.Second, StorageLimit: DefaultMetricsStorageLimit}
+	sources, err := store.LoadSources(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sources.Logs.StorageLimit = 300_000_000
+	stats, sources, err = store.SaveConfiguration(ctx, stats, sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := store.LoadSources(ctx)
+	if err != nil || loaded.Logs.Configured || loaded.Logs.Enabled ||
+		loaded.Logs.StorageLimit != 300_000_000 || loaded.Logs.Revision != sources.Logs.Revision {
+		t.Fatalf("off log budget = %#v, error %v", loaded.Logs, err)
+	}
+}
+
+func TestObservabilitySettingsSaveIsAtomicOnStaleSourceRevision(t *testing.T) {
+	ctx := context.Background()
+	db, err := auth.OpenDatabase(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.SQL.Close()
+	store := NewSettingsStore(db.SQL)
+	stats := Settings{Profile: ProfileLow, Scope: ScopeActivated, Interval: 15 * time.Second, StorageLimit: 100}
+	sources, err := store.LoadSources(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stats, sources, err = store.SaveConfiguration(ctx, stats, sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staleSources := sources
+	sources.StateEnabled = true
+	if _, _, err := store.SaveConfiguration(ctx, stats, sources); err != nil {
+		t.Fatal(err)
+	}
+	stats.Enabled = true
+	if _, _, err := store.SaveConfiguration(ctx, stats, staleSources); !errors.Is(err, ErrStaleSettings) {
+		t.Fatalf("stale source save = %v", err)
+	}
+	loadedStats, err := store.Load(ctx)
+	if err != nil || loadedStats.Enabled {
+		t.Fatalf("stale source update partially saved metrics: %#v error=%v", loadedStats, err)
+	}
+}
+
 func TestSettingsValidation(t *testing.T) {
 	ctx := context.Background()
 	db, err := auth.OpenDatabase(ctx, t.TempDir())

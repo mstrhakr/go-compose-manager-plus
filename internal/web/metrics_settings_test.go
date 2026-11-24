@@ -134,6 +134,20 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 	if err != nil || saved.Profile != metrics.ProfileHigh || saved.Scope != metrics.ScopeAll || saved.Interval != time.Second || saved.StorageLimit != 500000 || saved.Revision != 4 {
 		t.Fatalf("preset settings = %#v, %v", saved, err)
 	}
+	off := url.Values{
+		"overall_profile": {"off"}, "profile": {"high"}, "scope": {"all"}, "interval": {"1s"},
+		"storage_limit": {"500000"}, "storage_unit": {"B"}, "revision": {"4"},
+		"logs_profile": {"off"}, "logs_storage_limit": {"300"}, "logs_storage_unit": {"MB"},
+	}
+	response = perform(handler, http.MethodPost, "/settings/metrics", off, cookies, token)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("overall Off save = %d %q", response.Code, response.Body.String())
+	}
+	savedSources, err := store.LoadSources(ctx)
+	if err != nil || savedSources.Logs.Configured || savedSources.Logs.Enabled ||
+		savedSources.Logs.StorageLimit != 300_000_000 || savedSources.StateEnabled {
+		t.Fatalf("overall Off sources = %#v, %v", savedSources, err)
+	}
 	if err := db.SQL.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +157,7 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 	}
 	defer func() { _ = reopened.SQL.Close() }()
 	saved, err = metrics.NewSettingsStore(reopened.SQL).Load(ctx)
-	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileHigh || saved.Scope != metrics.ScopeAll || saved.StorageLimit != 500000 || saved.Interval != time.Second || saved.Revision != 4 {
+	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileHigh || saved.Scope != metrics.ScopeAll || saved.StorageLimit != 500000 || saved.Interval != time.Second || saved.Revision != 5 {
 		t.Fatalf("reopened settings = %#v, %v", saved, err)
 	}
 }

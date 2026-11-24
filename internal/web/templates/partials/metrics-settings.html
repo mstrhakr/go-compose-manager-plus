@@ -5,63 +5,136 @@
     <a href="/settings" aria-current="page">Containers</a>
   </nav>
   <section class="workspace-panel metrics-settings" aria-labelledby="metrics-settings-title">
-    <div class="panel-heading"><div><h1 id="metrics-settings-title">Observability settings</h1><p>Containers &gt; Observability · Configure opt-in container metrics collection. Container logs are not collected.</p></div></div>
+    <div class="panel-heading"><div><h1 id="metrics-settings-title">Observability settings</h1><p>Containers &gt; Observability · Configure independent stats, state/event and log collection.</p></div></div>
     <div class="discovery-content">
       <p role="status"><strong>Collection status:</strong> {{.CollectionStatusText}}</p>
       {{if .CollectionWarning}}<p class="discovery-notice" role="status">{{.CollectionWarning}}</p>{{end}}
-      <p>Collection retains up to one hour of history; storage pressure may shorten it. Suggested storage sizes have not been measured; enter an explicit limit. SQLite file usage can temporarily exceed that target.</p>
+      <p>Each history source retains up to one hour. New-install starting targets are 128 MB for stats/state and 256 MB for logs; saved targets are shown below. Independent pressure eviction may shorten history. Targets use decimal units and do not reserve disk space.</p>
       {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
       {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
-      <form action="/settings/metrics" method="post" class="auth-form">
+      <form action="/settings/metrics" method="post" class="auth-form" data-observability-settings>
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <input type="hidden" name="revision" value="{{.MetricsSettings.Revision}}">
-        <fieldset class="metrics-profile-picker">
-          <legend>Container stats</legend>
+        <input type="hidden" name="state_revision" value="{{.MetricsSettings.StateRevision}}">
+        <input type="hidden" name="state_saved_scope" value="{{.MetricsSettings.StateSavedScope}}">
+        <input type="hidden" name="logs_revision" value="{{.MetricsSettings.LogsRevision}}">
+        <input type="hidden" name="logs_delivery_preset" value="{{.MetricsSettings.LogsDeliveryPreset}}" data-logs-delivery-preset>
+        <input type="hidden" name="stats_saved_profile" value="{{.MetricsSettings.StatsSavedProfile}}">
+        <input type="hidden" name="stats_saved_scope" value="{{.MetricsSettings.Scope}}">
+        <input type="hidden" name="logs_saved_profile" value="{{.MetricsSettings.LogsSavedProfile}}">
+        <input type="hidden" name="collection_revision" value="{{.MetricsSettings.CollectionRevision}}">
+        <input type="hidden" name="restore_stats" value="{{.MetricsSettings.RestoreStats}}">
+        <input type="hidden" name="restore_state" value="{{.MetricsSettings.RestoreState}}">
+        <input type="hidden" name="restore_logs" value="{{.MetricsSettings.RestoreLogs}}">
+        <input type="hidden" name="client_managed" value="">
+        <input type="hidden" name="overall_restore" value="">
+
+        <fieldset class="metrics-profile-picker overall-profile-picker">
+          <legend>Overall collection profile</legend>
           <div class="metrics-profile-options">
+            <label class="metrics-profile-option"><input type="radio" name="overall_profile" value="off" data-overall-profile {{if eq .MetricsSettings.OverallProfile "off"}}checked{{end}}><span>Off</span></label>
             {{range .MetricsPresets}}
-            <label class="metrics-profile-option">
-              <input type="radio" name="profile" value="{{.Profile}}" data-metrics-profile {{if eq $.MetricsSettings.Profile (printf "%s" .Profile)}}checked{{end}}>
-              <span>{{.Label}}</span>
-            </label>
+            <label class="metrics-profile-option"><input type="radio" name="overall_profile" value="{{.Profile}}" data-overall-profile {{if eq $.MetricsSettings.OverallProfile (printf "%s" .Profile)}}checked{{end}}><span>{{.Label}}</span></label>
             {{end}}
-            <label class="metrics-profile-option">
-              <input type="radio" name="profile" value="custom" data-metrics-profile {{if eq .MetricsSettings.Profile "custom"}}checked{{end}}>
-              <span>Custom</span>
-            </label>
+            <label class="metrics-profile-option"><input type="radio" name="overall_profile" value="custom" data-overall-profile {{if eq .MetricsSettings.OverallProfile "custom"}}checked{{end}}><span>Custom</span></label>
           </div>
-          {{range .MetricsPresets}}
-          <div class="metrics-preset-values" data-metrics-preset="{{.Profile}}" data-scope="{{.Scope}}" data-interval="{{.Interval}}">
-            <p><strong>Collection scope:</strong> {{.ScopeLabel}}</p>
-            <noscript><div class="metrics-preset-fallback"><label for="metrics-preset-{{.Profile}}">Sampling interval</label><input id="metrics-preset-{{.Profile}}" value="{{.Interval}}" readonly></div></noscript>
-          </div>
-          {{end}}
-          <div class="metrics-custom-options" data-metrics-custom-options hidden>
-            <label for="metrics-scope" data-metrics-scope-control>Collection scope</label>
-            <select id="metrics-scope" name="scope" data-metrics-scope-control>
-              <option value="activated" {{if eq .MetricsSettings.Scope "activated"}}selected{{end}}>Activated stacks</option>
-              <option value="all" {{if eq .MetricsSettings.Scope "all"}}selected{{end}}>All running containers</option>
-            </select>
-            <label for="metrics-interval">Sampling interval (for example 5s)</label>
-            <input id="metrics-interval" name="interval" value="{{.MetricsSettings.Interval}}">
-          </div>
-          <p class="metrics-help">Preset values are read-only. Custom unlocks the current values; changes apply only after Save.</p>
-          <noscript><p class="metrics-help">Without JavaScript, save a preset before selecting Custom to edit its values.</p></noscript>
-          <label class="metrics-opt-in"><input name="enabled" type="checkbox" value="true" {{if .MetricsSettings.Enabled}}checked{{end}}> Enable background metrics collection</label>
+          <p class="metrics-help">Low, Medium and High configure all three sources. Off stops them without erasing preferences. Changes are staged until Save.</p>
         </fieldset>
-        <div class="metrics-storage-setting">
-          <label for="metrics-limit">Storage target</label>
-          <div class="metrics-storage-input">
-            <input id="metrics-limit" name="storage_limit" type="number" min="0.000000001" step="any" value="{{.MetricsSettings.Limit}}" required>
-            <select id="metrics-storage-unit" name="storage_unit" aria-label="Storage unit" data-metrics-storage-unit>
-              <option value="B" {{if eq .MetricsSettings.LimitUnit "B"}}selected{{end}}>B</option>
-              <option value="KB" {{if eq .MetricsSettings.LimitUnit "KB"}}selected{{end}}>KB</option>
-              <option value="MB" {{if eq .MetricsSettings.LimitUnit "MB"}}selected{{end}}>MB</option>
-              <option value="GB" {{if eq .MetricsSettings.LimitUnit "GB"}}selected{{end}}>GB</option>
-            </select>
+
+        <section class="metrics-source-card" aria-labelledby="stats-source-title">
+          <fieldset class="metrics-profile-picker">
+            <legend id="stats-source-title">Container stats</legend>
+            <div class="metrics-profile-options">
+              <label class="metrics-profile-option"><input type="radio" name="profile" value="off" data-metrics-profile {{if not .MetricsSettings.Enabled}}checked{{end}}><span>Off</span></label>
+              {{range .MetricsPresets}}
+              <label class="metrics-profile-option"><input type="radio" name="profile" value="{{.Profile}}" data-metrics-profile {{if eq $.MetricsSettings.Profile (printf "%s" .Profile)}}checked{{end}}><span>{{.Label}}</span></label>
+              {{end}}
+              <label class="metrics-profile-option"><input type="radio" name="profile" value="custom" data-metrics-profile {{if eq .MetricsSettings.Profile "custom"}}checked{{end}}><span>Custom</span></label>
+            </div>
+            {{range .MetricsPresets}}
+            <div class="metrics-preset-values" data-metrics-preset="{{.Profile}}" data-scope="{{.Scope}}" data-interval="{{.Interval}}">
+              <p><strong>Collection:</strong> {{if eq .Profile "high"}}All running containers{{else}}Activated stacks{{end}} · {{.Interval}}</p>
+              <noscript><label for="metrics-fallback-{{.Profile}}">Sampling interval</label><input id="metrics-fallback-{{.Profile}}" value="{{.Interval}}" readonly></noscript>
+            </div>
+            {{end}}
+            <div class="metrics-value-options" data-metrics-custom-options {{if not .MetricsSettings.Enabled}}hidden{{end}}>
+              <label for="metrics-scope" data-metrics-scope-control>Collection scope</label>
+              <select id="metrics-scope" name="scope" data-metrics-scope-control {{if ne .MetricsSettings.Profile "custom"}}disabled{{end}}>
+                <option value="activated" {{if eq .MetricsSettings.Scope "activated"}}selected{{end}}>Activated stacks</option>
+                <option value="all" {{if eq .MetricsSettings.Scope "all"}}selected{{end}}>All running containers</option>
+              </select>
+              <label for="metrics-interval">Sampling interval</label>
+              <input id="metrics-interval" name="interval" value="{{.MetricsSettings.Interval}}" {{if ne .MetricsSettings.Profile "custom"}}readonly{{end}}>
+            </div>
+            <p class="metrics-help">Low/Medium sample every 15/5 seconds for activated stacks; High samples all running containers every second. These are targets, not guarantees.</p>
+            <p class="metrics-not-collecting" data-stats-not-collecting {{if .MetricsSettings.Enabled}}hidden{{end}}>Not collecting</p>
+          </fieldset>
+          <div class="metrics-storage-setting">
+            <label for="metrics-limit">Metrics/state storage target</label>
+            <div class="metrics-storage-input">
+              <input id="metrics-limit" name="storage_limit" type="number" min="0.000000001" step="any" value="{{.MetricsSettings.Limit}}" required>
+              <select id="metrics-storage-unit" name="storage_unit" aria-label="Metrics storage unit" data-metrics-storage-unit>
+                <option value="B" {{if eq .MetricsSettings.LimitUnit "B"}}selected{{end}}>B</option>
+                <option value="KB" {{if eq .MetricsSettings.LimitUnit "KB"}}selected{{end}}>KB</option>
+                <option value="MB" {{if eq .MetricsSettings.LimitUnit "MB"}}selected{{end}}>MB</option>
+                <option value="GB" {{if eq .MetricsSettings.LimitUnit "GB"}}selected{{end}}>GB</option>
+              </select>
+            </div>
           </div>
-          <p class="metrics-help">Decimal units: 1 KB = 1,000 bytes. This target is not a hard disk quota.</p>
-        </div>
-        <button class="primary-button" type="submit">Save metrics preferences</button>
+        </section>
+
+        <section class="metrics-source-card" aria-labelledby="state-source-title">
+          <fieldset class="metrics-profile-picker">
+            <legend id="state-source-title">Container state &amp; events</legend>
+            <label class="filter-label" for="state-scope">Capture scope</label>
+            <select id="state-scope" name="state_scope" data-state-scope>
+              <option value="off" {{if not .MetricsSettings.StateEnabled}}selected{{end}}>Off</option>
+              <option value="activated" {{if and .MetricsSettings.StateEnabled (eq .MetricsSettings.StateScope "activated")}}selected{{end}}>Activated stacks</option>
+              <option value="all" {{if and .MetricsSettings.StateEnabled (eq .MetricsSettings.StateScope "all")}}selected{{end}}>All containers</option>
+            </select>
+            <p class="metrics-help">Includes stopped-container context. Shared Docker inspection and event work needed for stats correctness continues when state-history saving is Off.</p>
+          </fieldset>
+        </section>
+
+        <section class="metrics-source-card" aria-labelledby="logs-source-title">
+          <fieldset class="metrics-profile-picker">
+            <legend id="logs-source-title">Container logs</legend>
+            <div class="metrics-profile-options">
+              <label class="metrics-profile-option"><input type="radio" name="logs_profile" value="off" data-logs-profile {{if eq .MetricsSettings.LogsProfile "off"}}checked{{end}}><span>Off</span></label>
+              <label class="metrics-profile-option"><input type="radio" name="logs_profile" value="low" data-logs-profile {{if eq .MetricsSettings.LogsProfile "low"}}checked{{end}}><span>Low</span></label>
+              <label class="metrics-profile-option"><input type="radio" name="logs_profile" value="medium" data-logs-profile {{if eq .MetricsSettings.LogsProfile "medium"}}checked{{end}}><span>Medium</span></label>
+              <label class="metrics-profile-option"><input type="radio" name="logs_profile" value="high" data-logs-profile {{if eq .MetricsSettings.LogsProfile "high"}}checked{{end}}><span>High</span></label>
+              <label class="metrics-profile-option"><input type="radio" name="logs_profile" value="custom" data-logs-profile {{if eq .MetricsSettings.LogsProfile "custom"}}checked{{end}}><span>Custom</span></label>
+            </div>
+            <div class="metrics-preset-values" data-logs-preset-values>
+              <p data-logs-current-delivery><strong>Current delivery:</strong> {{if .MetricsSettings.LogsDeliveryDescription}}{{.MetricsSettings.LogsDeliveryDescription}}{{else}}Select Low, Medium or High to establish log delivery{{end}}</p>
+            </div>
+            <p class="metrics-not-collecting" data-logs-not-collecting {{if .MetricsSettings.LogsEnabled}}hidden{{end}}>Not collecting</p>
+            <div class="metrics-custom-options" data-logs-custom-options>
+              <label for="logs-scope">Capture scope</label>
+              <select id="logs-scope" name="logs_scope" data-logs-scope>
+                <option value="activated" {{if eq .MetricsSettings.LogsScope "activated"}}selected{{end}}>Activated stacks</option>
+                <option value="all" {{if eq .MetricsSettings.LogsScope "all"}}selected{{end}}>All containers</option>
+              </select>
+              <p class="metrics-help">Custom preserves the current preset's delivery. Transport and save-frequency tuning are not available.</p>
+            </div>
+            <p class="metrics-help">Low reads activated-stack backlog every 60 seconds; Medium every 30 seconds; High follows all containers live. Stopped containers' readable backlog is included. Original timestamps and message bytes are retained; interval is not message sampling.</p>
+          </fieldset>
+          <div class="metrics-storage-setting">
+            <label for="logs-limit">Log storage target</label>
+            <div class="metrics-storage-input">
+              <input id="logs-limit" name="logs_storage_limit" type="number" min="0.000000001" step="any" value="{{.MetricsSettings.LogsLimit}}" required>
+              <select id="logs-storage-unit" name="logs_storage_unit" aria-label="Log storage unit" data-logs-storage-unit>
+                <option value="B" {{if eq .MetricsSettings.LogsLimitUnit "B"}}selected{{end}}>B</option>
+                <option value="KB" {{if eq .MetricsSettings.LogsLimitUnit "KB"}}selected{{end}}>KB</option>
+                <option value="MB" {{if eq .MetricsSettings.LogsLimitUnit "MB"}}selected{{end}}>MB</option>
+                <option value="GB" {{if eq .MetricsSettings.LogsLimitUnit "GB"}}selected{{end}}>GB</option>
+              </select>
+            </div>
+          </div>
+        </section>
+        <button class="primary-button" type="submit">Save observability preferences</button>
+        <noscript><p class="metrics-help">Without JavaScript, save a preset or Custom selection before editing its values. To restore sources after overall Off, choose Custom and Save first.</p></noscript>
       </form>
     </div>
   </section>
