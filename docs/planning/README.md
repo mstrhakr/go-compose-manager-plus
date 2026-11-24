@@ -106,11 +106,15 @@ breakpoints and mobile overflow/responsiveness. See the
 On 2026-11-23 the owner prioritized desktop alignment, with mobile basics and
 reduced advanced views to be designed later rather than requiring desktop
 parity. The next requested observability slice is container-log collection in
-the same local SQLite history store, retaining one hour, followed by an
-aggregated dashboard log view. TimescaleDB is deferred for longer metric/log
-history. Separate sample/log budgets were selected on 2026-11-24; sensible default
+its own SQLite `logs.db` with one-hour retention, followed by an aggregated
+dashboard log view. Stats/state/event history remains in `metrics.db`, and
+durable application state/settings in `app.db`. TimescaleDB is deferred for
+longer metric/log history. Separate sample/log budgets were selected on
+2026-11-24; sensible default
 amounts, accounting and pressure behavior remain undecided.
-Their implementation and implementation of the
+The owner selected the three-database layout on 2026-11-24, amending the
+earlier same-history-file request; the log foundation still uses `metrics.db`.
+Layout migration, budget enforcement and implementation of the
 approved defaults/migration policy remain production-collection gates under
 [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
 a dedicated log view and network-aware filters remain follow-up ideas.

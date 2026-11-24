@@ -396,6 +396,18 @@ mappings, accounting, source eviction, shared physical pressure or runtime
 implementation. The earlier globally oldest-first proposal was not approved
 and is not the selected direction. LIVE-003 owns this standalone decision.
 
+The owner then asked whether logs, metrics, system state and settings could
+use separate SQLite files and selected
+"Three databases — app.db, metrics.db and logs.db (recommended)".
+This approves keeping durable application state/authentication/settings/project
+metadata together in `app.db`, retaining stats and observed state/event history
+in `metrics.db`, and moving container logs into `logs.db` with a separate target
+and maintenance. It amends the earlier same-history-database direction, not
+one-hour retention or explicit capture consent. The files still share the host
+disk and application process. Defaults, file/index/WAL accounting, migration,
+cross-store expiry/recovery and eviction are not settled by the layout choice.
+No runtime or migration verification is implied by this decision record.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

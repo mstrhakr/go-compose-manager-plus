@@ -1282,3 +1282,12 @@ State/event/log records are absent; log-driver volume, original message sizes,
 index overhead, WAL activity and source accounting still need consideration.
 The measurement does not approve any default or preset amount and does not
 change existing collection or pressure behavior.
+
+## Three-Database Direction
+
+**2026-11-24:** the owner selected `app.db`, `metrics.db` and `logs.db`,
+amending the earlier same-history-file direction. This is a decision record,
+not executed migration: existing application state/settings remain in `app.db`,
+and the current log API/SQLite foundation still stores logs in `metrics.db`.
+The intended `logs.db` split, its defaults/accounting/maintenance, cross-store
+expiry/recovery and migration remain unimplemented and unverified.

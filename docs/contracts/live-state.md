@@ -280,6 +280,18 @@ and explicit preset-based enablement. Source compatibility, defaults/migration,
 access details, synchronization, shared-budget pressure behavior and unavailable
 states still require refinement or verification.
 
+On 2026-11-24 the owner amended the earlier same-history-database direction
+by selecting three SQLite databases: `app.db` for durable application state,
+authentication, sessions, settings and project metadata; `metrics.db` for stats
+and observed state/event history; and `logs.db` for container logs, with its own
+storage target and maintenance. A separate settings/system database was not
+selected. This separates the two history files, not their host disk or the
+application process. One-hour history, single-copy event ownership and explicit
+log enablement remain unchanged. The log foundation still resides in
+`metrics.db`; the selected layout is not implemented or migration-verified.
+Layout approval does not settle default amounts, per-database file/index/WAL
+accounting, cross-store expiry/recovery, migration or eviction policy.
+
 The owner then approved read-only Docker container stdout/stderr as the initial
 source and authorized beginning implementation. Preserve the original message
 alongside Docker timestamp, receipt timestamp, immutable container ID and stream;
@@ -419,7 +431,7 @@ On 2026-11-24 the owner selected separate budgets for metric samples and logs
 the source-budget separation direction, not default amounts or a complete
 pressure implementation. Existing event/state retention and pause/retry
 safeguards remain unchanged within this decision's boundary. Concrete amounts,
-shared-file/index/WAL accounting, source-specific eviction and shared physical
+per-database/index/WAL accounting, source-specific eviction and shared physical
 pressure behavior still require refinement and runtime verification.
 
 The earlier proposal was bounded eviction of the oldest sample/log records
