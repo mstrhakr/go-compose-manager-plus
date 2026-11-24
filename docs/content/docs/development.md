@@ -190,15 +190,23 @@ usable.</p>
 <p>Metrics settings are persisted separately in application state. An
 unconfigured installation is disabled, and the storage limit must be explicitly
 provided; no preset storage defaults are assumed. The authenticated Settings
-page exposes enable/disable, the low, medium and high profile scopes and
-intervals, Custom controls, and collection status. Settings use revision
+page groups current metrics preferences under Containers > Observability, with
+visible preset scopes, a read-only interval that Custom unlocks in place, and
+collection status. The Go preset mapping supplies both rendered values and
+Save behavior. A storage override marks the profile Custom only after applying
+the selected preset's scope/interval, so no-JavaScript submissions do not save
+stale hidden values instead of the displayed preset. Without JavaScript,
+save a preset before selecting Custom to edit its values. Settings use revision
 checks to reject stale updates. Saving settings while disabled does not open
 the metrics database or access Docker. The collector uses the persisted
 opt-in after restart and closes on disable or application shutdown. The setup
 wizard and historical logs remain unimplemented. The Containers observability
 view shows per-container charts for the last hour, a shared time slider, observed
 lifecycle markers and a newest-first event list capped at 200 entries. Chart,
-slider, marker and list selection move the same selected-time cursor; the view
+slider, marker and list selection move the same selected-time cursor. A
+contained local-time badge follows selection, with the date, time zone and
+fractional seconds in the title/accessibility text; event rows remain UTC.
+The bottom arrow selects the fixed window end, not live following. The view
 does not claim Docker event history is complete. It uses stored events without
 requesting a live Docker snapshot. The overview dashboard reads the opted-in
 SQLite history and displays per-container CPU, Docker raw memory usage and

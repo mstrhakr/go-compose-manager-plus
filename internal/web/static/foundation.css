@@ -70,9 +70,20 @@ button:disabled { cursor: not-allowed; opacity: .6; }
 .metrics-profile-option span { width: 100%; padding: 8px 4px; border-radius: 3px; text-align: center; }
 .metrics-profile-option input:checked + span { color: var(--blue); background: var(--panel); box-shadow: 0 1px 3px #0002; font-weight: 700; }
 .metrics-profile-option input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 2px; }
-.metrics-profile-description, .metrics-help { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.metrics-help { margin: 8px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.metrics-preset-values { display: none; grid-template-columns: minmax(120px, 1fr) minmax(0, 1fr); gap: 6px; margin-top: 12px; }
+.metrics-preset-values p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 11px; }
+.metrics-preset-values noscript { grid-column: 1 / -1; }
+.metrics-preset-fallback { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 1fr); gap: 6px; }
+.metrics-preset-values label, .metrics-custom-options label { align-self: center; margin: 0; font-size: 11px; }
+.metrics-preset-values input { max-width: 160px; min-height: 36px; padding: 6px 10px; }
+.metrics-profile-picker:has(input[value="low"]:checked) [data-metrics-preset="low"],
+.metrics-profile-picker:has(input[value="medium"]:checked) [data-metrics-preset="medium"],
+.metrics-profile-picker:has(input[value="high"]:checked) [data-metrics-preset="high"] { display: grid; }
+.metrics-profile-picker .metrics-custom-options { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(0, 1fr); gap: 8px; margin-top: 12px; padding: 0; border: 0; }
+.metrics-custom-options input, .metrics-custom-options select { min-height: 36px; padding: 6px 10px; font-size: 11px; }
 .metrics-custom-options[hidden] { display: none; }
-.metrics-profile-picker:has(input[value="custom"]:checked) + .metrics-custom-options[hidden] { display: block; }
+.metrics-profile-picker:has(input[value="custom"]:checked) .metrics-custom-options[hidden] { display: grid; }
 .metrics-storage-setting label { display: block; margin: 0 0 6px; font-size: 11px; font-weight: 650; }
 .metrics-storage-input { position: relative; min-width: 0; }
 .metrics-storage-input input { width: 100%; min-width: 0; min-height: 42px; padding: 7px 5.5rem 7px 10px; color: var(--text); background: var(--raised); border: 1px solid var(--border); border-radius: 4px; }
@@ -347,19 +358,27 @@ circle.chart-line { fill: currentColor; stroke: none; }
 .observability-workspace { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: start; gap: 16px; margin-top: 16px; }
 .observability-workspace .timeline-panel { position: sticky; top: 0; display: flex; flex-direction: column; height: min(780px, calc(100dvh - 140px)); min-height: 360px; padding: 10px 8px; }
 .observability-workspace .timeline-panel h2 { margin: 0; font-size: 12px; }
-.observability-workspace .timeline-label { display: block; margin: 8px 0 12px; font-size: 10px; }
-.observability-workspace .timeline-label output { display: block; text-align: left; overflow-wrap: anywhere; }
+.timeline-caption { margin-top: 6px; color: var(--muted); font-size: 10px; }
 .timeline-rail { position: relative; flex: 1; min-height: 0; margin: 12px 0; }
+.timeline-selected-time { position: absolute; top: 12px; left: 0; z-index: 2; max-width: 100%; padding: 3px 5px; transform: translateY(-50%); overflow: hidden; color: #fff; background: #0067d6; border-radius: 3px; font-size: 10px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
+.timeline-latest { align-self: flex-end; width: 28px; min-height: 28px; padding: 2px; color: var(--blue); background: var(--blue-soft); border: 1px solid var(--border); border-radius: 50%; }
+.timeline-latest[hidden] { display: none; }
 .timeline-selection { position: absolute; left: 0; right: 0; border-top: 1px solid var(--blue); pointer-events: none; }
 .timeline-selection[hidden] { display: none; }
 .observability-workspace .timeline-axis { position: absolute; inset: 0 auto 0 0; display: flex; flex-direction: column; justify-content: space-between; gap: 0; }
+.observability-workspace .timeline-axis::after { position: absolute; top: 0; bottom: 0; left: 36px; width: 4px; content: ''; background: repeating-linear-gradient(to bottom, var(--border) 0 1px, transparent 1px 6.25%); }
 .observability-workspace .timeline-track { position: absolute; inset: 0 24px 0 auto; width: 24px; height: auto; margin: 0; border: 0; }
 .observability-workspace .timeline-marker { left: 50%; bottom: auto; transform: translate(-50%, -50%); z-index: 1; }
-.observability-workspace .timeline-slider { position: absolute; inset: 0 0 0 auto; width: 24px; height: 100%; min-height: 0; margin: 0; writing-mode: vertical-lr; direction: rtl; cursor: ns-resize; }
+.observability-workspace .timeline-marker:focus-visible, .observability-workspace .timeline-marker:hover { z-index: 3; }
+.observability-workspace .timeline-slider { position: absolute; inset: 0 0 0 auto; width: 24px; height: 100%; min-height: 0; margin: 0; appearance: none; background: transparent; writing-mode: vertical-lr; direction: rtl; cursor: ns-resize; }
+.observability-workspace .timeline-slider::-webkit-slider-runnable-track { width: 4px; height: 100%; background: var(--border); border-radius: 2px; }
+.observability-workspace .timeline-slider::-webkit-slider-thumb { width: 10px; height: 10px; margin-left: -3px; appearance: none; background: var(--blue); border: 2px solid var(--panel); border-radius: 50%; box-shadow: 0 0 0 1px var(--blue); }
+.observability-workspace .timeline-slider::-moz-range-track { width: 4px; height: 100%; background: var(--border); border-radius: 2px; }
+.observability-workspace .timeline-slider::-moz-range-thumb { width: 6px; height: 6px; background: var(--blue); border: 2px solid var(--panel); border-radius: 50%; box-shadow: 0 0 0 1px var(--blue); }
 .observability-detail { min-width: 0; }
 .observability-charts { display: grid; gap: 8px; }
 .observability-charts .chart-panel { padding: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; }
-.observability-charts .chart { height: 96px; margin-top: 4px; }
+.observability-charts .chart { height: 84px; margin-top: 4px; }
 .observability-charts .chart-plot { inset: 8px 8px 26px; }
 .observability-charts .chart-axis { width: auto; flex-wrap: wrap; }
 .observability-charts .chart-axis span:last-child { display: none; }
@@ -396,8 +415,7 @@ circle.chart-line { fill: currentColor; stroke: none; }
 @media (max-width: 620px) {
   .observability-workspace { grid-template-columns: 80px minmax(0, 1fr); gap: 8px; }
   .observability-workspace .timeline-panel { padding: 8px 4px; }
-  .observability-workspace .timeline-track { right: 18px; }
-  .observability-workspace .timeline-slider { width: 18px; }
+  .timeline-latest { width: 44px; min-height: 44px; }
   .observability-records .timeline-event { display: flex; flex-direction: column; align-items: flex-start; }
   .observability-record-columns { display: none; }
   .observability-charts .chart { height: 144px; }

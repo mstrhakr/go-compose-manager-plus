@@ -679,6 +679,25 @@ cards, and table manage-mode behavior remain to be specified when applicable;
 browser verification is still required. A cropped screenshot is not a
 full-display size or scroll test.
 
+#### Implementation Evidence: Current Presentation Only
+
+On 2026-11-24, the explicitly requested alignment implemented and verified a
+bounded presentation subset: Settings > Containers identifies the Observability
+page; existing stats preferences stay in one card; preset scopes remain readable
+and the interval control becomes editable in place under Custom. Go supplies
+the displayed preset mappings and applies them before a storage override marks
+the profile Custom. The selected-container timeline has a contained local-time
+selection badge, readable ticks, a neutral rail, an end-of-window shortcut and
+denser chart/record alignment. See the
+[executed verification](../verification.md#observability-presentation-alignment).
+
+This is not fulfillment of the full Settings/history design. The existing
+metrics enable checkbox and preference editing while disabled remain unchanged;
+three independent source controls, overall/storage presets, migration and
+sparse state/gap spans are not implemented by this subset. Production logs
+remain unconnected. No pending pressure, replay, flush or Off/history proposal
+was adopted to bypass the gates below.
+
 #### Remaining Implementation Gates
 
 - Concrete state/event preset mappings and initial child preference values;

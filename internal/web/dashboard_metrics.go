@@ -193,6 +193,10 @@ type dashboardTimeline struct {
 	Truncated    bool
 }
 
+func (timeline dashboardTimeline) EndClock() string {
+	return time.UnixMilli(timeline.End).Format("15:04:05")
+}
+
 type dashboardTimelineEvent struct {
 	Time        int64
 	TimeLabel   string

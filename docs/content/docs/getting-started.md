@@ -69,13 +69,21 @@ visible. Without JavaScript, all columns remain visible.</p>
 
 ## Metrics and container observability
 
-<p>After configuring Docker access, open <strong>Settings &gt; Metrics</strong>.
+<p>After configuring Docker access, open
+<strong>Settings &gt; Containers</strong> to find <strong>Observability settings</strong>.
 Choose Low (activated stacks every 15 seconds), Medium (activated stacks every
 5 seconds), High (all running containers every second), or Custom to choose the
 scope and interval. Enter an explicit storage target, check
 <strong>Enable background metrics collection</strong>, and save.
 Selecting a profile alone does not enable collection. Storage units are decimal;
 the target is not a hard disk quota. Suggested sizes have not been measured.</p>
+<p>The <strong>Container stats</strong> card shows the selected preset's scope
+and sampling interval. With JavaScript, the interval is read-only under a
+preset; Custom unlocks those current values, not an older custom configuration.
+Changing the storage target marks the profile Custom without resetting the
+current scope or interval. Without JavaScript, save a preset before selecting
+Custom to edit its values. Preferences can still be saved while background
+collection is unchecked.</p>
 <p>On <strong>Overview</strong>, switch between CPU, memory and network charts.
 These totals cover collected containers, not the Docker host's total usage.
 For individual history, open <strong>Containers &gt; Observability</strong>,
@@ -83,6 +91,13 @@ apply filters in the first sidebar, and select a name in the second sidebar.
 The first filtered container is selected by default. The vertical timeline
 and stacked charts share the selected time; selecting an observed event also
 moves that selection. Missing observations remain gaps, not zero values.</p>
+<p>The blue time label follows your selection and shows local time. Hover
+<strong>Selected time</strong> for the date, time zone and any fractional seconds;
+the slider's accessible value includes those details for screen readers.
+Event rows display UTC explicitly. Use the arrow at the bottom of the timeline
+to return all charts to the end of the displayed hour; this does not start
+live following or refresh the page. Keyboard users can use the arrow keys,
+Home and End on the slider.</p>
 <p>The records area shows observed container events. The
 <strong>Container logs</strong> tab currently reports that application logs are
 not collected; enabling metrics does not enable log capture.</p>

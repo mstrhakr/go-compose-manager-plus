@@ -1190,3 +1190,67 @@ builds/local links. Commands used `/config/.local/bin` prepended to `PATH`.
 Security checks passed earlier on the same PR before these corrections; no
 dependency, workflow or container surface changed. No new live-Docker,
 native-device or physical-pressure verification is claimed.
+
+## Observability Presentation Alignment
+
+**2026-11-24; implementation authorized for approved LIVE-003 presentation,
+not unresolved collection policy.** Started from clean `9065078` on
+`feat/container-log-collection`. This is an independently completed subset of
+the requested logging/Settings/Observability slice, not completed production
+logging or full Settings migration.
+
+Three visual passes used the private Observability timeline, selection and
+event-marker references without copying their assets into the application:
+
+1. Replaced the detached multiline time readout and solid blue range track
+   with a selection-following clock badge, neutral slim track, minor ticks and
+   visible event focus/hover ordering.
+2. Clamped the badge inside both window edges, preserved the full date/time
+   zone/fractional seconds in caption/accessibility text, added a shortcut to
+   the fixed window end, and reduced desktop chart height so both fixture event
+   rows remain at least 90% visible at 1256 x 668.
+3. Reviewed selected-event alignment, light/dark contrast and compact access.
+   Tests require the middle-selection badge center within 8 pixels of the rail
+   midpoint and text/background contrast of at least 4.5:1. Screenshots include
+   the reference viewport, 2560 x 1440, selected-event states and compact views.
+
+Settings identifies Containers > Observability and contains the existing
+stats preferences in one card. Go owns the preset table used by Save and HTML;
+local JS reads the rendered mapping rather than duplicating cadence/scope
+values. Presets show named scopes and make the interval read-only. Custom
+unlocks that same interval control and discards no sibling values. Selecting a
+new preset replaces previous custom stats values while leaving storage intact.
+Changing storage marks Custom only after applying the chosen preset, including
+without JavaScript; the authenticated regression checks exact stored scope,
+interval, budget, revision and disabled state. Without JavaScript, presets
+remain readable and users save a preset before Custom to edit its values.
+
+Executed:
+
+- `go test -race ./internal/web -count=1` passed.
+- Targeted timeline and Settings workflows exercised Chromium, Firefox,
+  WebKit and mobile Chromium, plus keyboard, touch, no-JavaScript navigation,
+  selection isolation, compact overflow and stale/authenticated Settings Save.
+- `make check QUIET=1` passed Go vet/race tests/build, Node unit and HTTP tests,
+  the complete browser suite, asset verification and contract structure.
+  Commands used `/config/.local/bin` prepended to `PATH`.
+- `make docs check-docs check-contracts check-security QUIET=1` passed public
+  and opt-in documentation builds/local links, contract structure and security
+  checks; dependency vulnerability checks reported no vulnerabilities.
+
+During iteration, fixed a missing import in the preview fixture and used
+outcome-based interval editability assertions after a Firefox property-handle
+assertion crashed on the complete fixture. Real edits and the final full
+browser suite passed. An earlier unrelated Firefox legend timeout also passed
+in isolation and in the final full suite. No timeout increase, retries or
+browser exclusions were introduced.
+
+The existing enable checkbox, disabled-preference editing, one-hour history,
+pressure handling, collection lifecycle and log-unavailable view remain.
+Production logs, three independent sources/overall presets, state/event
+mappings, child seeds, Custom log delivery/flush, shared pressure,
+replay/reconciliation and Off/history effects are still gated. No synthetic
+health/unavailable spans are inferred from missing metric samples. No live
+Docker, native-device, physical-pressure, container or hosted-CI verification
+is claimed for this presentation-only subset; workflow/dependency/container
+surfaces were unchanged.

@@ -162,6 +162,14 @@ observations when state-history persistence is Off. The
 [current design summary](../contracts/live-state.md#current-settings-design-summary)
 separates settled interactions, reference-inspired proposals and remaining gates.
 
+The 2026-11-24 presentation slice aligns the existing stats Settings card and
+single-container timeline without enabling production logs. Preset values are
+visible and Custom unlocks the current interval in place; timeline selection
+has a contained time label and an end-of-window shortcut. The
+[verification record](../verification.md#observability-presentation-alignment)
+is scoped to those outcomes. Full source controls, sparse state spans and
+production collection remain subject to the gates above.
+
 ### Settings Organization Candidates
 
 **2026-11-23:** owner accepted the resource-first organization direction, not

@@ -6,6 +6,7 @@ import { test, expect } from '@playwright/test';
 
 let fixture;
 let observabilityFixtures;
+let settingsFixture;
 test.beforeAll(() => {
   const directory = mkdtempSync(join(tmpdir(), 'cmp-dashboard-preview-'));
   try {
@@ -14,6 +15,7 @@ test.beforeAll(() => {
       stdio: 'pipe',
     });
     fixture = readFileSync(join(directory, 'dashboard.html'), 'utf8');
+    settingsFixture = readFileSync(join(directory, 'settings.html'), 'utf8');
     observabilityFixtures = Array.from({ length: 6 }, (_, index) =>
       readFileSync(join(directory, `observability-${index}.html`), 'utf8'));
   } finally {
@@ -105,6 +107,13 @@ test('single-container observability has a vertical synchronized timeline and st
     (Number(await timeline.getAttribute('data-end')) - Number(await timeline.getAttribute('data-start')));
   expect(fraction).toBeGreaterThan(0.4);
   expect(fraction).toBeLessThan(0.6);
+  const clock = timeline.locator('[data-timeline-output]');
+  const rail = timeline.locator('.timeline-rail');
+  const clockBounds = await clock.boundingBox();
+  const railBounds = await rail.boundingBox();
+  expect(Math.abs(clockBounds.y + clockBounds.height / 2 - (railBounds.y + railBounds.height / 2))).toBeLessThan(8);
+  await expect(clock).toHaveAttribute('title', await slider.getAttribute('aria-valuetext'));
+  await expect(clock).toHaveText(/\d{2}:\d{2}:\d{2}/);
   const chartBounds = await charts.evaluateAll(elements => elements.map(element => {
     const bounds = element.getBoundingClientRect();
     return { x: bounds.x, y: bounds.y, bottom: bounds.bottom };
@@ -128,10 +137,20 @@ test('single-container observability has a vertical synchronized timeline and st
   await slider.focus();
   await page.keyboard.press('Home');
   await expect(slider).toHaveValue(await timeline.getAttribute('data-start'));
+  let selectedBounds = await clock.boundingBox();
+  let axisBounds = await rail.boundingBox();
+  expect(selectedBounds.y + selectedBounds.height).toBeLessThanOrEqual(axisBounds.y + axisBounds.height);
   await page.keyboard.press('ArrowUp');
   expect(Number(await slider.inputValue())).toBe(Number(await timeline.getAttribute('data-start')) + 1000);
-  await page.keyboard.press('End');
+  await timeline.getByRole('button', { name: 'Select end of displayed hour' }).click();
   await expect(slider).toHaveValue(await timeline.getAttribute('data-end'));
+  await expect(timeline).toHaveAttribute('data-selected', await timeline.getAttribute('data-end'));
+  for (const svg of await charts.locator('svg').all()) {
+    await expect(svg).toHaveAttribute('aria-valuenow', await timeline.getAttribute('data-end'));
+  }
+  selectedBounds = await clock.boundingBox();
+  axisBounds = await rail.boundingBox();
+  expect(selectedBounds.y).toBeGreaterThanOrEqual(axisBounds.y);
   const logsLabel = page.locator('.observability-record-options').getByText('Container logs', { exact: true });
   if (testInfo.project.name === 'mobile-chromium') await logsLabel.tap();
   else await logsLabel.click();
@@ -166,7 +185,25 @@ test('single-container observability has a vertical synchronized timeline and st
       await expect(charts.nth(2)).toBeInViewport();
       await expect(page.locator('.observability-records')).toBeInViewport();
       await expect(page.locator('.timeline-event').first()).toBeInViewport({ ratio: 0.9 });
+      await expect(page.locator('.timeline-event').nth(1)).toBeInViewport({ ratio: 0.9 });
+      const contrast = await clock.evaluate(element => {
+        const luminance = color => {
+          const channels = color.match(/\d+/g).slice(0, 3).map(value => {
+            const channel = Number(value) / 255;
+            return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+          });
+          return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+        };
+        const style = getComputedStyle(element);
+        const text = luminance(style.color);
+        const background = luminance(style.backgroundColor);
+        return (Math.max(text, background) + 0.05) / (Math.min(text, background) + 0.05);
+      });
+      expect(contrast).toBeGreaterThanOrEqual(4.5);
       await page.screenshot({ path: `test-results/observability-single-container-${theme}-reference.png` });
+      await page.locator('.timeline-event').filter({ hasText: 'Out of memory' }).click();
+      await page.screenshot({ path: `test-results/observability-selected-event-${theme}-reference.png` });
+      await timeline.getByRole('button', { name: 'Select end of displayed hour' }).click();
     }
     for (const width of [1440, 1024, 901, 900, 620, 390]) {
       await page.setViewportSize({ width, height: 900 });
@@ -203,12 +240,71 @@ test('single-container observability has a vertical synchronized timeline and st
   }
 });
 
+test('stats settings show preset values and unlock only the current values under Custom', async ({ page, browser, baseURL }, testInfo) => {
+  const serveSettings = route => route.fulfill({ status: 200, contentType: 'text/html', body: settingsFixture });
+  await page.route('**/settings', serveSettings);
+  await page.goto('/settings');
+  const scope = page.getByLabel('Collection scope');
+  const interval = page.getByLabel('Sampling interval (for example 5s)');
+  await expect(page.getByRole('navigation', { name: 'Settings categories' })
+    .getByRole('link', { name: 'Containers' })).toHaveAttribute('aria-current', 'page');
+  await expect(interval).toHaveValue('1s');
+  await expect(interval).toHaveAttribute('readonly', '');
+  await expect(scope).toBeHidden();
+  await page.getByRole('radio', { name: 'Low', exact: true }).press('Space');
+  await expect(interval).toHaveValue('15s');
+  await page.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+  await expect(scope).toBeVisible();
+  await expect(interval).toBeEditable();
+  await expect(page.getByLabel('Collection scope')).toHaveValue('activated');
+  await expect(page.getByLabel('Sampling interval (for example 5s)')).toHaveValue('15s');
+  await expect(page.locator('[data-metrics-preset]:visible')).toHaveCount(0);
+  await page.getByLabel('Collection scope').selectOption('all');
+  await page.getByLabel('Sampling interval (for example 5s)').fill('3s');
+  await page.getByRole('radio', { name: 'Medium', exact: true }).press('Space');
+  await expect(interval).toHaveValue('5s');
+  await page.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+  await expect(page.getByLabel('Collection scope')).toHaveValue('activated');
+  await expect(page.getByLabel('Sampling interval (for example 5s)')).toHaveValue('5s');
+  await expect(page.getByLabel('Storage target')).toHaveValue('10.48576');
+  await page.getByRole('radio', { name: 'High', exact: true }).press('Space');
+  await page.getByLabel('Storage target').fill('20');
+  await expect(page.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+  await expect(page.getByLabel('Collection scope')).toHaveValue('all');
+  await expect(page.getByLabel('Sampling interval (for example 5s)')).toHaveValue('1s');
+  if (testInfo.project.name === 'chromium') {
+    for (const theme of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: theme });
+      for (const width of [1256, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        await page.screenshot({ path: `test-results/settings-observability-${theme}-${width}.png`, fullPage: true });
+      }
+    }
+  }
+  const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
+  try {
+    const fallback = await context.newPage();
+    await fallback.route('**/settings', serveSettings);
+    await fallback.goto('/settings');
+    await fallback.getByRole('radio', { name: 'Medium', exact: true }).press('Space');
+    await expect(fallback.getByRole('textbox', { name: 'Sampling interval', exact: true })).toHaveValue('5s');
+    await fallback.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+    await expect(fallback.getByLabel('Collection scope')).toBeVisible();
+    await expect(fallback.locator('noscript .metrics-help')).toBeVisible();
+    await expect(fallback.locator('noscript .metrics-help')).toContainText('save a preset before selecting Custom');
+  } finally {
+    await context.close();
+  }
+});
+
 test('single-container navigation and record selectors work without JavaScript', async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
   try {
     await context.route('**/containers/observability*', serveObservability);
     const page = await context.newPage();
     await page.goto('/containers/observability');
+    await expect(page.locator('[data-timeline-latest]')).toBeHidden();
     await page.getByRole('navigation', { name: 'Filtered containers' }).getByRole('link', { name: 'database', exact: true }).click();
     await expect(page.locator('[data-timeline]')).toHaveAttribute('data-container', 'b'.repeat(64));
     await expect(page.locator('.timeline-event').filter({ hasText: 'Out of memory' })).toBeVisible();

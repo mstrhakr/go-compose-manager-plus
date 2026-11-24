@@ -323,16 +323,16 @@
     if (timeline.dataset.timelineReady === 'true') return;
     const slider = timeline.querySelector('[data-timeline-slider]');
     const output = timeline.querySelector('[data-timeline-output]');
+    const caption = timeline.querySelector('[data-timeline-caption]');
     const start = Number(timeline.dataset.start);
     const end = Number(timeline.dataset.end);
     if (!slider || !output || !Number.isFinite(start) || !Number.isFinite(end) || start >= end) return;
     const step = Number(slider.step) || 1000;
     const format = time => {
-      const label = new Date(time).toLocaleString(undefined, {
-        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit',
+      return new Date(time).toLocaleString(undefined, {
+        month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', timeZoneName: 'short',
+        fractionalSecondDigits: time % 1000 ? 3 : undefined,
       });
-      const milliseconds = ((Math.round(time) % 1000) + 1000) % 1000;
-      return milliseconds ? `${label}.${String(milliseconds).padStart(3, '0')}` : label;
     };
     const setTime = time => {
       const selected = Math.round(Math.max(start, Math.min(end, time)));
@@ -340,12 +340,20 @@
         start + Math.round((selected - start) / step) * step));
       slider.value = String(sliderTime);
       timeline.dataset.selected = String(selected);
-      output.value = format(selected);
+      const label = format(selected);
+      const vertical = timeline.hasAttribute('data-timeline-vertical');
+      output.value = vertical ? new Date(selected).toLocaleTimeString(undefined, {
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+      }) : label;
       output.textContent = output.value;
-      slider.setAttribute('aria-valuetext', output.value);
+      output.title = label;
+      if (caption) caption.title = label;
+      slider.setAttribute('aria-valuetext', label);
+      const position = 100 - (selected - start) / (end - start) * 100;
+      if (vertical) output.style.top = `clamp(12px, ${position}%, calc(100% - 12px))`;
       const cursor = timeline.querySelector('[data-timeline-cursor]');
       if (cursor) {
-        cursor.style.top = `${100 - (selected - start) / (end - start) * 100}%`;
+        cursor.style.top = `${position}%`;
         cursor.hidden = false;
       }
       for (const marker of timeline.querySelectorAll('[data-timeline-select]')) {
@@ -394,6 +402,8 @@
     });
     timelineSelections.set(timeline, setTime);
     timeline.dataset.timelineReady = 'true';
+    const latest = timeline.querySelector('[data-timeline-latest]');
+    if (latest) latest.hidden = false;
     const initial = Number(timeline.dataset.selected);
     setTime(Number.isFinite(initial) ? initial : end);
     for (const marker of timeline.querySelectorAll('[data-timeline-marker]')) {

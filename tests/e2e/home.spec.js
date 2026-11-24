@@ -110,10 +110,12 @@ test('first login forces password setup before protected dashboard and works on 
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole('link', { name: 'Settings', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Metrics settings' })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Settings categories' }).getByRole('link', { name: 'Metrics' })).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('heading', { name: 'Observability settings' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Settings categories' }).getByRole('link', { name: 'Containers' })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByText('Disabled; no background metrics collection', { exact: false })).toBeVisible();
     await expect(page.locator('[data-metrics-custom-options]')).toBeHidden();
+    await expect(page.getByRole('textbox', { name: 'Sampling interval', exact: true })).toHaveValue('15s');
+    await expect(page.getByRole('textbox', { name: 'Sampling interval', exact: true })).toHaveAttribute('readonly', '');
     await expect(page.getByLabel('Storage unit')).toHaveValue('MB');
     const storageBounds = await page.getByLabel('Storage target').boundingBox();
     const unitBounds = await page.getByLabel('Storage unit').boundingBox();
@@ -161,14 +163,16 @@ test('first login forces password setup before protected dashboard and works on 
 
       await interactivePage.goto('/settings');
       await interactivePage.getByText('Low', { exact: true }).click();
-      await expect(interactivePage.locator('[data-metrics-custom-options]')).toBeHidden();
+      await expect(interactivePage.getByLabel('Collection scope')).toBeHidden();
+      await expect(interactivePage.getByLabel('Sampling interval (for example 5s)')).toHaveJSProperty('readOnly', true);
       await interactivePage.getByText('Custom', { exact: true }).click();
       await expect(interactivePage.locator('[data-metrics-custom-options]')).toBeVisible();
       await interactivePage.getByLabel('Collection scope').selectOption('all');
       await interactivePage.getByText('High', { exact: true }).click();
-      await expect(interactivePage.locator('[data-metrics-custom-options]')).toBeHidden();
+      await expect(interactivePage.getByLabel('Collection scope')).toBeHidden();
       await expect(interactivePage.getByLabel('Collection scope')).toHaveValue('all');
       await expect(interactivePage.getByLabel('Sampling interval (for example 5s)')).toHaveValue('1s');
+      await expect(interactivePage.getByLabel('Sampling interval (for example 5s)')).toHaveJSProperty('readOnly', true);
       await interactivePage.getByLabel('Storage target').fill('10.48576');
       await interactivePage.getByLabel('Storage unit').selectOption('MB');
       await expect(interactivePage.getByRole('radio', { name: 'Custom' })).toBeChecked();
@@ -178,12 +182,14 @@ test('first login forces password setup before protected dashboard and works on 
     }
     await page.getByText('Medium', { exact: true }).click();
     await expect(page.locator('[data-metrics-custom-options]')).toBeHidden();
+    await expect(page.getByRole('textbox', { name: 'Sampling interval', exact: true })).toHaveValue('5s');
     await page.getByLabel('Storage target').fill('10.48576');
     await page.getByLabel('Storage unit').selectOption('MB');
     await expect(page.getByRole('radio', { name: 'Medium' })).toBeChecked();
     await page.getByRole('button', { name: 'Save metrics preferences' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Metrics preferences saved' })).toBeVisible();
     await expect(page.getByRole('radio', { name: 'Custom' })).toBeChecked();
+    await expect(page.getByLabel('Sampling interval (for example 5s)')).toHaveValue('5s');
     await expect(page.getByLabel('Storage target')).toHaveValue('10.48576');
     await expect(page.getByLabel('Storage unit')).toHaveValue('MB');
     await page.getByLabel('Enable background metrics collection').check();

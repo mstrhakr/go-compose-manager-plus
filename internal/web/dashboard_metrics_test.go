@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"math"
+	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
@@ -168,6 +169,22 @@ func TestSyntheticDashboardPreview(t *testing.T) {
 	}
 	if directory := os.Getenv("CMP_UI_PREVIEW_DIR"); directory != "" {
 		if err := os.WriteFile(filepath.Join(directory, "dashboard.html"), response.Body.Bytes(), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		settingsResponse := httptest.NewRecorder()
+		server.render(settingsResponse, pageData{
+			Title: "Synthetic settings preview", View: "settings", Username: "Preview", Initial: "P",
+			MetricsSettings: metricsSettingsForm{
+				Enabled: true, Profile: "high", Scope: "all", Interval: "1s",
+				Limit: "10.48576", LimitUnit: "MB", Revision: "1",
+			},
+			MetricsPresets: metricsProfilePresets[:], CollectionStatusText: "Synthetic preview only; no Docker collection.",
+			Notice: "Synthetic preview data only. No production preferences are changed.",
+		})
+		if settingsResponse.Code != http.StatusOK {
+			t.Fatalf("settings preview rendering failed: %s", settingsResponse.Body.String())
+		}
+		if err := os.WriteFile(filepath.Join(directory, "settings.html"), settingsResponse.Body.Bytes(), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}

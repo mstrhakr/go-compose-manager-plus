@@ -64,18 +64,16 @@ if (metricsProfiles.length) {
   const storageLimit = document.querySelector('#metrics-limit');
   const storageUnit = document.querySelector('[data-metrics-storage-unit]');
   const customOptions = document.querySelector('[data-metrics-custom-options]');
-  const profileDescription = document.querySelector('[data-metrics-profile-description]');
-  const presets = {
-    low: { scope: 'activated', interval: '15s', description: 'Activated stacks, sampled every 15 seconds.' },
-    medium: { scope: 'activated', interval: '5s', description: 'Activated stacks, sampled every 5 seconds.' },
-    high: { scope: 'all', interval: '1s', description: 'All running containers, sampled every second.' },
-    custom: { description: 'Choose a collection scope and sampling interval below.' },
-  };
+  const presets = Object.fromEntries([...document.querySelectorAll('[data-metrics-preset]')]
+    .map(values => [values.dataset.metricsPreset, { scope: values.dataset.scope, interval: values.dataset.interval }]));
   const selectedProfile = () => metricsProfiles.find(control => control.checked)?.value;
   function renderProfile() {
     const profile = selectedProfile();
-    if (customOptions) customOptions.hidden = profile !== 'custom';
-    if (profileDescription) profileDescription.textContent = presets[profile]?.description || '';
+    if (customOptions) customOptions.hidden = false;
+    for (const control of document.querySelectorAll('[data-metrics-scope-control]')) {
+      control.hidden = profile !== 'custom';
+    }
+    interval.readOnly = profile !== 'custom';
   }
   function selectCustomProfile() {
     const custom = metricsProfiles.find(control => control.value === 'custom');

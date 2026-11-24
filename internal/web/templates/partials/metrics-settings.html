@@ -2,10 +2,10 @@
 <div class="settings-page">
   <nav class="settings-navigation" aria-label="Settings categories">
     <h2>Settings</h2>
-    <a href="/settings" aria-current="page">Metrics</a>
+    <a href="/settings" aria-current="page">Containers</a>
   </nav>
   <section class="workspace-panel metrics-settings" aria-labelledby="metrics-settings-title">
-    <div class="panel-heading"><div><h1 id="metrics-settings-title">Metrics settings</h1><p>Configure opt-in background metrics collection.</p></div></div>
+    <div class="panel-heading"><div><h1 id="metrics-settings-title">Observability settings</h1><p>Containers &gt; Observability · Configure opt-in container metrics collection. Container logs are not collected.</p></div></div>
     <div class="discovery-content">
       <p role="status"><strong>Collection status:</strong> {{.CollectionStatusText}}</p>
       {{if .CollectionWarning}}<p class="discovery-notice" role="status">{{.CollectionWarning}}</p>{{end}}
@@ -16,36 +16,37 @@
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <input type="hidden" name="revision" value="{{.MetricsSettings.Revision}}">
         <fieldset class="metrics-profile-picker">
-          <legend>Collection profile</legend>
+          <legend>Container stats</legend>
           <div class="metrics-profile-options">
+            {{range .MetricsPresets}}
             <label class="metrics-profile-option">
-              <input type="radio" name="profile" value="low" data-metrics-profile {{if eq .MetricsSettings.Profile "low"}}checked{{end}}>
-              <span>Low</span>
+              <input type="radio" name="profile" value="{{.Profile}}" data-metrics-profile {{if eq $.MetricsSettings.Profile (printf "%s" .Profile)}}checked{{end}}>
+              <span>{{.Label}}</span>
             </label>
-            <label class="metrics-profile-option">
-              <input type="radio" name="profile" value="medium" data-metrics-profile {{if eq .MetricsSettings.Profile "medium"}}checked{{end}}>
-              <span>Medium</span>
-            </label>
-            <label class="metrics-profile-option">
-              <input type="radio" name="profile" value="high" data-metrics-profile {{if eq .MetricsSettings.Profile "high"}}checked{{end}}>
-              <span>High</span>
-            </label>
+            {{end}}
             <label class="metrics-profile-option">
               <input type="radio" name="profile" value="custom" data-metrics-profile {{if eq .MetricsSettings.Profile "custom"}}checked{{end}}>
               <span>Custom</span>
             </label>
           </div>
-          <p class="metrics-profile-description" data-metrics-profile-description aria-live="polite"></p>
-        </fieldset>
-        <fieldset class="metrics-custom-options" data-metrics-custom-options hidden>
-          <legend>Custom collection settings</legend>
-          <label for="metrics-scope">Collection scope</label>
-          <select id="metrics-scope" name="scope">
-            <option value="activated" {{if eq .MetricsSettings.Scope "activated"}}selected{{end}}>Activated stacks</option>
-            <option value="all" {{if eq .MetricsSettings.Scope "all"}}selected{{end}}>All running containers</option>
-          </select>
-          <label for="metrics-interval">Sampling interval (for example 5s)</label>
-          <input id="metrics-interval" name="interval" value="{{.MetricsSettings.Interval}}">
+          {{range .MetricsPresets}}
+          <div class="metrics-preset-values" data-metrics-preset="{{.Profile}}" data-scope="{{.Scope}}" data-interval="{{.Interval}}">
+            <p><strong>Collection scope:</strong> {{.ScopeLabel}}</p>
+            <noscript><div class="metrics-preset-fallback"><label for="metrics-preset-{{.Profile}}">Sampling interval</label><input id="metrics-preset-{{.Profile}}" value="{{.Interval}}" readonly></div></noscript>
+          </div>
+          {{end}}
+          <div class="metrics-custom-options" data-metrics-custom-options hidden>
+            <label for="metrics-scope" data-metrics-scope-control>Collection scope</label>
+            <select id="metrics-scope" name="scope" data-metrics-scope-control>
+              <option value="activated" {{if eq .MetricsSettings.Scope "activated"}}selected{{end}}>Activated stacks</option>
+              <option value="all" {{if eq .MetricsSettings.Scope "all"}}selected{{end}}>All running containers</option>
+            </select>
+            <label for="metrics-interval">Sampling interval (for example 5s)</label>
+            <input id="metrics-interval" name="interval" value="{{.MetricsSettings.Interval}}">
+          </div>
+          <p class="metrics-help">Preset values are read-only. Custom unlocks the current values; changes apply only after Save.</p>
+          <noscript><p class="metrics-help">Without JavaScript, save a preset before selecting Custom to edit its values.</p></noscript>
+          <label class="metrics-opt-in"><input name="enabled" type="checkbox" value="true" {{if .MetricsSettings.Enabled}}checked{{end}}> Enable background metrics collection</label>
         </fieldset>
         <div class="metrics-storage-setting">
           <label for="metrics-limit">Storage target</label>
@@ -60,7 +61,6 @@
           </div>
           <p class="metrics-help">Decimal units: 1 KB = 1,000 bytes. This target is not a hard disk quota.</p>
         </div>
-        <label class="metrics-opt-in"><input name="enabled" type="checkbox" value="true" {{if .MetricsSettings.Enabled}}checked{{end}}> Enable background metrics collection</label>
         <button class="primary-button" type="submit">Save metrics preferences</button>
       </form>
     </div>
