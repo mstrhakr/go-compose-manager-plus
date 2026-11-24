@@ -257,7 +257,16 @@ sampling and does not imply complete or available historical logs. Off disables
 the source while retaining its scope choice; scope itself has no Off position.
 The existing resolved-project-name/activation association boundary applies,
 without claiming filesystem ownership or authorizing Compose operations.
-Concrete log collection intervals and other preset budgets remain undecided.
+The owner selected live streaming for High logs rather than one-second polling:
+use the read-only Docker logs endpoint with follow enabled to retrieve available
+backlog and then stream stdout/stderr. Do not use interactive attach or expose
+stdin. High retains its all-container scope, including finite available backlog
+for stopped containers; a completed stopped-container read is not a continuously
+connected live source. Streams require cancellation, bounded buffering/writes
+and explicit disconnect/reconnect reporting, without promising complete replay.
+The owner prefers streaming over polling for High where applicable; this does
+not silently change the existing stats collector or approve other streaming
+integrations. Low/Medium log intervals and other preset budgets remain undecided.
 
 The existing storage-pressure owner evicts
 metric samples only, so production capture requires an explicit shared-budget policy

@@ -137,7 +137,9 @@ overall Off preserves children for direct restoration under Custom, including
 children without an Off position. Concrete mappings remain to be selected.
 Log scope is approved: Low/Medium activated stacks, High all containers,
 including readable stopped-container backlog; Custom exposes named scope
-choices. Collection intervals and other budget mappings remain undecided.
+choices. High logs uses read-only live following rather than polling.
+Low/Medium intervals and other budget/lifecycle mappings remain undecided;
+existing stats collection is not changed by the streaming preference.
 Not every future setting must conform to this pattern.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and

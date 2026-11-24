@@ -244,6 +244,14 @@ rather than inventing an Off scope position. Existing activation/resolved
 project-name association is reused; no Compose effects, complete-history
 guarantee or concrete log interval/budget is approved by this answer.
 
+The owner then requested High use a live stream instead of polling, preferring
+streaming for High where supported. High logs uses read-only Docker logs with
+follow enabled, not interactive attach/stdin. Original Docker timestamps remain
+authoritative. High's all-container scope still includes readable stopped
+backlog; stopped EOF must not be presented as ongoing live continuity.
+Low/Medium intervals, bounded stream/reconnect policies and any stats transport
+change remain unapproved; this is not approval of a generic new streaming layer.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
