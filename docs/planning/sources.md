@@ -325,6 +325,21 @@ Container Observability, or Containers > Observability; sidebar sections,
 tabs or an additional sidebar layer were possible presentations, not selected
 layouts. A UI-equivalent reference can be supplied; exact hierarchy is pending.
 
+On 2026-11-23 the owner supplied three additional Settings navigation screenshots
+and requested saving them with the existing private references. Byte-identical
+copies are retained in ignored `scratch/ui-references/` as
+`unifi-settings-threat-management.png`, `unifi-settings-content-filter.png` and
+`unifi-settings-traffic-logging.png`; attachment originals were not modified.
+Do not commit or publish the reference images.
+They show the application rail, a Settings-category sidebar, a separate
+category-specific subpage panel with selectable title/description cards, and
+the selected page's content to the right. The subpage panel persists across
+the three page selections and includes a contextual summary card. These are
+visual navigation evidence, not proof of scrolling behavior or approval of
+Containers-versus-Observability hierarchy, exact dimensions, summary content or
+every displayed feature. A container-category/subpage adaptation remains to be
+selected with the owner.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
