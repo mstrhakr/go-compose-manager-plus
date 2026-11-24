@@ -23,6 +23,13 @@
 - Run focused tests while editing, then `make check` for completed app work.
   Use `make docs`, `make check-workflows`, `make check-security` and container checks
   when their surfaces change. State checks not run; never invent verification.
+- Keep [user documentation](../docs/content/docs/) current incrementally as
+  features and UI evolve. Add or update pages within relevant feature slices
+  to explain available functions, navigation, controls, workflows and limits;
+  document implemented behavior, not future plans as if they already work.
+  An update is not required for every commit, but do not defer user-facing
+  guidance to a large catch-up rewrite. Keep development/internal details in
+  development docs or contracts rather than user guides.
 - Use Conventional Commit messages for every authored commit and PR title.
   Preserve breaking intent in squash messages. Work through short-lived branches
   and PRs; do not push main, publish, or bypass protection without authorization.
