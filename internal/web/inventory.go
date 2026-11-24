@@ -90,6 +90,9 @@ func filterInventory(view string, query url.Values, projects []projectView, cont
 			if container.Project == "" {
 				group = "No Compose project label"
 			}
+			if container.State == "History only" {
+				group = "Unknown (history only)"
+			}
 			stateCounts[container.State]++
 			groupCounts[group]++
 			if container.Project != "" {

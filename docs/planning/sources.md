@@ -105,6 +105,287 @@ bounded, individually switchable series controls; collection and retention
 behavior are unchanged. These refinements are recorded under
 [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views).
 
+On 2026-11-23 the owner requested a dashboard presentation change: show
+aggregate and system metrics rather than per-container lines on Overview, while
+keeping detailed per-container charts in Observability. The owner clarified
+that the supplied dashboard references target a 1440p display. The current data
+source contains opt-in container metrics, not host-level CPU, memory, storage
+or network readings. The bounded overview slice aggregates only those existing
+container samples, preserves missing values as gaps, and does not add a host
+collector, mount or privilege. Host metrics remain a separate source and
+security/collection decision. The overview's responsive presentation is
+verified at 2560×1440 and narrower desktop/mobile widths; see the
+[verification record](../verification.md#aggregate-overview-dashboard-presentation).
+
+On 2026-11-23 the owner clarified that UniFi keeps navigation and sidebars fixed,
+allows internal sidebar scrolling, and scrolls only the main content. This
+supplies the next bounded shell-alignment requirement; screenshots alone did
+not establish scroll ownership or exact CSS dimensions. Desktop pane scrolling
+is implemented independently of compact-layout page scrolling.
+
+The owner also supplied a recording and examples of a right-side details panel
+opened from a selected list item, with separate detail, activity and settings
+views. A similar project/container panel is a future UI direction; the examples
+do not approve Compose action effects or additional management policies.
+
+On 2026-11-23 the owner requested a single Overview chart with switchable metric
+display, following the supplied dashboard recording. The bounded presentation
+uses CPU, memory and combined network receive/transmit views over unchanged
+last-hour aggregate samples; Observability retains separate per-container charts.
+
+On 2026-11-23 the owner requested Observability's single-container layout and
+interactions based on the supplied recording: a secondary-sidebar container
+selection (defaulting to the top entry), vertical timeline, stacked charts and
+bottom logs/records area, with no aggregate or overlapping-container view.
+The recording was decoded locally; its Observability segment demonstrates
+selected-entity charts, a newest-at-top time rail, synchronized time selection
+and records beneath the charts. The bounded implementation uses retained
+container identities and observed events. The owner further clarified the
+separate filter sidebar and slimmer container-name sidebar, directing attention
+to the actual Observability page rather than adjacent UniFi screens. A supplied
+1434x768 screenshot is described as an unscaled 1080p desktop with Chrome taking
+part of the screen. The implementation adds on-demand read-only snapshot names
+and filter values, retaining historical-only IDs with unknown current metadata.
+Historical log collection remains unavailable, not fabricated or inferred.
+
+On 2026-11-23 the owner confirmed desktop-first work, with mobile alignment
+later and basic controls/statistics rather than full desktop parity. Advanced
+mobile views may eventually be simplified, truncated or disabled; the exact
+feature set is not decided and existing views have not been disabled.
+The owner requested container-log collection in the same local observability
+SQLite database with one-hour retention, deferring TimescaleDB for longer log
+and metric history. An aggregated dashboard log view is requested; a separate
+logs navigation view with stack/container/network filtering remains a tentative
+follow-up. At that stage, Docker stdout/stderr and an additional default-off
+log-collection option were proposals, not settled source/consent policy. The
+log opt-in question had not received an owner answer at that stage. Shared storage-pressure
+handling currently evicts samples only and needs a bounded policy for logs
+before production capture.
+
+The owner subsequently agreed with the Docker API/original-message-plus-metadata
+model and requested beginning implementation, with contract refinement as needed
+throughout. This approves the initial stdout/stderr source, SQLite prototype and
+optional later TimescaleDB direction, not the earlier unanswered consent choice.
+The first bounded slice provides API decoding, SQLite persistence and shared
+one-hour expiry without enabling capture or selecting managed pressure/replay
+policy. Optional JSON parsing and production collector/web integration remain
+pending. Dedicated log infrastructure such as Loki is a later option justified
+by actual volume/search needs, not a new prototype dependency.
+
+On 2026-11-23 the owner requested log settings in the Metrics category with
+separate Off/Low/Medium/High/Custom source selectors matching Docker stats.
+When expanded, each source's selector and controls should stay contained in its
+own card/panel. This supplies the next bounded presentation direction and
+replaces the earlier unapproved separate-checkbox proposal; it does not settle
+log preset values or collection defaults. An overarching selector for Metrics
+as a whole was suggested tentatively ("we could also"), not approved as a
+particular master/preset mechanism. Its inclusion, whether a preset enables
+previously disabled log collection, and whether it overwrites source preferences
+need refinement before implementation. Existing code still has one four-choice
+metrics profile plus a separate enabled checkbox, no independent log settings,
+and no production log collector.
+
+The owner subsequently answered "i choose A" to the reviewed overall-Low
+scenario on 2026-11-23. The overall selector is approved as a category-wide
+preset: Low/Medium/High sets both sources to the corresponding preset,
+including enabling previously Off logs when saved; Off sets both sources Off.
+Individual source changes make the overall selection Custom. Effects are
+visible before Save, not applied immediately by slider movement. This settles
+the earlier overall-selector inclusion/consent question, not log preset
+parameters, initial/migration defaults, Off-history effects or shared pressure
+policy. No runtime or settings implementation changed during this refinement.
+
+The owner then refined the reusable Settings pattern on 2026-11-23: individual
+settings use the same discrete slider/selector styling with their own meaningful
+labels/options, not necessarily Off/Low/Medium/High/Custom. Off or Medium may
+be omitted. Scope uses named scope choices within that presentation. Storage
+uses preset amounts plus Custom, revealing the existing amount/unit input as a
+reusable component; exact preset sizes remain unselected/unmeasured. Dependent
+controls show/hide with parent enablement. The owner explicitly allows settings
+that cannot reasonably conform. Hidden-child preservation/reset, custom-value
+restoration and nested preset propagation remain undecided; no runtime/component
+implementation is authorized merely by approval of this interaction pattern.
+
+The owner answered "1 for sure" to preserving saved child preferences while a
+parent is Off: stop collection, hide dependent controls without erasing values,
+and restore them on returning to Custom. Explicit source presets apply their
+own values. This does not settle retained-data deletion or preservation across
+explicit preset changes. The owner also required visible descriptions of what
+each preset selects. Subtext and visible-but-disabled Custom inputs were offered
+as possible presentations, not a settled widget choice.
+
+The owner then selected "visible-values": enabled preset settings keep their
+actual value controls visible but noneditable, and Custom makes them editable.
+Read-only fields are preferred where supported, readable summaries otherwise;
+named scope choices use explanatory text without a redundant field. Off still
+collapses dependent controls, with a "Not collecting" source summary. This
+settles the earlier subtext-versus-value-control presentation proposal.
+
+The owner selected "unlock-current" for returning to Custom after an explicit
+preset: unlock the currently displayed preset values rather than restoring a
+separate earlier custom configuration. Explicit preset selection replaces prior
+custom values; disabling via Off alone continues to preserve preferences.
+Nested individual-setting/source/category Custom propagation remains open.
+
+The owner then approved upward Custom propagation without sibling changes:
+editing one leaf marks its source and overall category Custom, leaving other
+values untouched; selecting a category preset explicitly reapplies both source
+presets. The owner clarified parent presets may map to differently named child
+choices because some omit Medium or Off. Do not copy labels blindly or invent
+missing choices. Overall Off preserves last child settings, and returning
+directly to Custom restores them even where a child has no Off position.
+Concrete per-setting preset mappings remain undecided.
+
+The owner approved the first log preset mapping: Low/Medium use Activated
+stacks, High uses All containers, and Custom exposes the two named scope
+choices. Include readable backlog for stopped containers within that scope;
+numeric stats continue to sample running containers. Off preserves scope
+rather than inventing an Off scope position. Existing activation/resolved
+project-name association is reused; no Compose effects, complete-history
+guarantee or concrete log interval/budget is approved by this answer.
+
+The owner then requested High use a live stream instead of polling, preferring
+streaming for High where supported. High logs uses read-only Docker logs with
+follow enabled, not interactive attach/stdin. Original Docker timestamps remain
+authoritative. High's all-container scope still includes readable stopped
+backlog; stopped EOF must not be presented as ongoing live continuity.
+Low/Medium intervals, bounded stream/reconnect policies and any stats transport
+change remain unapproved; this is not approval of a generic new streaming layer.
+
+The owner selected "periodic-60-30": Low fetches available backlog every
+60 seconds, Medium every 30 seconds, and High follows live logs. Low/Medium
+keep the approved activated scope, High the all-container scope. Frequency
+controls freshness, not timestamp resolution or intentional message sampling;
+Docker retention/rotation still limits recovery. Custom transport options and
+resource/recovery policies remain unresolved.
+
+On 2026-11-23 the owner requested state tracking in a tab/section alongside logs
+in Observability and on its timeline, inspired by offline-state reference views.
+The owner wants sparse changes, not an identical event every second. Existing
+code captures lifecycle/health events and saves discrete state snapshots each
+sampling cycle; transition-only state history is not implemented. Lifecycle,
+health and observation availability are distinct; taxonomy, reconciliation,
+retention baselines and uncertainty presentation need refinement. Other
+change-based information such as update status is tentative, not approval to
+add registry checks or other sources. The owner further requested Docker
+disconnects appear as a distinct grey timeline area, referring to the supplied
+screenshots and offering another if needed. This identifies an observation-gap
+presentation, not a container-down inference or approval of all proposed state
+baseline/reconciliation mechanics. Exact visual alignment remains pending.
+
+The owner clarified on 2026-11-23 that Up/Down/Stop/Restart/Update are distinct
+overall action/activity records, while container Observability should show
+container-level observed events such as Created, Started and health changes.
+Do not conflate requested manager actions with observed state or manufacture
+that sequence for every Up. Container-operation linking and activity lifetime
+remain unresolved; the request does not authorize action execution. Existing
+Docker event ingestion lacks Created events and no manager executor exists.
+
+The owner clarified that the current Observability slice is container-specific;
+stack-level Observability will come later. Shared system events (examples:
+manager started, Docker lost/restored) may appear on container timelines but
+must be stored once, never duplicated into every container's event history.
+Container timelines project relevant shared records alongside their own events.
+This resolves container-activity scope and shared record ownership, not system
+catalog/retention or stack-view implementation.
+
+The owner selected retaining one latest pre-window state baseline per container
+plus in-window transitions. This supplies context for unchanged containers,
+not repeated events or an assertion of uninterrupted state across shared gaps.
+Raw logs/metrics retain their one-hour boundary; baseline removal/cleanup and
+reconciliation remain unresolved. The owner reiterated TimescaleDB and possible
+Grafana output/integration are deferred, not part of this slice.
+
+The owner approved separate lifecycle and health dimensions, with different
+presentations appropriate to different views. Unhealthy periods should be
+conspicuous red striped/highlighted timeline areas, distinct from grey Docker
+disconnect areas. The primary goal is quickly understanding container behavior
+over time, not a status label alone. Color must not be the only explanation;
+uncertainty/overlap precedence and exact reference alignment remain unresolved.
+
+The owner selected "unknown-overrides": grey observation gaps override red
+unhealthy areas until observation resumes. Last-known health remains context.
+A healthy reconnect observation is labeled as observed on reconnect, never a
+claimed exact recovery time within the gap. This resolves overlap precedence,
+not exact rendering or all reconnect/retention mechanics.
+
+The owner reframed the category as Observability, not merely Metrics, with all
+observability options grouped logically by collection type and required API/
+backend tracking. Exact independent source controls remain unresolved. Existing
+stats collection depends on inspect requests and shared event continuity;
+endpoint overlap must not silently remove required safety observations or
+justify duplicate collector work. Prior preset/UI decisions apply to the
+renamed category, not newly invented source mappings or defaults.
+
+The owner approved the three-source split: stats, state/events and logs, with
+shared required API work underneath and state-history persistence distinct from
+stats safety observations. New state/event presets/defaults remain open.
+For Settings navigation the owner proposed Observability > Containers, flat
+Container Observability, or Containers > Observability; sidebar sections,
+tabs or an additional sidebar layer were possible presentations, not selected
+layouts. A UI-equivalent reference can be supplied; exact hierarchy is pending.
+
+On 2026-11-23 the owner supplied three additional Settings navigation screenshots
+and requested saving them with the existing private references. Byte-identical
+copies are retained in ignored `scratch/ui-references/` as
+`unifi-settings-threat-management.png`, `unifi-settings-content-filter.png` and
+`unifi-settings-traffic-logging.png`; attachment originals were not modified.
+Do not commit or publish the reference images.
+They show the application rail, a Settings-category sidebar, a separate
+category-specific subpage panel with selectable title/description cards, and
+the selected page's content to the right. The subpage panel persists across
+the three page selections and includes a contextual summary card. These are
+visual navigation evidence, not proof of scrolling behavior or approval of
+Containers-versus-Observability hierarchy, exact dimensions, summary content or
+every displayed feature. At that stage, a container-category/subpage adaptation
+remained to be selected with the owner; the subsequent decisions below settle
+the organization and basic visual direction.
+
+The owner then requested a broad future-settings inventory before selecting the
+hierarchy. The assistant compared existing product/contract scope with
+exploratory future candidates; no source-plugin capability was automatically
+adopted. The owner responded "i like it" and requested a final design pass.
+Record resource-first Settings > Containers > Observability as the accepted
+organization direction, with shared Data & retention ownership and category
+subpages where useful. The broader category list remains candidate scope, not
+approval of every feature or a fixed permanent navigation tree.
+
+Nine additional owner screenshots were saved byte-identically under the same
+ignored private reference directory, without editing originals:
+`unifi-settings-overview-top.png`, `unifi-settings-overview-lower.png`,
+`unifi-settings-table-manage.png`, `unifi-settings-table-normal.png`,
+`unifi-settings-network-controls.png`, `unifi-settings-subpage-controls.png`,
+`unifi-settings-subpage-setup.png`, `unifi-settings-subpage-diagram.png` and
+`unifi-settings-subpage-instructions.png`. Do not commit/publish these images.
+They show collapsible summary tables, normal versus checkbox-selection table
+presentations, compact label/control rows, dependent fields, and a persistent
+title/description subpage panel across form, setup and explanatory-diagram
+pages. These are visual evidence/inspiration, not copied product assets,
+approval of pictured actions or proof of dynamic saving/scroll ownership.
+The final pass consolidates settled design and marks exact dimensions,
+disclosure/manage-mode details and new widgets as proposals. Runtime code and
+browser verification were not changed by this documentation-only review.
+
+During final visual signoff on 2026-11-23, the owner clarified:
+"the generic basic layout is what we are going for for most things, with the
+extras as ideas for things we can do if needed, where needed."
+This approves the offered compact aligned rows, contained source cards,
+restrained borders, bounded widths and contextual subpage panel where useful.
+All screenshots remain a toolbox of optional patterns rather than a mandatory
+widget inventory. Exact geometry, pictured actions, assets, automatic saving,
+new capabilities and implementation fulfillment are not approved by this answer.
+
+Protocol evidence consulted: Docker's
+[logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
+and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
+plus Moby `v28.5.1`
+[log-stream writer](https://github.com/moby/moby/blob/v28.5.1/api/server/httputils/write_log_stream.go).
+Moby prefixes each non-TTY framed message with its timestamp even for partial
+lines, so newline-based frame concatenation would alter messages. TTY streams
+have no equivalent frame boundary. The product retains its existing v1.40 API
+request version; these references are protocol evidence, not live-driver or
+daemon-version compatibility verification.
+
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose
 project name, even for copies resolving to the same name. This is runtime

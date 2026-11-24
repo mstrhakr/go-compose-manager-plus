@@ -92,10 +92,17 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 		}
 	}
 	response = perform(handler, http.MethodGet, "/containers/observability", nil, cookies, "")
-	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "Last-hour timeline") ||
-		!strings.Contains(response.Body.String(), "Observability") || !strings.Contains(response.Body.String(), "Metrics collection is disabled") {
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "data-timeline-vertical") ||
+		!strings.Contains(response.Body.String(), "Observability") || !strings.Contains(response.Body.String(), "Metrics collection is disabled") ||
+		!strings.Contains(response.Body.String(), "Docker status unavailable: no socket configured.") ||
+		strings.Contains(response.Body.String(), "No containers available in the snapshot") {
 		t.Fatalf("observability page = %d %q", response.Code, response.Body.String())
 	}
+	response = perform(handler, http.MethodGet, "/containers/observability?container=all", nil, cookies, "")
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("all-container observability request = %d, want 404", response.Code)
+	}
+	response = perform(handler, http.MethodGet, "/containers/observability", nil, cookies, "")
 	csrfToken = tokenFromBody(t, response.Body.String())
 	response = perform(handler, http.MethodPost, "/logout", url.Values{}, cookies, csrfToken)
 	if response.Code != http.StatusSeeOther || response.Header().Get("Location") != "/login" {
@@ -285,7 +292,7 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 			_, _ = io.WriteString(w, `[]`)
 			return
 		}
-		_, _ = io.WriteString(w, `[{"Names":["/<script>"],"State":"running","Labels":{"com.docker.compose.project":"shared","com.docker.compose.service":"app"}},{"Id":"abcdef","Names":["/unmanaged"],"State":"exited","Labels":{}}]`)
+		_, _ = io.WriteString(w, `[{"Id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Names":["/<script>"],"State":"running","Labels":{"com.docker.compose.project":"shared","com.docker.compose.service":"app"}},{"Id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","Names":["/unmanaged"],"State":"exited","Labels":{}}]`)
 	}))
 	_ = dockerServer.Listener.Close()
 	dockerServer.Listener = listener
@@ -303,7 +310,7 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 		}
 	}
 	cookies := make(map[string]*http.Cookie)
-	for _, path := range []string{"/?runtime=1", "/projects", "/containers"} {
+	for _, path := range []string{"/?runtime=1", "/projects", "/containers", "/containers/observability"} {
 		perform(handler, http.MethodGet, path, nil, cookies, "")
 	}
 	if calls.Load() != 0 {
@@ -388,17 +395,40 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	if !strings.Contains(response.Body.String(), "No containers match these filters.") {
 		t.Fatalf("filtered empty inventory: %s", response.Body.String())
 	}
+	before := calls.Load()
+	response = perform(handler, http.MethodGet, "/containers/observability", nil, cookies, "")
+	body = response.Body.String()
+	if response.Code != http.StatusOK || calls.Load() != before+1 ||
+		!strings.Contains(body, `data-container="`+strings.Repeat("a", 64)+`"`) ||
+		!strings.Contains(body, "&lt;script&gt;") || strings.Contains(body, "<script>") {
+		t.Fatalf("default single-container snapshot: code=%d calls=%d body=%s", response.Code, calls.Load(), body)
+	}
+	response = perform(handler, http.MethodGet, "/containers/observability?q=unmanaged&state=exited", nil, cookies, "")
+	body = response.Body.String()
+	if response.Code != http.StatusOK || !strings.Contains(body, `data-container="`+strings.Repeat("b", 64)+`"`) ||
+		!strings.Contains(body, ">unmanaged</span>") || strings.Contains(body, "&lt;script&gt;") {
+		t.Fatalf("filtered container selection: %d %s", response.Code, body)
+	}
+	response = perform(handler, http.MethodGet, "/containers/observability?container=all", nil, cookies, "")
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("all-container view was available: %d", response.Code)
+	}
 	empty.Store(true)
 	response = perform(handler, http.MethodGet, "/containers", nil, cookies, "")
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "No containers found in this snapshot.") {
 		t.Fatalf("empty inventory = %d %s", response.Code, response.Body.String())
 	}
+	response = perform(handler, http.MethodGet, "/containers/observability", nil, cookies, "")
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "No containers available in the snapshot or retained history.") {
+		t.Fatalf("empty observability inventory = %d %s", response.Code, response.Body.String())
+	}
 	empty.Store(false)
 	failure.Store(true)
-	for _, path := range []string{"/?runtime=1", "/projects", "/containers"} {
+	for _, path := range []string{"/?runtime=1", "/projects", "/containers", "/containers/observability"} {
 		response = perform(handler, http.MethodGet, path, nil, cookies, "")
 		body = response.Body.String()
-		if !strings.Contains(body, "Docker status unavailable") || strings.Contains(body, "No matching containers") || strings.Contains(body, "No containers found") {
+		if !strings.Contains(body, "Docker status unavailable") || strings.Contains(body, "No matching containers") ||
+			strings.Contains(body, "No containers found") || strings.Contains(body, "No containers available in the snapshot") {
 			t.Fatalf("failed snapshot displayed as empty at %s: %s", path, body)
 		}
 	}

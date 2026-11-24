@@ -241,15 +241,15 @@ func (s *Store) SelectEvents(ctx context.Context, id string, start, end time.Tim
 	return result, nil
 }
 
-// SelectTimelineEvents returns the newest observed events in chronological order.
-func (s *Store) SelectTimelineEvents(ctx context.Context, start, end time.Time, limit int) ([]Event, error) {
-	from, to, err := historyTimeRange(start, end, limit)
+// SelectTimelineEvents returns a container's newest events in chronological order.
+func (s *Store) SelectTimelineEvents(ctx context.Context, id string, start, end time.Time, limit int) ([]Event, error) {
+	from, to, err := historyRange(id, start, end, limit)
 	if err != nil {
 		return nil, err
 	}
 	rows, err := s.db.QueryContext(ctx, `SELECT container_id, observed_ns, kind, health FROM container_events
-		WHERE observed_ns >= ? AND observed_ns < ?
-		ORDER BY observed_ns DESC, sequence DESC LIMIT ?`, from, to, limit)
+		WHERE container_id = ? AND observed_ns >= ? AND observed_ns < ?
+		ORDER BY observed_ns DESC, sequence DESC LIMIT ?`, id, from, to, limit)
 	if err != nil {
 		return nil, fmt.Errorf("query timeline events: %w", err)
 	}
@@ -274,6 +274,41 @@ func (s *Store) SelectTimelineEvents(ctx context.Context, start, end time.Time, 
 		result[left], result[right] = result[right], result[left]
 	}
 	return result, nil
+}
+
+// SelectObservedContainers includes history-only identities without a live snapshot.
+func (s *Store) SelectObservedContainers(ctx context.Context, start, end time.Time) ([]string, error) {
+	from, to, err := historyTimeRange(start, end, 1)
+	if err != nil {
+		return nil, err
+	}
+	if end.Sub(start) > time.Hour {
+		return nil, errors.New("observed container range exceeds one hour")
+	}
+	rows, err := s.db.QueryContext(ctx, `SELECT container_id FROM samples WHERE observed_ns >= ? AND observed_ns < ?
+		UNION SELECT container_id FROM container_events WHERE observed_ns >= ? AND observed_ns < ?
+		UNION SELECT container_id FROM container_states WHERE observed_ns >= ? AND observed_ns < ?
+		UNION SELECT container_id FROM container_logs WHERE observed_ns >= ? AND observed_ns < ?
+		ORDER BY container_id`, from, to, from, to, from, to, from, to)
+	if err != nil {
+		return nil, fmt.Errorf("query observed containers: %w", err)
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("read observed container: %w", err)
+		}
+		if err := validateID(id); err != nil {
+			return nil, fmt.Errorf("invalid stored container identity: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read observed containers: %w", err)
+	}
+	return ids, nil
 }
 
 // SelectStates returns recorded snapshots without inferring continuous state.

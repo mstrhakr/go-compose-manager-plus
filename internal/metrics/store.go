@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 7
+const schemaVersion = 8
 
 // ErrWriteOutcomeUnknown means a database commit failed and its outcome must
 // be reconciled before retrying the same batch.
@@ -271,6 +271,27 @@ func initialize(ctx context.Context, db *sql.DB) error {
 				return fmt.Errorf("migrate metrics schema to version 7: %w", err)
 			}
 		}
+		version = 7
+	}
+	if version == 7 {
+		for _, statement := range []string{
+			`CREATE TABLE container_logs (
+				sequence INTEGER PRIMARY KEY,
+				container_id TEXT NOT NULL,
+				observed_ns INTEGER NOT NULL CHECK (observed_ns > 0),
+				received_ns INTEGER NOT NULL CHECK (received_ns > 0),
+				stream TEXT NOT NULL CHECK (stream IN ('stdout', 'stderr', 'tty')),
+				message TEXT NOT NULL CHECK (length(CAST(message AS BLOB)) <= 65536),
+				truncated INTEGER NOT NULL CHECK (truncated IN (0, 1))
+			)`,
+			`CREATE INDEX container_logs_time ON container_logs(observed_ns, sequence)`,
+			`CREATE INDEX container_logs_container_time ON container_logs(container_id, observed_ns, sequence)`,
+			`PRAGMA user_version = 8`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 8: %w", err)
+			}
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit metrics migration: %w", err)
@@ -417,7 +438,13 @@ func (s *Store) Select(ctx context.Context, id string, start, end time.Time, lim
 // SelectChartSeries returns at most one recorded observation per container and
 // display bucket. It does not combine values across containers; missing buckets
 // remain nil and display selection does not alter retained samples.
-func (s *Store) SelectChartSeries(ctx context.Context, start, end time.Time, bucket time.Duration) ([]ContainerChartSeries, error) {
+// An empty id selects all containers; a nonempty id scopes rows before ranking.
+func (s *Store) SelectChartSeries(ctx context.Context, id string, start, end time.Time, bucket time.Duration) ([]ContainerChartSeries, error) {
+	if id != "" {
+		if err := validateID(id); err != nil {
+			return nil, err
+		}
+	}
 	from, err := timestamp(start)
 	if err != nil {
 		return nil, fmt.Errorf("invalid chart start: %w", err)
@@ -436,6 +463,12 @@ func (s *Store) SelectChartSeries(ctx context.Context, start, end time.Time, buc
 		return nil, errors.New("chart range exceeds 120 buckets")
 	}
 	bucketCount := int((rangeNS-1)/bucketNS + 1)
+	filter := ""
+	args := []any{from, bucketNS, from, bucketNS, from, to}
+	if id != "" {
+		filter = " AND container_id = ?"
+		args = append(args, id)
+	}
 	rows, err := s.db.QueryContext(ctx, `WITH ranked AS (
 		SELECT container_id, observed_ns,
 			((observed_ns - ?) / ?) AS bucket_index,
@@ -446,12 +479,12 @@ func (s *Store) SelectChartSeries(ctx context.Context, start, end time.Time, buc
 				ORDER BY observed_ns DESC
 			) AS sample_rank
 		FROM samples
-		WHERE observed_ns >= ? AND observed_ns < ?
+		WHERE observed_ns >= ? AND observed_ns < ?`+filter+`
 	)
 	SELECT container_id, bucket_index, observed_ns, cpu_percent, memory_usage_bytes,
 		network_rx_bytes_per_sec, network_tx_bytes_per_sec
 	FROM ranked WHERE sample_rank = 1
-	ORDER BY container_id, bucket_index`, from, bucketNS, from, bucketNS, from, to)
+	ORDER BY container_id, bucket_index`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query chart metrics: %w", err)
 	}

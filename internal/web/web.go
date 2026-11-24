@@ -34,6 +34,8 @@ type pageData struct {
 	Notice               string
 	Charts               []chartPanel
 	Timeline             dashboardTimeline
+	ObservedContainers   []observedContainer
+	SelectedContainer    string
 	MetricsStatus        string
 	Metrics              []metricPanel
 	Containers           listPanel

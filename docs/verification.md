@@ -877,6 +877,56 @@ No live Docker-backed dashboard collection or platform-specific verification
 was performed. Collection remains opt-in; disabled and unavailable states were
 covered without opening the metrics database from dashboard reads.
 
+## Aggregate Overview Dashboard Presentation
+
+2026-11-23, Linux development container, branch
+`feat/dashboard-aggregate-overview`. Overview now presents aggregate CPU,
+Docker raw memory and combined receive/transmit throughput from existing opt-in
+container samples. Per-container chart lines remain on Observability. An
+aggregate bucket is shown only when every returned container series has a value
+for that metric; otherwise it remains a gap. The UI labels these as
+collected-container totals and explicitly says host-level resources are not
+collected. Collection, retained samples and the one-hour range are unchanged.
+
+- `go test ./internal/web`: passed aggregate sum/gap, degraded-history and
+  per-container Observability regressions.
+- `npm run test:e2e -- --grep='first login forces password setup before protected dashboard and works on mobile'`:
+  passed in Chromium; Firefox, WebKit and mobile Chromium skip this
+  bootstrap-only flow by design.
+- `make check QUIET=1`: passed Go race tests, vet, build, Node and HTTP tests,
+  the complete browser suite, asset verification and contract structure checks.
+- `make docs && make check-docs`: passed public/opt-in Hugo variants and local
+  link validation.
+- Browser layout assertions cover 2560×1440 and narrower desktop widths from
+  1440 through 620 pixels, checking for horizontal overflow and visible charts.
+
+No host-level data source or live Docker collection was added or verified.
+Aggregate totals are derived from independently recorded container samples and
+are not simultaneous host measurements.
+
+## Fixed Desktop Shell And Independent Scrolling
+
+2026-11-23, Linux development container, branch
+`feat/dashboard-aggregate-overview`, based on `3362254`. The desktop shell keeps
+navigation and side panels in place while the main pane scrolls. Scrollable
+sidebar contents and Settings navigation retain access at short viewport
+heights; panel collapse and reopen controls remain available. At 900 CSS pixels
+and below, the existing compact layout retains document scrolling.
+
+- `PATH=/config/.local/bin:$PATH make check QUIET=1`: passed Go race tests,
+  vet, build, Node, HTTP, browser, asset and contract checks.
+- `PATH=/config/.local/bin:$PATH make docs`, `make check-docs`, and
+  `make check-security`: passed documentation builds/link checks and npm/Go
+  vulnerability scans.
+- The authenticated Chromium flow tests independent pane scrolling, keyboard
+  and wheel input, Settings navigation and collapse/reopen. The full browser
+  suite includes compact-layout touch interactions; its duplicate authenticated
+  bootstrap flow is intentionally skipped in other browser projects.
+
+The requested right-side project/container details panel is a future direction;
+it and Compose actions were not implemented or verified in this slice. Native
+mobile browsers and the development-image rebuild were not tested.
+
 ## Metrics Settings And Large Chart Usability
 
 2026-11-23, Linux development container, branch `feat/settings-metrics-ui`,
@@ -969,3 +1019,174 @@ publication remains available with its explicit confirmation.
 The GitHub Actions workflow itself has not yet run on the updated default
 branch. A successful CI-triggered Pages deployment therefore remains to be
 confirmed after merge.
+
+## Switchable Overview Chart
+
+2026-11-23, Linux development container, branch
+`feat/dashboard-aggregate-overview`, based on `79df7ef` with these changes
+uncommitted during verification. Overview displays one chart at a time with
+CPU, memory and network selectors; network retains receive/transmit together.
+Native radio controls support keyboard, pointer and touch selection, including
+display switching without JavaScript. Collection, aggregation, last-hour range
+and selected-time synchronization are unchanged; Observability retains its
+per-container views.
+
+- Focused authenticated and synthetic dashboard browser tests passed.
+- `make check QUIET=1`: Go vet/race tests/build, Node and HTTP tests passed;
+  browser validation initially failed two existing Firefox fixture-navigation
+  hooks. New switcher cases passed in all four browser projects.
+- Both Firefox failures passed a targeted rerun; subsequent
+  `make test-e2e QUIET=1` passed the complete browser suite.
+- `make check-assets check-contracts QUIET=1`: passed.
+- `make docs && make check-docs`: passed; updated documentation also passed
+  `make check-docs` and `git diff --check`.
+- Fresh 2560x1440 light/dark screenshots were generated from current-hour,
+  explicitly labeled synthetic samples and inspected locally.
+
+No live Docker workload, host telemetry, native mobile device, container build
+or new security scan was exercised for this presentation-only slice. Existing
+unavailable-resource placeholders and raw chart-number formatting remain;
+this does not claim complete UniFi visual alignment.
+
+## Single-Container Observability Workspace
+
+2026-11-23, Linux development container, branch
+`feat/dashboard-aggregate-overview`, based on `44b9336` with implementation
+changes uncommitted during checks. The owner requested the actual UniFi
+Observability layout, not nearby dashboard/topology screens: separate filters
+and a slimmer filtered-name list, a vertical timeline, stacked charts and
+records underneath. The supplied recording was decoded locally; the latest
+1434x768 screenshot represents part of an unscaled 1080p desktop occupied by
+Chrome. Browser captures include a 1256x668 application-content viewport and
+2560x1440 light/dark views; these are layout evidence, not pixel-identical
+reproduction or owner acceptance of final appearance.
+
+The view defaults to the first filtered container. Names and filter values use
+one authenticated, on-demand read-only Docker snapshot; retained event/state
+and metric identities remain available with ID-based labels if absent from
+the snapshot. Queries do not enable collection. CPU, raw memory and network
+charts show only the selected container; receive/transmit share the network
+card. Event selection is scoped before the newest-200 limit, so unrelated busy
+containers cannot displace the selected container's events. Unknown or
+filtered-out explicit selections return 404 instead of an all-container view.
+
+- `go test ./internal/web ./internal/metrics`: passed. Tests exercise isolated
+  events, state/event-only identities, range expiry, default and filtered
+  selection, exact network values and original observation timestamps,
+  filter-preserving links, and authenticated
+  mock-Docker snapshot requests with escaped names.
+- Focused browser checks passed Chromium, Firefox, WebKit and mobile Chromium.
+  An initial WebKit failure exposed reversed native Home/End behavior for a
+  vertical RTL slider; explicit vertical keyboard handling corrected it.
+  Screenshot inspection exposed filter-content spill on compact screens and
+  legend-popup overflow; bounded internal scrolling and popup sizing corrected
+  both. An old horizontal touch coordinate was updated for the vertical control.
+- `make check QUIET=1`: passed Go vet/race tests/build, Node and HTTP tests,
+  supported desktop/mobile browser projects, asset and contract checks.
+- `make docs check-docs check-security QUIET=1`: passed Hugo variants/local
+  links, npm audit and Go vulnerability analysis with no findings.
+
+Browser regressions cover separate sidebar ordering/widths, single-container
+isolation, filter application and empty results, vertical pointer/touch and
+keyboard selection, exact event/chart synchronization, native no-JavaScript
+navigation and record tabs, and compact overflow including open chart controls.
+The reduced-content viewport must show the third chart and at least 90% of the
+first event row; mere existence of a bottom-section placeholder is insufficient.
+
+Container-log collection, retention/access policy, live-Docker history,
+native-platform behavior and container checks were not exercised or added.
+The log tab explicitly reports unavailability rather than presenting lifecycle
+events as application logs. Mobile feature scope remains undecided after the
+owner questioned desktop parity: existing access is preserved with bounded
+reflow, not certified as a final phone experience. No workflow changes or
+workflow checks are part of this slice.
+
+## Docker Log API And SQLite Foundation
+
+2026-11-23, Linux development container, branch
+`feat/dashboard-aggregate-overview`, starting at `e5b8282` with the foundation
+uncommitted during checks. The owner approved beginning Docker API log
+collection with original messages plus metadata, local one-hour SQLite history
+and optional longer-history infrastructure later. This slice implements the
+API/storage foundation only; production collector, settings and log views are
+not wired while consent and shared pressure/replay policy remain unresolved.
+Commands below used `/config/.local/bin` prepended to `PATH` for the persistent
+Make/GCC tools.
+
+- `go test -race ./internal/runtime ./internal/metrics`: passed. An initial
+  upgrade regression caught the version-8 migration nested inside the version-6
+  path: a genuine version-7 database did not acquire the log table. The migration
+  was corrected and rechecked against fresh and legacy databases, including a
+  surviving pending event-write marker.
+- `make check QUIET=1`: passed Go vet, all race tests/build, Node/HTTP tests,
+  Chromium/Firefox/WebKit/mobile Chromium, assets and contract structure.
+  These are existing UI regression checks, not verification of a new log UI.
+- `make docs check-docs check-security QUIET=1`: passed default/opt-in Hugo
+  variants and local links, npm audit and Go vulnerability analysis; no findings.
+- Final finite/follow input guards were validated with
+  `go test -race ./internal/runtime ./internal/metrics -run 'Test(ReadContainerLog|DockerLogAPI)'`:
+  passed. The caller owns live-follow backfill selection; elapsed time between
+  calculating a full-hour start and opening the reader must not spuriously
+  reject that start. Finite reads have an explicit end and following reads are
+  open-ended, with EOF reporting unavailable continuity.
+
+Regressions preserve individual stdout/stderr frame messages under fragmented
+HTTP reads, including multiline text and consecutive non-newline-terminated
+records. Protocol review against Moby `v28.5.1` corrected initial newline-based
+frame concatenation: Docker timestamps each frame, including partial lines.
+TTY output is a merged line-oriented stream, with explicit limitations on
+reconstructing individual partial-record boundaries and source stream identity.
+Tests cover exact nanosecond filtering despite second-granular request bounds,
+64 KiB message truncation followed by an intact next record, malformed/oversized
+frames, unavailable sources, consumer errors and idle-follow cancellation.
+Source-error messages do not reproduce application output.
+
+SQLite regressions preserve original message bytes, including whitespace, CRLF,
+NUL and non-UTF-8 bytes, timestamp/stream/truncation metadata, and legitimate
+identical messages across reopening. Queries filter one container before
+newest-first limiting, support explicit aggregate reads and signal omitted
+records. Results are bounded to 1,000 records and 1 MiB of message bytes; an
+exact-byte-budget test verifies the threshold, not just record count.
+Batch validation/SQL failure rolls back all writes. Log-only identities join
+the existing history inventory without fabricated names or associations.
+An actual runtime-client-to-SQLite test uses the existing temporary mock Docker
+Unix socket, then runs the real managed maintenance owner: a record at exactly
+one hour survives, and at one hour plus one nanosecond it expires. A failure on
+log expiry rolls back sample/event/state/log deletion and event replay expiry.
+
+No real Docker socket or workload, live logging-driver/cache/rotation/recovery
+behavior, native Windows/macOS, physical disk-full or secure-erasure behavior
+was exercised. Logical expiry does not guarantee forensic removal of bytes from
+SQLite pages or media, and the existing byte target is not a hard filesystem
+quota. Production capture, durable managed log writes, reconnect deduplication,
+capture-disabled lifecycle/access behavior, log tabs/aggregation, TimescaleDB
+and dedicated log infrastructure remain pending. No workflows, container image
+or dependency manifests changed; workflow/container checks were not run.
+
+## Observability PR Review Corrections
+
+2026-11-23, Linux development container, PR #23, based on `2ef2b29` with
+corrections uncommitted during validation. Three Copilot review findings were
+confirmed and corrected:
+
+- Selected-container chart reads pass the ID through the collector and managed
+  store, restricting SQL rows before window ranking and bucket allocation.
+  Overview retains the all-container query. Regressions check query routing,
+  exact selected readings/gaps, missing and invalid IDs, and isolation from an
+  unreadable sample belonging to another container.
+- The bounded compact name sidebar retains internal scrolling despite the
+  general compact-shell overflow rule. Browser regressions add a long list,
+  check containment at 900/620/390 CSS pixels and focus-scroll to the last link.
+- An unavailable Docker snapshot displays its unavailable message rather than
+  asserting an empty snapshot. Authenticated HTTP regressions distinguish no
+  configured socket, failed snapshot and successful empty inventory.
+
+`go test -race ./internal/metrics ./internal/web` and the focused compact-sidebar
+browser test passed. The latter passed Chromium, Firefox, WebKit and mobile
+Chromium after correcting the test's focus reset between viewport cases.
+`make check docs check-docs QUIET=1` passed Go vet/race tests/build,
+Node/HTTP/browser suites, assets/contracts and public/opt-in documentation
+builds/local links. Commands used `/config/.local/bin` prepended to `PATH`.
+Security checks passed earlier on the same PR before these corrections; no
+dependency, workflow or container surface changed. No new live-Docker,
+native-device or physical-pressure verification is claimed.

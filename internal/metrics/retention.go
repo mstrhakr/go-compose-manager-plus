@@ -12,6 +12,7 @@ type ExpiredHistory struct {
 	Samples int64
 	Events  int64
 	States  int64
+	Logs    int64
 }
 
 type EvictedSamples struct {
@@ -124,6 +125,7 @@ func (s *Store) ExpireHistoryBefore(ctx context.Context, cutoff time.Time) (Expi
 		{`DELETE FROM samples WHERE observed_ns < ?`, &counts.Samples},
 		{`DELETE FROM container_events WHERE observed_ns < ?`, &counts.Events},
 		{`DELETE FROM container_states WHERE observed_ns < ?`, &counts.States},
+		{`DELETE FROM container_logs WHERE observed_ns < ?`, &counts.Logs},
 	} {
 		result, err := tx.ExecContext(ctx, step.query, ns)
 		if err != nil {

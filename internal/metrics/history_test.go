@@ -91,15 +91,36 @@ func TestSelectTimelineEventsReturnsNewestEventsInChronologicalOrder(t *testing.
 	if err := store.InsertEvents(ctx, events); err != nil {
 		t.Fatal(err)
 	}
-	got, err := store.SelectTimelineEvents(ctx, start, start.Add(3*time.Second), 2)
+	got, err := store.SelectTimelineEvents(ctx, first, start, start.Add(3*time.Second), 2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(got, events[2:4]) {
-		t.Fatalf("newest bounded timeline events = %#v, want %#v", got, events[2:4])
+	want := []Event{events[0], events[2]}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("newest isolated timeline events = %#v, want %#v", got, want)
 	}
-	if _, err := store.SelectTimelineEvents(ctx, start, start.Add(time.Second), 0); err == nil {
+	if _, err := store.SelectTimelineEvents(ctx, first, start, start.Add(time.Second), 0); err == nil {
 		t.Fatal("accepted a nonpositive timeline event limit")
+	}
+	got, err = store.SelectTimelineEvents(ctx, first, start, start.Add(4*time.Second), 1)
+	if err != nil || !reflect.DeepEqual(got, events[4:]) {
+		t.Fatalf("newest selected-container event = %#v, error %v", got, err)
+	}
+	ids, err := store.SelectObservedContainers(ctx, start, start.Add(3*time.Second))
+	if err != nil || !reflect.DeepEqual(ids, []string{first, second}) {
+		t.Fatalf("event-only observed identities = %#v, error %v", ids, err)
+	}
+	stateOnly, expired := strings.Repeat("c", 64), strings.Repeat("d", 64)
+	if err := store.InsertStates(ctx, []State{
+		{ContainerID: first, Time: start, State: "running", Health: HealthNone},
+		{ContainerID: stateOnly, Time: start, State: "exited", Health: HealthNone},
+		{ContainerID: expired, Time: start.Add(-time.Second), State: "exited", Health: HealthNone},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	ids, err = store.SelectObservedContainers(ctx, start, start.Add(3*time.Second))
+	if err != nil || !reflect.DeepEqual(ids, []string{first, second, stateOnly}) {
+		t.Fatalf("deduplicated current observed identities = %#v, error %v", ids, err)
 	}
 }
 

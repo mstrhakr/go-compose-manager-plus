@@ -92,15 +92,22 @@ test('first login forces password setup before protected dashboard and works on 
     for (const name of ['Resources unavailable', 'Activity unavailable']) {
       await expect(page.getByRole('button', { name })).toBeDisabled();
     }
-    for (const name of ['CPU by container', 'Docker raw memory usage by container', 'Network receive by container', 'Network transmit by container']) {
+    for (const [metric, name] of [['CPU', 'CPU across collected containers'], ['Memory', 'Raw memory across collected containers'], ['Network', 'Network throughput across collected containers']]) {
+      await page.locator('.dashboard-chart-options').getByText(metric, { exact: true }).click();
       await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
     }
+    await page.locator('.dashboard-chart-options').getByText('CPU', { exact: true }).click();
+    await expect(page.getByText('Host-level resource metrics are not collected', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'CPU by container', exact: true })).toHaveCount(0);
     await expect(page.getByText('No metrics are being collected.', { exact: false }).first()).toBeVisible();
     await page.goto('/containers/observability');
     await expect(page.getByRole('heading', { level: 1, name: 'Container observability' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Container views' }).getByRole('link', { name: 'Observability' })).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('slider', { name: 'Selected time in the last hour' })).toBeVisible();
     await expect(page.locator('[data-timeline-message]')).toContainText('Metrics collection is disabled');
+    for (const name of ['CPU usage', 'Memory usage (Docker raw)', 'Network throughput']) {
+      await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
+    }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByRole('link', { name: 'Settings', exact: true }).click();
     await expect(page.getByRole('heading', { name: 'Metrics settings' })).toBeVisible();
@@ -255,7 +262,7 @@ test('first login forces password setup before protected dashboard and works on 
     await page.goto('/');
     await page.screenshot({ path: 'test-results/auth-dashboard-desktop.png', fullPage: true });
 
-    const themed = await browser.newContext({ baseURL, colorScheme: 'dark', viewport: { width: 1440, height: 900 } });
+    const themed = await browser.newContext({ baseURL, colorScheme: 'dark', viewport: { width: 2560, height: 1440 } });
     try {
       await themed.addCookies(await context.cookies());
       const themedPage = await themed.newPage();
@@ -282,6 +289,62 @@ test('first login forces password setup before protected dashboard and works on 
       expect(layout.sidebar).toBe(272);
       expect(layout.chart).toBe(245);
       expect(layout.mainLeft).toBe(layout.sidebarRight);
+      expect(await themedPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      for (const width of [1440, 1024, 901, 900, 621, 620]) {
+        await themedPage.setViewportSize({ width, height: 900 });
+        expect(await themedPage.evaluate(() => {
+          const charts = [...document.querySelectorAll('.chart-panel')].filter(chart => chart.getBoundingClientRect().width > 0);
+          return document.documentElement.scrollWidth <= window.innerWidth &&
+            charts.length === 1;
+        })).toBe(true);
+      }
+      await themedPage.setViewportSize({ width: 1440, height: 520 });
+      const scrollBehavior = await themedPage.evaluate(() => {
+        const main = document.querySelector('.console-main');
+        const sidebar = document.querySelector('.host-sidebar');
+        const rail = document.querySelector('.console-rail');
+        const sidebarTop = sidebar.getBoundingClientRect().top;
+        const railTop = rail.getBoundingClientRect().top;
+        main.scrollTop = main.scrollHeight;
+        const sidebarContent = sidebar.querySelector('.sidebar-content');
+        sidebarContent.scrollTop = sidebarContent.scrollHeight;
+        return {
+          documentFits: document.documentElement.scrollHeight <= window.innerHeight,
+          mainScrolls: main.scrollTop > 0,
+          sidebarScrolls: sidebarContent.scrollTop > 0,
+          windowStaysPut: window.scrollY === 0,
+          sidebarStaysPut: sidebar.getBoundingClientRect().top === sidebarTop,
+          railStaysPut: rail.getBoundingClientRect().top === railTop,
+        };
+      });
+      expect(scrollBehavior).toEqual({
+        documentFits: true,
+        mainScrolls: true,
+        sidebarScrolls: true,
+        windowStaysPut: true,
+        sidebarStaysPut: true,
+        railStaysPut: true,
+      });
+      const mainPane = themedPage.locator('.console-main');
+      const sidebarPane = themedPage.getByRole('region', { name: 'Host panel content' });
+      await mainPane.evaluate(element => { element.scrollTop = 0; });
+      await mainPane.focus();
+      await themedPage.keyboard.press('PageDown');
+      await expect.poll(() => mainPane.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+      await sidebarPane.evaluate(element => { element.scrollTop = 0; });
+      await sidebarPane.hover();
+      await themedPage.mouse.wheel(0, 300);
+      await expect.poll(() => sidebarPane.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+      expect(await themedPage.evaluate(() => window.scrollY)).toBe(0);
+      await themedPage.goto('/settings');
+      const settingsNav = themedPage.getByRole('navigation', { name: 'Settings categories' });
+      const settingsTop = (await settingsNav.boundingBox()).y;
+      const settingsMain = themedPage.locator('.console-main');
+      await settingsMain.evaluate(element => { element.scrollTop = element.scrollHeight; });
+      expect(await settingsMain.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+      expect((await settingsNav.boundingBox()).y).toBeCloseTo(settingsTop, 0);
+      await themedPage.goto('/');
+      await themedPage.setViewportSize({ width: 2560, height: 1440 });
       await themedPage.screenshot({ path: 'test-results/auth-dashboard-dark.png', fullPage: true });
       const hostPanel = themedPage.locator('.sidebar-disclosure');
       await hostPanel.locator('summary').focus();
@@ -387,7 +450,8 @@ test('first login forces password setup before protected dashboard and works on 
       const timelineSlider = touchPage.getByRole('slider', { name: 'Selected time in the last hour' });
       await expect(timelineSlider).toBeVisible();
       const endTime = Number(await timelineSlider.getAttribute('max'));
-      await timelineSlider.tap({ position: { x: 24, y: 16 } });
+      const timelineBounds = await timelineSlider.boundingBox();
+      await timelineSlider.tap({ position: { x: timelineBounds.width / 2, y: timelineBounds.height / 2 } });
       await expect.poll(async () => Number(await timelineSlider.inputValue())).toBeLessThan(endTime);
       expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

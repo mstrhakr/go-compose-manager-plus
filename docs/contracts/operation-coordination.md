@@ -78,6 +78,10 @@ ordering, exactly-once execution or complete participant coverage is claimed.
   a folder/display name is not proof of a safe runtime target.
 - Consumed by [LIVE](live-state.md) for queued/executing presentation. Metrics and
   viewer transport are not execution ownership or completion evidence.
+  LIVE's owner-requested overall action/activity timeline must use actual
+  operation status rather than infer success or causation from nearby Docker
+  container events. Operation-history persistence and container linking remain
+  unresolved; no executor or history implementation is approved by that UI scope.
 - Consumed by [GIT-002/003/005](git-stacks.md): CI deployment is unattended after
   explicit enablement/request and retains its selected Git commit while waiting.
   Queue policy cannot silently replace the commit within an accepted request.

@@ -55,7 +55,7 @@
       <form action="/logout" method="post"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="text-button" type="submit">Sign out</button></form>
     </div>
   </header>
-  <div class="console-body{{if eq .View "settings"}} settings-layout{{else if ne .View "dashboard"}} inventory-layout{{end}}">
+  <div class="console-body{{if eq .View "settings"}} settings-layout{{else if eq .View "observability"}} inventory-layout observability-layout{{else if ne .View "dashboard"}} inventory-layout{{end}}">
     <nav class="console-rail" aria-label="Main navigation" id="main-navigation">
       <a class="rail-item{{if eq .View "dashboard"}} selected{{end}}" href="/" {{if eq .View "dashboard"}}aria-current="page"{{end}} aria-label="Overview" title="Overview"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h7V3H3v10Zm0 8h7v-5H3v5Zm11 0h7V11h-7v10Zm0-18v5h7V3h-7Z"/></svg><span class="rail-label">Overview</span></a>
       <a class="rail-item{{if eq .View "projects"}} selected{{end}}" href="/projects" {{if eq .View "projects"}}aria-current="page"{{end}} aria-label="Compose projects" title="Compose projects"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10h16v10H4zM6 7h12M8 4h8"/></svg><span class="rail-label">Compose projects</span></a>
@@ -70,6 +70,7 @@
     <aside class="host-sidebar" aria-label="Host panel">
       <details class="sidebar-disclosure" open>
       <summary class="sidebar-toggle"><span class="sidebar-collapse-label">Collapse host panel</span><span class="sidebar-expand-label">Expand host panel</span></summary>
+      <div class="sidebar-content" tabindex="0" role="region" aria-label="Host panel content">
       {{template "view-navigation" .SubviewNav}}
       <div class="host-title"><span class="host-icon" aria-hidden="true"><i></i><i></i><b></b></span><h2 id="host-context-title">Local instance</h2></div>
       <div class="topology" aria-label="Discovery summary"><span><b>&#9636;</b> {{len .Projects}} {{if eq (len .Projects) 1}}project{{else}}projects{{end}}</span><span> / </span><span>Docker: {{.RuntimeState}}</span></div>
@@ -97,7 +98,7 @@
       <section class="host-section">
         <h3>Resource allocation</h3>
         <dl class="detail-list compact"><div><dt>CPU usage</dt><dd>Unavailable</dd></div><div><dt>Memory usage</dt><dd>Unavailable</dd></div><div><dt>Storage</dt><dd>Unavailable</dd></div></dl>
-        <p>Live metrics pending.</p>
+        <p>Host-level metrics are not collected.</p>
       </section>
       <section class="host-section">
         <h3>Engine integration</h3>
@@ -105,34 +106,46 @@
         <form action="/projects#projects-list-title" method="get">
           <button class="quiet-button" name="runtime" value="1" type="submit">Refresh Docker status</button>
         </form>
-        <p>Snapshots are read-only. Logs, metrics and operations are not connected.</p>
+        <p>Snapshots are read-only. Container metrics are opt-in; logs and operations are not connected.</p>
       </section>
+      </div>
       </details>
     </aside>
     {{else if eq .View "observability"}}
-    <aside class="host-sidebar inventory-sidebar observability-sidebar" aria-label="Container views">
-      <div class="filter-heading"><h2>Container views</h2></div>
-      {{template "view-navigation" .SubviewNav}}
-      <p class="inventory-footnote">Explore the last hour of recorded container metrics and observed events.</p>
+    {{template "inventory-filters" .}}
+    <aside class="host-sidebar observability-sidebar" aria-label="Filtered containers">
+      <div class="filter-heading"><h2>Name</h2><span>{{.Filters.Shown}} / {{.Filters.Total}}</span></div>
+      <nav class="observability-container-list" aria-label="Filtered containers">
+        {{range .ObservedContainers}}<a href="{{.Href}}" title="{{.Label}} · {{.ID}} · {{.State}}" {{if .Current}}aria-current="page"{{end}}><span class="state-dot state-dot-{{if eq .State "running"}}running{{else if or (eq .State "created") (eq .State "exited") (eq .State "dead")}}stopped{{else}}unknown{{end}}" aria-hidden="true"></span><span>{{.Label}}</span></a>{{end}}
+      </nav>
+      {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
+      {{if not .ObservedContainers}}<p class="inventory-footnote">{{if .Filters.Total}}No containers match these filters.{{else if eq .RuntimeState "Unavailable"}}{{.RuntimeMessage}}{{else}}No containers available in the snapshot or retained history.{{end}}</p>{{end}}
     </aside>
     {{else if ne .View "settings"}}
     {{template "inventory-filters" .}}
     {{end}}
-    <main class="console-main">
+    <main class="console-main" tabindex="0">
       {{if eq .View "dashboard"}}
       <div class="workspace-toolbar">
         <div><h1>System status</h1><p>Local instance / Overview</p></div>
         <span class="toolbar-pill">Metrics <span>{{.MetricsStatus}}</span></span>
       </div>
-      <div class="telemetry-section">
-        {{range .Charts}}{{template "chart-panel" .}}{{end}}
+      <div class="dashboard-chart-switcher">
+        <fieldset class="dashboard-chart-options">
+          <legend class="visually-hidden">Dashboard metric</legend>
+          <label><input class="visually-hidden" type="radio" name="dashboard-metric" value="cpu" checked><span>CPU</span></label>
+          <label><input class="visually-hidden" type="radio" name="dashboard-metric" value="memory"><span>Memory</span></label>
+          <label><input class="visually-hidden" type="radio" name="dashboard-metric" value="network"><span>Network</span></label>
+        </fieldset>
+        {{range .Charts}}<div class="dashboard-chart-view" data-dashboard-chart="{{.ID}}">{{template "chart-panel" .}}</div>{{end}}
       </div>
+      <p class="inventory-footnote">Collected-container totals, not host measurements. Latest samples per 30-second bucket may differ in time; incomplete totals remain gaps. CPU can exceed 100%; memory is Docker raw usage.</p>
       <div class="resource-grid">
         <section class="resource-section"><div class="section-heading"><h2>Discovered stacks</h2><span>{{len .Projects}} discovered</span></div>
           <div class="resource-placeholder"><span class="resource-icon" aria-hidden="true">&#9636;</span><span>{{len .Projects}} {{if eq (len .Projects) 1}}project{{else}}projects{{end}} discovered</span><a href="/projects">View project details</a></div>
         </section>
-        <section class="resource-section"><div class="section-heading"><h2>Top resource containers</h2><span>Unavailable</span></div>
-          <div class="resource-placeholder"><span class="resource-icon">&#9633;</span><span>Container metrics are not available</span></div>
+        <section class="resource-section"><div class="section-heading"><h2>Host resources</h2><span>Unavailable</span></div>
+          <div class="resource-placeholder"><span class="resource-icon">&#9633;</span><span>Host-level resource metrics are not collected</span></div>
         </section>
       </div>
       <section class="resource-section"><div class="section-heading"><h2>Images &amp; base layers</h2><span>Unavailable</span></div>
@@ -147,26 +160,36 @@
       {{template "containers-page" .}}
       {{else if eq .View "observability"}}
       <div class="workspace-toolbar">
-        <div><h1>Container observability</h1><p>Containers / Observability · last hour</p></div>
+        <div><h1>Container observability</h1><p>{{range .ObservedContainers}}{{if .Current}}{{.Label}} · {{end}}{{end}}Last hour · single-container history</p></div>
         <span class="toolbar-pill">Collection <span>{{.MetricsStatus}}</span></span>
       </div>
-      <div class="observability-timeline" data-timeline data-start="{{.Timeline.Start}}" data-end="{{.Timeline.End}}" data-selected="{{.Timeline.SelectedTime}}">
+      <div class="observability-timeline observability-workspace" data-container="{{.SelectedContainer}}" data-timeline data-timeline-vertical data-start="{{.Timeline.Start}}" data-end="{{.Timeline.End}}" data-selected="{{.Timeline.SelectedTime}}">
       <section class="timeline-panel" aria-labelledby="observability-timeline-title">
-        <div class="section-heading">
-          <div><h2 id="observability-timeline-title">Last-hour timeline</h2><p class="timeline-message" data-timeline-message>{{.Timeline.Message}}</p></div>
-          <span class="toolbar-pill timeline-status">{{.Timeline.Status}}</span>
-        </div>
+        <h2 id="observability-timeline-title">Last hour</h2>
+        <label class="timeline-label" for="observability-time">Selected time <output data-timeline-output for="observability-time">{{.Timeline.EndLabel}}</output></label>
+        <div class="timeline-rail">
+        <div class="timeline-selection" data-timeline-cursor aria-hidden="true" hidden></div>
+        <div class="timeline-axis" aria-hidden="true"><span>Now</span><span>−15m</span><span>−30m</span><span>−45m</span><span>−60m</span></div>
         <div class="timeline-track" role="group" aria-label="Observed container events">
           {{range .Timeline.Events}}<button class="timeline-marker" type="button" data-timeline-select="{{.Time}}" data-timeline-marker data-position="{{printf "%.3f" .Position}}" data-kind="{{.Kind}}" aria-label="Select {{.Description}} at {{.TimeLabel}} for {{.Container}}" title="{{.Description}} · {{.Container}} · {{.TimeLabel}}"><span aria-hidden="true"></span></button>{{end}}
         </div>
-        <label class="timeline-label" for="observability-time">Selected time <output data-timeline-output for="observability-time">{{.Timeline.EndLabel}}</output></label>
-        <input id="observability-time" class="timeline-slider" type="range" min="{{.Timeline.Start}}" max="{{.Timeline.End}}" step="1000" value="{{.Timeline.SelectedTime}}" data-timeline-slider aria-label="Selected time in the last hour">
-        <div class="timeline-axis"><time>{{.Timeline.StartLabel}}</time><time>{{.Timeline.EndLabel}}</time></div>
-        <p class="timeline-hint">Only recorded observations are shown. Docker event history may have gaps; missing events are not inferred.</p>
-        <noscript><p class="timeline-hint">Timeline selection requires JavaScript. The recorded event list remains available below.</p></noscript>
+        <input id="observability-time" class="timeline-slider" type="range" min="{{.Timeline.Start}}" max="{{.Timeline.End}}" step="1000" value="{{.Timeline.SelectedTime}}" data-timeline-slider aria-label="Selected time in the last hour" aria-orientation="vertical">
+        </div>
       </section>
-      <section class="resource-section timeline-events" aria-labelledby="timeline-events-title">
-        <div class="section-heading"><h2 id="timeline-events-title">Observed events</h2><span>Newest first</span></div>
+      <div class="observability-detail">
+      <div class="observability-charts">
+        {{range .Charts}}{{template "chart-panel" .}}{{end}}
+      </div>
+      <noscript><p class="timeline-hint">Timeline selection requires JavaScript. Container navigation and recorded events remain available.</p></noscript>
+      <section class="observability-records" aria-label="Container records">
+        <fieldset class="observability-record-options">
+          <legend class="visually-hidden">Container record type</legend>
+          <label><input class="visually-hidden" type="radio" name="container-records" value="events" checked><span>Observed events</span></label>
+          <label><input class="visually-hidden" type="radio" name="container-records" value="logs"><span>Container logs</span></label>
+        </fieldset>
+      <div class="timeline-events" aria-labelledby="timeline-events-title">
+        <div class="section-heading"><h2 class="visually-hidden" id="timeline-events-title">Observed events</h2><span>{{.Timeline.Status}} · newest first</span></div>
+        <div class="observability-record-columns" aria-hidden="true"><span>Description</span><span>Date / Time (UTC)</span></div>
         {{if .Timeline.Truncated}}<p class="timeline-hint">Showing the newest 200 recorded events in this hour.</p>{{end}}
         {{if .Timeline.RecentEvents}}
         <ol class="timeline-event-list">
@@ -174,11 +197,13 @@
             <time>{{.TimeLabel}}</time><span class="timeline-event-kind">{{.Description}}</span><span class="timeline-event-container">{{.Container}}</span>
           </button></li>{{end}}
         </ol>
-        {{else}}<p class="timeline-empty">No recorded events for this hour.</p>{{end}}
+        {{else}}<p class="timeline-empty">No recorded events for this container in this hour.</p>{{end}}
+        <p class="timeline-message" data-timeline-message>{{.Timeline.Message}}</p>
+        <p class="timeline-hint">Only recorded observations are shown. Docker event history may have gaps; missing events are not inferred.</p>
+      </div>
+      <div class="observability-logs"><h2 class="visually-hidden">Container logs</h2><p class="timeline-empty">Container logs are not collected. Historical log sources and retention are not configured; lifecycle events are available in Observed events.</p></div>
       </section>
       </div>
-      <div class="telemetry-section">
-        {{range .Charts}}{{template "chart-panel" .}}{{end}}
       </div>
       {{else if eq .View "settings"}}
       {{template "metrics-settings" .}}
