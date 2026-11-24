@@ -638,20 +638,28 @@ LIVE contract or authorize implementation of future settings.
 - Desktop alignment comes first. Preserve existing basic compact access;
   final mobile feature availability and layout remain deferred.
 
-#### Screenshot-Inspired Proposals, Not Yet Approved Widgets
+#### Approved Basic Layout And Optional Reference Patterns
 
 The references show compact label/control rows, section headings and explanatory
 text, collapsible table-summary cards, a distinct table selection/manage mode,
 and persistent subpage cards containing titles/descriptions. Some subpages use
-setup guidance or diagrams instead of a settings form. These are reusable
-presentation candidates, not authorization for setup actions, diagrams/assets,
-new tables, automatic saving, or every pictured feature.
+setup guidance or diagrams instead of a settings form.
 
-Proposed visual fit: restrained borders, clear selected/focus states, bounded
+On 2026-11-23 the owner approved the generic basic layout for most settings:
+compact aligned label/control rows inside contained source cards, restrained
+borders, bounded content widths and a contextual title/description subpage panel
+where useful. The owner clarified that every screenshot is a tool to use when
+appropriate, not something the product must force itself to use. Additional
+tables, summary/manage modes, setup guidance and diagrams are optional reference
+patterns for suitable future content, not required widgets or approved features.
+This does not authorize pictured actions, copied assets or automatic saving.
+
+The visual direction includes clear selected/focus states, bounded
 content widths with deliberate unused space, and compact aligned value rows
 inside source cards. Exact dimensions, disclosure defaults, the use of summary
-cards, and table manage-mode behavior still need owner acceptance and browser
-verification. A cropped screenshot is not a full-display size or scroll test.
+cards, and table manage-mode behavior remain to be specified when applicable;
+browser verification is still required. A cropped screenshot is not a
+full-display size or scroll test.
 
 #### Remaining Implementation Gates
 

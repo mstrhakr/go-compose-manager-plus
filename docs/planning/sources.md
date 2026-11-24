@@ -337,8 +337,9 @@ the selected page's content to the right. The subpage panel persists across
 the three page selections and includes a contextual summary card. These are
 visual navigation evidence, not proof of scrolling behavior or approval of
 Containers-versus-Observability hierarchy, exact dimensions, summary content or
-every displayed feature. A container-category/subpage adaptation remains to be
-selected with the owner.
+every displayed feature. At that stage, a container-category/subpage adaptation
+remained to be selected with the owner; the subsequent decisions below settle
+the organization and basic visual direction.
 
 The owner then requested a broad future-settings inventory before selecting the
 hierarchy. The assistant compared existing product/contract scope with
@@ -364,6 +365,15 @@ approval of pictured actions or proof of dynamic saving/scroll ownership.
 The final pass consolidates settled design and marks exact dimensions,
 disclosure/manage-mode details and new widgets as proposals. Runtime code and
 browser verification were not changed by this documentation-only review.
+
+During final visual signoff on 2026-11-23, the owner clarified:
+"the generic basic layout is what we are going for for most things, with the
+extras as ideas for things we can do if needed, where needed."
+This approves the offered compact aligned rows, contained source cards,
+restrained borders, bounded widths and contextual subpage panel where useful.
+All screenshots remain a toolbox of optional patterns rather than a mandatory
+widget inventory. Exact geometry, pictured actions, assets, automatic saving,
+new capabilities and implementation fulfillment are not approved by this answer.
 
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
