@@ -127,7 +127,8 @@ choices (including named scopes), optional positions and parent-dependent
 visibility. Storage presets reveal a reusable exact amount/unit input under
 Custom; concrete default sizes remain undecided. Off preserves saved child
 preferences for restoration under Custom. Every preset must show its concrete
-effects; subtext versus visible noneditable inputs remains a presentation choice.
+effects through visible noneditable value controls, editable under Custom;
+named choices use explanatory text. Off collapses dependent controls.
 Not every future setting must conform to this pattern.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and

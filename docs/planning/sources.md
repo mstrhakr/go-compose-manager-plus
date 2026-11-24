@@ -214,6 +214,13 @@ explicit preset changes. The owner also required visible descriptions of what
 each preset selects. Subtext and visible-but-disabled Custom inputs were offered
 as possible presentations, not a settled widget choice.
 
+The owner then selected "visible-values": enabled preset settings keep their
+actual value controls visible but noneditable, and Custom makes them editable.
+Read-only fields are preferred where supported, readable summaries otherwise;
+named scope choices use explanatory text without a redundant field. Off still
+collapses dependent controls, with a "Not collecting" source summary. This
+settles the earlier subtext-versus-value-control presentation proposal.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

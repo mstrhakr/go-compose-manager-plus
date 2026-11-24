@@ -220,10 +220,14 @@ patterns should be reusable across suitable future settings, but not forced onto
 every setting. This is approval of a consistent interaction pattern, not
 authorization for new future features, exact widgets or speculative components.
 Each selector must display what its chosen preset actually configures, including
-concrete values or scope, rather than only an intensity label. The owner suggested
-subtext or keeping the corresponding Custom input visible but disabled for
-preset display; neither specific widget is selected yet. Preset summaries must
-remain readable without entering Custom. How individual-setting changes propagate
+concrete values or scope, rather than only an intensity label. The owner selected
+the visible-values presentation: enabled value settings keep their value control
+visible and noneditable under presets, making that same control editable under
+Custom. Prefer read-only controls where supported so values remain focusable and
+copyable; controls without read-only support use a readable summary. Named scope
+choices use an explanation rather than a redundant value field. Off collapses
+dependent controls and shows "Not collecting" for a disabled collection source.
+Expanding a card alone does not change saved settings. How individual-setting changes propagate
 Custom through source/category presets and how custom values survive explicit
 preset changes remain to be refined; Off preservation is settled separately.
 
