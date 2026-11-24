@@ -33,6 +33,12 @@ loopback. The multistage image contains a static binary and CA certificates, run
 UID/GID 65532, and provides a built-in health check. Compose uses a read-only
 filesystem, drops capabilities, and prevents privilege escalation. No secrets,
 source files, shell, or docs are included in the runtime image.</p>
+<p>Do not cache application pages or <code>/static/</code> responses at the
+reverse proxy; preserve the app's <code>Cache-Control: no-store</code> header.
+After an upgrade, a cached stylesheet or script can leave new page content
+misaligned even after a browser refresh. If that happens, disable the proxy's
+cache for the app and purge its existing cached responses, then reload.
+A private browser window does not bypass a reverse proxy cache.</p>
 
 ## Container registry (off by default)
 

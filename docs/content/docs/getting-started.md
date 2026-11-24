@@ -67,6 +67,42 @@ to choose visible columns and restore the defaults. Preferences are saved
 separately for each view in your browser; the identifying column always stays
 visible. Without JavaScript, all columns remain visible.</p>
 
+## Metrics and container observability
+
+<p>After configuring Docker access, open <strong>Settings &gt; Metrics</strong>.
+Choose Low (activated stacks every 15 seconds), Medium (activated stacks every
+5 seconds), High (all running containers every second), or Custom to choose the
+scope and interval. Enter an explicit storage target, check
+<strong>Enable background metrics collection</strong>, and save.
+Selecting a profile alone does not enable collection. Storage units are decimal;
+the target is not a hard disk quota. Suggested sizes have not been measured.</p>
+<p>On <strong>Overview</strong>, switch between CPU, memory and network charts.
+These totals cover collected containers, not the Docker host's total usage.
+For individual history, open <strong>Containers &gt; Observability</strong>,
+apply filters in the first sidebar, and select a name in the second sidebar.
+The first filtered container is selected by default. The vertical timeline
+and stacked charts share the selected time; selecting an observed event also
+moves that selection. Missing observations remain gaps, not zero values.</p>
+<p>The records area shows observed container events. The
+<strong>Container logs</strong> tab currently reports that application logs are
+not collected; enabling metrics does not enable log capture.</p>
+
+### Storage pressure and empty charts
+
+<p>Check <strong>Collection status</strong> in Settings first. The
+storage-pressure warning is cumulative: its sample count and timestamp bounds
+describe earlier removals, not necessarily the current collection cycle or a
+continuous gap. Collection retains up to one hour, but storage pressure can
+remove the oldest samples earlier. The collector pauses writes when maintenance
+cannot verify usable space and retries maintenance every five seconds.</p>
+<p>A healthy collection status does not guarantee retained samples for the
+selected container. Check filters, collection scope and whether the container
+was recently recreated. If storage warnings persist, review the configured
+target and available disk space; do not delete the state volume to reset a
+chart. If the layout itself is broken after an upgrade, check the
+<a href="../deployment/">reverse proxy caching guidance</a> before changing
+collection settings.</p>
+
 ## Configuration
 
 <p>The native binary reads exported environment variables, not dotenv files.</p>
@@ -80,7 +116,7 @@ only the host port.</p>
     <tr><td>APP_ADDR</td><td>127.0.0.1:8080</td><td>Listen host and numeric port (1–65535)</td></tr>
     <tr><td>APP_LOG_LEVEL</td><td>info</td><td>debug, info, warn, or error</td></tr>
     <tr><td>APP_DATA_DIR</td><td>./data</td><td>Persistent SQLite state directory</td></tr>
-    <tr><td>APP_DOCKER_SOCKET</td><td>unset</td><td>Optional absolute Unix socket path for on-demand read-only status; socket access is effectively host-administrative</td></tr>
+    <tr><td>APP_DOCKER_SOCKET</td><td>unset</td><td>Optional absolute Unix socket path for read-only inventory and opt-in metrics; socket access is effectively host-administrative</td></tr>
     <tr><td>APP_PUBLIC_URL</td><td>http://127.0.0.1:8080</td><td>Canonical app origin; remote origin requires HTTPS</td></tr>
     <tr><td>APP_TRUSTED_PROXIES</td><td>empty</td><td>Comma-separated immediate proxy CIDRs</td></tr>
     <tr><td>APP_BOOTSTRAP_USERNAME</td><td>unset</td><td>Required with password only for an uninitialized database</td></tr>
