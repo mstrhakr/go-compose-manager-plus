@@ -103,7 +103,7 @@ test('first login forces password setup before protected dashboard and works on 
     await page.goto('/containers/observability');
     await expect(page.getByRole('heading', { level: 1, name: 'Container observability' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Container views' }).getByRole('link', { name: 'Observability' })).toHaveAttribute('aria-current', 'page');
-    await expect(page.getByRole('slider', { name: 'Selected time in the last hour' })).toBeVisible();
+    await expect(page.getByRole('slider', { name: 'Selected time in the last hour' })).toBeDisabled();
     await expect(page.locator('[data-timeline-message]')).toContainText('State and event history is Off');
     for (const name of ['CPU usage', 'Memory usage (Docker raw)', 'Network throughput']) {
       await expect(page.getByRole('heading', { name, exact: true })).toBeVisible();
@@ -454,8 +454,9 @@ test('first login forces password setup before protected dashboard and works on 
       const timelineSlider = touchPage.getByRole('slider', { name: 'Selected time in the last hour' });
       await expect(timelineSlider).toBeVisible();
       const endTime = Number(await timelineSlider.getAttribute('max'));
-      const timelineBounds = await timelineSlider.boundingBox();
-      await timelineSlider.tap({ position: { x: timelineBounds.width / 2, y: timelineBounds.height / 2 } });
+      const timelineViewport = touchPage.locator('[data-timeline-viewport]');
+      const timelineBounds = await timelineViewport.boundingBox();
+      await timelineViewport.tap({ position: { x: 4, y: timelineBounds.height / 2 } });
       await expect.poll(async () => Number(await timelineSlider.inputValue())).toBeLessThan(endTime);
       expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);

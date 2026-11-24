@@ -1544,3 +1544,11 @@ unchanged-main and current-source runs both passed. Vet/build, Node unit tests,
 asset verification, contract structure, docs variants/links and dependency
 checks passed. The previously documented full local gate failures remain
 qualifications, not converted to successes by these focused checks.
+
+The complete subsequent four-project browser run passed 84 cases with three
+intentional bootstrap skips; the remaining authenticated flow still attempted
+to tap the old native timeline slider. Its touch caller now selects through the
+visible viewport, and its no-JavaScript assertion checks the disabled control.
+The entire authenticated desktop/touch flow then passed at the default
+30-second test timeout. This was an obsolete test interaction, not a reason to
+make the hidden keyboard control pointer-interactive.
