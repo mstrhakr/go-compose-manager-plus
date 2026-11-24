@@ -320,6 +320,15 @@
   }
 
   function initializeTimeline(timeline) {
+    for (const span of timeline.querySelectorAll('[data-timeline-span]')) {
+      const start = Number(span.dataset.spanStart);
+      const height = Number(span.dataset.spanHeight);
+      if (!Number.isFinite(start) || !Number.isFinite(height) ||
+          start < 0 || start > 100 || height <= 0 || start + height > 100.001) continue;
+      span.style.bottom = `${start}%`;
+      span.style.height = `${Math.min(height, 100 - start)}%`;
+      span.hidden = false;
+    }
     if (timeline.dataset.timelineReady === 'true') return;
     const slider = timeline.querySelector('[data-timeline-slider]');
     const output = timeline.querySelector('[data-timeline-output]');

@@ -172,7 +172,7 @@
         <div class="timeline-selection" data-timeline-cursor aria-hidden="true" hidden></div>
         <div class="timeline-axis" aria-hidden="true"><span>Now</span><span>−15m</span><span>−30m</span><span>−45m</span><span>−60m</span></div>
         <div class="timeline-track" role="group" aria-label="Observed container events and state">
-          {{range .Timeline.StateSpans}}<span class="timeline-span timeline-span-{{.Kind}}" data-timeline-span="{{.Kind}}" style="top:{{printf "%.3f" .StartPosition}}%;height:{{printf "%.3f" .SpanHeight}}%" role="img" aria-label="{{.Label}}" title="{{.Label}}"></span>{{end}}
+          {{range .Timeline.StateSpans}}<span class="timeline-span timeline-span-{{.Kind}}" data-timeline-span="{{.Kind}}" data-span-start="{{printf "%.3f" .StartPosition}}" data-span-height="{{printf "%.3f" .SpanHeight}}" role="img" aria-label="{{.Label}}" title="{{.Label}}" hidden></span>{{end}}
           {{range .Timeline.Events}}<button class="timeline-marker" type="button" data-timeline-select="{{.Time}}" data-timeline-marker data-position="{{printf "%.3f" .Position}}" data-kind="{{.Kind}}" aria-label="Select {{.Description}} at {{.TimeLabel}} for {{.Container}}" title="{{.Description}} · {{.Container}} · {{.TimeLabel}}"><span aria-hidden="true"></span></button>{{end}}
         </div>
         <input id="observability-time" class="timeline-slider" type="range" min="{{.Timeline.Start}}" max="{{.Timeline.End}}" step="1000" value="{{.Timeline.SelectedTime}}" data-timeline-slider aria-label="Selected time in the last hour" aria-orientation="vertical">

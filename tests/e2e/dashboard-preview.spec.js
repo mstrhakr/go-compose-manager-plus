@@ -31,6 +31,9 @@ function serveObservability(route) {
     selected ? ['a', 'b', 'c', 'd'].findIndex(letter => selected === letter.repeat(64)) : 0;
   return route.fulfill({
     status: index < 0 ? 404 : 200, contentType: 'text/html',
+    headers: {
+      'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    },
     body: index < 0 ? 'Container history unavailable' : observabilityFixtures[index],
   });
 }
@@ -86,6 +89,29 @@ test('single-container observability has a vertical synchronized timeline and st
     getComputedStyle(document.querySelector('[data-timeline-span="unavailable"]')).zIndex,
   ]);
   expect(Number(spanLayers[1])).toBeGreaterThan(Number(spanLayers[0]));
+  for (const span of [unhealthySpan, unavailableSpan]) {
+    const geometry = await span.evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      const track = element.parentElement.getBoundingClientRect();
+      return {
+        start: Number(element.dataset.spanStart), height: Number(element.dataset.spanHeight),
+        bottom: (track.bottom - bounds.bottom) / track.height * 100,
+        renderedHeight: bounds.height / track.height * 100,
+      };
+    });
+    expect(geometry.bottom).toBeCloseTo(geometry.start, 0);
+    expect(geometry.renderedHeight).toBeCloseTo(geometry.height, 0);
+  }
+  await unavailableSpan.evaluate(element => {
+    const replacement = element.cloneNode(true);
+    replacement.removeAttribute('style');
+    replacement.hidden = true;
+    element.replaceWith(replacement);
+    document.body.dispatchEvent(new CustomEvent('htmx:afterSwap', {
+      detail: { elt: replacement.parentElement }, bubbles: true,
+    }));
+  });
+  await expect(unavailableSpan).toBeVisible();
   await expect(page.locator('.timeline-event').filter({ hasText: 'Observed healthy on reconnect' })).toBeVisible();
   const charts = page.locator('[data-chart]');
   await expect(charts).toHaveCount(3);
