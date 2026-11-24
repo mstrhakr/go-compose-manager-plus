@@ -1,19 +1,22 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { test, expect } from '@playwright/test';
 
 let fixture;
 let observabilityFixtures;
+let settingsFixture;
 test.beforeAll(() => {
-  const directory = mkdtempSync(join(tmpdir(), 'cmp-dashboard-preview-'));
+  const outputDirectory = join(process.cwd(), 'test-results');
+  mkdirSync(outputDirectory, { recursive: true });
+  const directory = mkdtempSync(join(outputDirectory, 'cmp-dashboard-preview-'));
   try {
     execFileSync('go', ['test', './internal/web', '-run', '^TestSyntheticDashboardPreview$', '-count=1'], {
       env: { ...process.env, CMP_UI_PREVIEW_DIR: directory },
       stdio: 'pipe',
     });
     fixture = readFileSync(join(directory, 'dashboard.html'), 'utf8');
+    settingsFixture = readFileSync(join(directory, 'settings.html'), 'utf8');
     observabilityFixtures = Array.from({ length: 6 }, (_, index) =>
       readFileSync(join(directory, `observability-${index}.html`), 'utf8'));
   } finally {
@@ -28,6 +31,9 @@ function serveObservability(route) {
     selected ? ['a', 'b', 'c', 'd'].findIndex(letter => selected === letter.repeat(64)) : 0;
   return route.fulfill({
     status: index < 0 ? 404 : 200, contentType: 'text/html',
+    headers: {
+      'Content-Security-Policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    },
     body: index < 0 ? 'Container history unavailable' : observabilityFixtures[index],
   });
 }
@@ -74,6 +80,46 @@ test('single-container observability has a vertical synchronized timeline and st
   await expect(containers.getByRole('link')).toHaveCount(4);
   await expect(containers.getByRole('link').first()).toHaveAttribute('aria-current', 'page');
   await expect(timeline).toHaveAttribute('data-container', 'a'.repeat(64));
+  const unhealthySpan = page.locator('[data-timeline-span="unhealthy"]');
+  const unavailableSpan = page.locator('[data-timeline-span="unavailable"]');
+  await expect(unhealthySpan).toHaveAttribute('aria-label', 'Observed unhealthy');
+  await expect(unavailableSpan).toHaveAttribute('aria-label', 'Observation unavailable');
+  const spanLayers = await page.evaluate(() => [
+    getComputedStyle(document.querySelector('[data-timeline-span="unhealthy"]')).zIndex,
+    getComputedStyle(document.querySelector('[data-timeline-span="unavailable"]')).zIndex,
+  ]);
+  expect(Number(spanLayers[1])).toBeGreaterThan(Number(spanLayers[0]));
+  for (const span of [unhealthySpan, unavailableSpan]) {
+    const geometry = await span.evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      const track = element.parentElement.getBoundingClientRect();
+      return {
+        start: Number(element.dataset.spanStart), height: Number(element.dataset.spanHeight),
+        bottom: (track.bottom - bounds.bottom) / track.height * 100,
+        renderedHeight: bounds.height / track.height * 100,
+      };
+    });
+    expect(geometry.bottom).toBeCloseTo(geometry.start, 0);
+    expect(geometry.renderedHeight).toBeCloseTo(geometry.height, 0);
+  }
+  await unavailableSpan.evaluate(element => {
+    const replacement = element.cloneNode(true);
+    replacement.removeAttribute('style');
+    replacement.hidden = true;
+    element.replaceWith(replacement);
+    document.body.dispatchEvent(new CustomEvent('htmx:afterSwap', {
+      detail: { elt: replacement.parentElement }, bubbles: true,
+    }));
+  });
+  await expect(unavailableSpan).toBeVisible();
+  if (testInfo.project.name === 'chromium') {
+    for (const theme of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: theme });
+      await page.screenshot({ path: `test-results/observability-state-spans-${theme}.png` });
+    }
+    await page.emulateMedia({ colorScheme: 'light' });
+  }
+  await expect(page.locator('.timeline-event').filter({ hasText: 'Observed healthy on reconnect' })).toBeVisible();
   const charts = page.locator('[data-chart]');
   await expect(charts).toHaveCount(3);
   const assertIsolation = async letter => {
@@ -105,6 +151,13 @@ test('single-container observability has a vertical synchronized timeline and st
     (Number(await timeline.getAttribute('data-end')) - Number(await timeline.getAttribute('data-start')));
   expect(fraction).toBeGreaterThan(0.4);
   expect(fraction).toBeLessThan(0.6);
+  const clock = timeline.locator('[data-timeline-output]');
+  const rail = timeline.locator('.timeline-rail');
+  const clockBounds = await clock.boundingBox();
+  const railBounds = await rail.boundingBox();
+  expect(Math.abs(clockBounds.y + clockBounds.height / 2 - (railBounds.y + railBounds.height / 2))).toBeLessThan(8);
+  await expect(clock).toHaveAttribute('title', await slider.getAttribute('aria-valuetext'));
+  await expect(clock).toHaveText(/\d{2}:\d{2}:\d{2}/);
   const chartBounds = await charts.evaluateAll(elements => elements.map(element => {
     const bounds = element.getBoundingClientRect();
     return { x: bounds.x, y: bounds.y, bottom: bounds.bottom };
@@ -128,15 +181,25 @@ test('single-container observability has a vertical synchronized timeline and st
   await slider.focus();
   await page.keyboard.press('Home');
   await expect(slider).toHaveValue(await timeline.getAttribute('data-start'));
+  let selectedBounds = await clock.boundingBox();
+  let axisBounds = await rail.boundingBox();
+  expect(selectedBounds.y + selectedBounds.height).toBeLessThanOrEqual(axisBounds.y + axisBounds.height);
   await page.keyboard.press('ArrowUp');
   expect(Number(await slider.inputValue())).toBe(Number(await timeline.getAttribute('data-start')) + 1000);
-  await page.keyboard.press('End');
+  await timeline.getByRole('button', { name: 'Select end of displayed hour' }).click();
   await expect(slider).toHaveValue(await timeline.getAttribute('data-end'));
+  await expect(timeline).toHaveAttribute('data-selected', await timeline.getAttribute('data-end'));
+  for (const svg of await charts.locator('svg').all()) {
+    await expect(svg).toHaveAttribute('aria-valuenow', await timeline.getAttribute('data-end'));
+  }
+  selectedBounds = await clock.boundingBox();
+  axisBounds = await rail.boundingBox();
+  expect(selectedBounds.y).toBeGreaterThanOrEqual(axisBounds.y);
   const logsLabel = page.locator('.observability-record-options').getByText('Container logs', { exact: true });
   if (testInfo.project.name === 'mobile-chromium') await logsLabel.tap();
   else await logsLabel.click();
   await expect(page.locator('.observability-logs')).toBeVisible();
-  await expect(page.locator('.observability-logs')).toContainText('Container logs are not collected');
+  await expect(page.locator('.observability-logs')).toContainText('Container-log collection is Off');
   await expect(page.locator('.timeline-events')).toBeHidden();
   await containers.getByRole('link').nth(1).click();
   await expect(timeline).toHaveAttribute('data-container', 'b'.repeat(64));
@@ -166,7 +229,25 @@ test('single-container observability has a vertical synchronized timeline and st
       await expect(charts.nth(2)).toBeInViewport();
       await expect(page.locator('.observability-records')).toBeInViewport();
       await expect(page.locator('.timeline-event').first()).toBeInViewport({ ratio: 0.9 });
+      await expect(page.locator('.timeline-event').nth(1)).toBeInViewport({ ratio: 0.9 });
+      const contrast = await clock.evaluate(element => {
+        const luminance = color => {
+          const channels = color.match(/\d+/g).slice(0, 3).map(value => {
+            const channel = Number(value) / 255;
+            return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+          });
+          return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+        };
+        const style = getComputedStyle(element);
+        const text = luminance(style.color);
+        const background = luminance(style.backgroundColor);
+        return (Math.max(text, background) + 0.05) / (Math.min(text, background) + 0.05);
+      });
+      expect(contrast).toBeGreaterThanOrEqual(4.5);
       await page.screenshot({ path: `test-results/observability-single-container-${theme}-reference.png` });
+      await page.locator('.timeline-event').filter({ hasText: 'Out of memory' }).click();
+      await page.screenshot({ path: `test-results/observability-selected-event-${theme}-reference.png` });
+      await timeline.getByRole('button', { name: 'Select end of displayed hour' }).click();
     }
     for (const width of [1440, 1024, 901, 900, 620, 390]) {
       await page.setViewportSize({ width, height: 900 });
@@ -203,12 +284,99 @@ test('single-container observability has a vertical synchronized timeline and st
   }
 });
 
+test('stats settings show preset values and unlock only the current values under Custom', async ({ page, browser, baseURL }, testInfo) => {
+  const serveSettings = route => route.fulfill({ status: 200, contentType: 'text/html', body: settingsFixture });
+  await page.route('**/settings', serveSettings);
+  await page.goto('/settings');
+  const statsSettings = page.getByRole('group', { name: 'Container stats' });
+  const scope = page.locator('#metrics-scope');
+  const interval = page.getByLabel('Sampling interval');
+  await expect(page.getByRole('navigation', { name: 'Settings categories' })
+    .getByRole('link', { name: 'Containers' })).toHaveAttribute('aria-current', 'page');
+  await expect(interval).toHaveValue('1s');
+  await expect(interval).toHaveAttribute('readonly', '');
+  await expect(scope).toBeHidden();
+  await statsSettings.getByRole('radio', { name: 'Low', exact: true }).press('Space');
+  await expect(interval).toHaveValue('15s');
+  await statsSettings.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+  await expect(scope).toBeVisible();
+  await expect(interval).toBeEditable();
+  await expect(scope).toHaveValue('activated');
+  await expect(page.getByLabel('Sampling interval')).toHaveValue('15s');
+  await expect(page.locator('[data-metrics-preset]:visible')).toHaveCount(0);
+  await scope.selectOption('all');
+  await page.getByLabel('Sampling interval').fill('3s');
+  await statsSettings.getByRole('radio', { name: 'Medium', exact: true }).press('Space');
+  await expect(interval).toHaveValue('5s');
+  await statsSettings.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+  await expect(scope).toHaveValue('activated');
+  await expect(page.getByLabel('Sampling interval')).toHaveValue('5s');
+  await expect(page.locator('#metrics-limit')).toHaveValue('10.48576');
+  await statsSettings.getByRole('radio', { name: 'High', exact: true }).press('Space');
+  await page.locator('#metrics-limit').fill('20');
+  await expect(statsSettings.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+  await expect(scope).toHaveValue('all');
+  await expect(page.getByLabel('Sampling interval')).toHaveValue('1s');
+  const overall = page.getByRole('group', { name: 'Overall collection profile' });
+  const logsSettings = page.getByRole('group', { name: 'Container logs' });
+  await expect(statsSettings.getByRole('radio')).toHaveCount(5);
+  await page.locator('#state-scope').selectOption('all');
+  await logsSettings.getByRole('radio', { name: 'Low', exact: true }).press('Space');
+  await overall.getByRole('radio', { name: 'Off', exact: true }).press('Space');
+  await expect(statsSettings.getByRole('radio', { name: 'Off', exact: true })).toBeChecked();
+  await expect(logsSettings.getByRole('radio', { name: 'Off', exact: true })).toBeChecked();
+  await expect(page.locator('#state-scope')).toHaveValue('off');
+  await expect(interval).toBeHidden();
+  await overall.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+  await expect(statsSettings.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+  await expect(interval).toHaveValue('1s');
+  await expect(scope).toHaveValue('all');
+  await expect(page.locator('#state-scope')).toHaveValue('all');
+  await expect(logsSettings.getByRole('radio', { name: 'Low', exact: true })).toBeChecked();
+  await statsSettings.getByRole('radio', { name: 'Off', exact: true }).press('Space');
+  await expect(page.locator('#state-scope')).toHaveValue('all');
+  await expect(logsSettings.getByRole('radio', { name: 'Low', exact: true })).toBeChecked();
+  await statsSettings.getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+  await expect(interval).toHaveValue('1s');
+  await overall.getByRole('radio', { name: 'High', exact: true }).press('Space');
+  await page.locator('#logs-limit').fill('40');
+  await expect(logsSettings.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+  await expect(statsSettings.getByRole('radio', { name: 'High', exact: true })).toBeChecked();
+  await expect(page.locator('#state-scope')).toHaveValue('all');
+  await expect(overall.getByRole('radio', { name: 'Custom', exact: true })).toBeChecked();
+  if (testInfo.project.name === 'chromium') {
+    for (const theme of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: theme });
+      for (const width of [1256, 390]) {
+        await page.setViewportSize({ width, height: 900 });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        await page.screenshot({ path: `test-results/settings-observability-${theme}-${width}.png`, fullPage: true });
+      }
+    }
+  }
+  const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
+  try {
+    const fallback = await context.newPage();
+    await fallback.route('**/settings', serveSettings);
+    await fallback.goto('/settings');
+    await fallback.getByRole('group', { name: 'Container stats' }).getByRole('radio', { name: 'Medium', exact: true }).press('Space');
+    await expect(fallback.getByRole('textbox', { name: 'Sampling interval', exact: true })).toHaveValue('5s');
+    await fallback.getByRole('group', { name: 'Container stats' }).getByRole('radio', { name: 'Custom', exact: true }).press('Space');
+    await expect(fallback.locator('#metrics-scope')).toBeVisible();
+    await expect(fallback.locator('noscript .metrics-help')).toBeVisible();
+    await expect(fallback.locator('noscript .metrics-help')).toContainText('restore sources after overall Off');
+  } finally {
+    await context.close();
+  }
+});
+
 test('single-container navigation and record selectors work without JavaScript', async ({ browser, baseURL }) => {
   const context = await browser.newContext({ baseURL, javaScriptEnabled: false });
   try {
     await context.route('**/containers/observability*', serveObservability);
     const page = await context.newPage();
     await page.goto('/containers/observability');
+    await expect(page.locator('[data-timeline-latest]')).toBeHidden();
     await page.getByRole('navigation', { name: 'Filtered containers' }).getByRole('link', { name: 'database', exact: true }).click();
     await expect(page.locator('[data-timeline]')).toHaveAttribute('data-container', 'b'.repeat(64));
     await expect(page.locator('.timeline-event').filter({ hasText: 'Out of memory' })).toBeVisible();

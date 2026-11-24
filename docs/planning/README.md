@@ -106,10 +106,26 @@ breakpoints and mobile overflow/responsiveness. See the
 On 2026-11-23 the owner prioritized desktop alignment, with mobile basics and
 reduced advanced views to be designed later rather than requiring desktop
 parity. The next requested observability slice is container-log collection in
-the same local SQLite history store, retaining one hour, followed by an
-aggregated dashboard log view. TimescaleDB is deferred for longer metric/log
-history. Collection defaults/migration and shared log/metric storage-pressure behavior
-remain production-collection gates under [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
+its own SQLite `logs.db` with one-hour retention, followed by an aggregated
+dashboard log view. Stats/state/event history remains in `metrics.db`, and
+durable application state/settings in `app.db`. TimescaleDB is deferred for
+longer metric/log history. Separate sample/log budgets were selected on
+2026-11-24. The owner subsequently selected independent starting targets of
+128 MB for metrics history and 256 MB for logs, without changing collection
+profiles or overwriting existing configured amounts. Rolling eviction and
+DB/WAL/SHM/reusable-page safeguards are now selected independently per history
+database, without cross-store eviction, budget borrowing or early state/event
+pressure eviction. Named storage presets remain undecided; managed-store
+enforcement has local regression coverage.
+The owner selected hiding retained history while a source is Off without
+erasing it; normal age eligibility and preserved preferences remain. Dormant
+cleanup and in-flight stop/flush are separate pending decisions.
+The owner selected the three-database layout on 2026-11-24, amending the
+earlier same-history-file request. Production capture now uses managed
+`logs.db`, preserving legacy rows in `metrics.db` without destructive migration.
+Independent source controls, preset transports, budget enforcement and the
+approved defaults/migration policy have local implementation evidence under
+[LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
 a dedicated log view and network-aware filters remain follow-up ideas.
 The owner subsequently approved beginning the Docker API implementation that
 preserves original messages and metadata. The first bounded API/SQLite
@@ -121,12 +137,21 @@ own card/panel. The owner then selected a category-wide overall preset:
 Low/Medium/High sets the collection sources, including enabling logs when saved;
 Off disables their collection and individual source changes make the overall
 value Custom. Effects must be visible before Save. Log scope/delivery mappings
-were subsequently selected; migration defaults, state/event mappings and
-Off-history effects still require refinement before implementation.
+were subsequently selected. The owner approved all sources Off on new installs;
+upgrades preserve existing stats settings, state/event capture enablement and
+storage budget while leaving logs Off until explicitly enabled and saved.
+Mixed sources show overall Custom without applying a preset during migration.
+Advanced log child preferences still require refinement; migration/runtime
+enforcement is covered by local regression tests. State/event choices are Off, Activated stacks
+and All containers: overall Low/Medium select Activated stacks, High selects
+All containers, and initial scope is Activated stacks while Off. State scopes
+include stopped-container context without changing running-only numeric stats.
+Off hides retained source history without making it a clear-history action.
 Individual settings reuse the selector style with meaningful setting-specific
 choices (including named scopes), optional positions and parent-dependent
 visibility. Storage presets reveal a reusable exact amount/unit input under
-Custom; concrete default sizes remain undecided. Off preserves saved child
+Custom; starting targets are selected but named storage-preset mappings remain
+undecided. Off preserves saved child
 preferences for restoration under Custom. Every preset must show its concrete
 effects through visible noneditable value controls, editable under Custom;
 named choices use explanatory text. Off collapses dependent controls.
@@ -156,6 +181,14 @@ history controls, sharing required API work without disabling stats safety
 observations when state-history persistence is Off. The
 [current design summary](../contracts/live-state.md#current-settings-design-summary)
 separates settled interactions, reference-inspired proposals and remaining gates.
+
+The 2026-11-24 presentation slice aligns the existing stats Settings card and
+single-container timeline without enabling production logs. Preset values are
+visible and Custom unlocks the current interval in place; timeline selection
+has a contained time label and an end-of-window shortcut. The
+[verification record](../verification.md#observability-presentation-alignment)
+is scoped to those outcomes. Full source controls, sparse state spans and
+production collection remain subject to the gates above.
 
 ### Settings Organization Candidates
 

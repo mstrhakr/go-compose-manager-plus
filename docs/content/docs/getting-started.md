@@ -60,12 +60,95 @@ the service. Inspect socket ownership and mode with
 <code>stat -Lc 'uid=%u gid=%g mode=%a' /var/run/docker.sock</code>.
 Docker API access is effectively host-administrative; a <code>:ro</code> socket
 mount does not make API access read-only. Only grant it inside a trusted security
-boundary. Snapshots list running and stopped containers but do not provide logs,
-live metrics or lifecycle operations.</p>
+boundary. Inventory snapshots list running and stopped containers. Background
+stats, state/event history and container logs are separate opt-in sources;
+lifecycle management operations are not connected.</p>
 <p>On the Projects and Containers pages, use <strong>Customize columns</strong>
 to choose visible columns and restore the defaults. Preferences are saved
 separately for each view in your browser; the identifying column always stays
 visible. Without JavaScript, all columns remain visible.</p>
+
+## Metrics and container observability
+
+<p>After configuring Docker access, open
+<strong>Settings &gt; Containers</strong> to find <strong>Observability settings</strong>.
+All sources start <strong>Off</strong> on a new installation.
+The overall Low, Medium and High choices configure all three sources, including
+logs, when you <strong>Save observability preferences</strong>.
+Review the source cards before saving. Individual changes mark the overall
+choice Custom without changing the other sources.</p>
+<ul>
+<li><strong>Container stats:</strong> Low samples activated stacks every
+15 seconds; Medium every 5 seconds; High samples all running containers every
+second. Custom allows a different scope and positive interval.</li>
+<li><strong>Container state &amp; events:</strong> choose Off, Activated stacks
+or All containers. Enabled scopes include stopped-container context and record
+changes rather than an unchanged state every second. Overall Low/Medium select
+Activated stacks; High selects All containers.</li>
+<li><strong>Container logs:</strong> Low reads activated-stack backlog every
+60 seconds; Medium every 30 seconds; High follows all containers live.
+Readable stopped-container backlog is included. Custom changes capture scope
+while preserving the current preset's delivery; choose a preset first if no
+log preferences exist. Custom transport/save-frequency tuning is not available.</li>
+</ul>
+<p>The <strong>Container stats</strong> card shows the selected preset's scope
+and sampling interval. With JavaScript, the interval is read-only under a
+preset; Custom unlocks those current values, not an older custom configuration.
+Changing a storage target preserves the current capture values and does not
+enable an Off source. Without JavaScript, save a preset or Custom selection
+before editing its values.</p>
+<p><strong>Off</strong> stops a source and hides its retained history; it is not
+a clear-history action. Preferences remain saved. Overall Off followed directly
+by Custom restores the preceding source selections and values. Re-enabling
+history shows only data still eligible for retention, not an unlimited archive.
+Upgrades preserve existing stats/state enablement and the metrics target;
+logs remain Off until explicitly enabled and saved.</p>
+<p>On <strong>Overview</strong>, switch between CPU, memory and network charts.
+These totals cover collected containers, not the Docker host's total usage.
+For individual history, open <strong>Containers &gt; Observability</strong>,
+apply filters in the first sidebar, and select a name in the second sidebar.
+The first filtered container is selected by default. The vertical timeline
+and stacked charts share the selected time; selecting an observed event also
+moves that selection. Missing observations remain gaps, not zero values.</p>
+<p>The blue time label follows your selection and shows local time. Hover
+<strong>Selected time</strong> for the date, time zone and any fractional seconds;
+the slider's accessible value includes those details for screen readers.
+Event rows display UTC explicitly. Use the arrow at the bottom of the timeline
+to return all charts to the end of the displayed hour; this does not start
+live following or refresh the page. Keyboard users can use the arrow keys,
+Home and End on the slider.</p>
+<p>The records area contains state/event history and
+<strong>Container logs</strong>. Log records show Docker time, stream and
+message text. Stderr is a stream, not an inferred severity; application JSON
+is not parsed. TTY output is merged and line-oriented, without dependable
+stdout/stderr separation. Messages over 64 KiB are explicitly truncated.
+The page shows at most 200 newest records within the 1 MiB query budget; an omission
+notice indicates that the displayed result is not the entire matching history.</p>
+<p>State health and lifecycle are separate. Striped red marks observed unhealthy
+intervals; grey marks unavailable state observation and takes precedence over
+red. A healthy observation after reconnect is labelled as observed on reconnect,
+not assigned a fabricated recovery time during an unavailable interval.
+One pre-window state baseline may be kept for context.</p>
+
+### Storage pressure and empty charts
+
+<p>Check <strong>Collection status</strong> in Settings first. The
+storage-pressure warning is cumulative: its sample count and timestamp bounds
+describe earlier removals, not necessarily the current collection cycle or a
+continuous gap. Collection retains up to one hour, but storage pressure can
+remove the oldest samples or logs earlier within that source's own database.
+New-install targets are <strong>128 MB</strong> for metrics/state history and
+<strong>256 MB</strong> for logs; existing targets remain unchanged. Units are
+decimal B/KB/MB/GB, not reserved disk space or hard disk quotas. Deleted rows can
+leave reusable pages without shrinking the file. The collector pauses writes when maintenance
+cannot verify usable space and retries maintenance every five seconds.</p>
+<p>A healthy collection status does not guarantee retained samples for the
+selected container. Check filters, collection scope and whether the container
+was recently recreated. If storage warnings persist, review the configured
+target and available disk space; do not delete the state volume to reset a
+chart. If the layout itself is broken after an upgrade, check the
+<a href="../deployment/">reverse proxy caching guidance</a> before changing
+collection settings.</p>
 
 ## Configuration
 
@@ -80,7 +163,7 @@ only the host port.</p>
     <tr><td>APP_ADDR</td><td>127.0.0.1:8080</td><td>Listen host and numeric port (1–65535)</td></tr>
     <tr><td>APP_LOG_LEVEL</td><td>info</td><td>debug, info, warn, or error</td></tr>
     <tr><td>APP_DATA_DIR</td><td>./data</td><td>Persistent SQLite state directory</td></tr>
-    <tr><td>APP_DOCKER_SOCKET</td><td>unset</td><td>Optional absolute Unix socket path for on-demand read-only status; socket access is effectively host-administrative</td></tr>
+    <tr><td>APP_DOCKER_SOCKET</td><td>unset</td><td>Optional absolute Unix socket path for inventory and opt-in stats/state/logs; socket access is effectively host-administrative</td></tr>
     <tr><td>APP_PUBLIC_URL</td><td>http://127.0.0.1:8080</td><td>Canonical app origin; remote origin requires HTTPS</td></tr>
     <tr><td>APP_TRUSTED_PROXIES</td><td>empty</td><td>Comma-separated immediate proxy CIDRs</td></tr>
     <tr><td>APP_BOOTSTRAP_USERNAME</td><td>unset</td><td>Required with password only for an uninitialized database</td></tr>

@@ -47,7 +47,7 @@ func newDockerSocket(t *testing.T) (net.Listener, string) {
 	if goruntime.GOOS == "windows" {
 		t.Skip("Docker Unix socket integration test is not supported on Windows")
 	}
-	dir, err := os.MkdirTemp("/tmp", "cmp-")
+	dir, err := os.MkdirTemp(".", ".docker-test-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestCollectorPersistsReadOnlySamplesAndStates(t *testing.T) {
 	collector := &Collector{docker: docker, projects: projectReaderFunc(func(context.Context) ([]discovery.Project, error) {
 		return nil, nil
 	}), logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	continuity := &eventContinuity{eligible: make(map[string]bool)}
+	continuity := &eventContinuity{}
 	continuity.setConnected(true)
 	_, generation := continuity.snapshot()
 	settings := Settings{Enabled: true, Scope: ScopeAll, Interval: time.Second, StorageLimit: 10 << 20}
@@ -156,13 +156,155 @@ func TestCollectorPersistsReadOnlySamplesAndStates(t *testing.T) {
 		t.Fatalf("rate baseline behavior = %#v", samples)
 	}
 	states, err := store.SelectStates(context.Background(), id, now.Add(-time.Minute), now.Add(time.Minute), 10)
-	if err != nil || len(states) != 2 || states[0].State != "running" {
+	if err != nil || len(states) != 1 || states[0].State != "running" {
 		t.Fatalf("running states = %#v, %v", states, err)
 	}
 	stoppedStates, err := store.SelectStates(context.Background(), stoppedID, now.Add(-time.Minute), now.Add(time.Minute), 10)
-	if err != nil || len(stoppedStates) != 0 {
-		t.Fatalf("all-container profile collected stopped state: %#v, %v", stoppedStates, err)
+	if err != nil || len(stoppedStates) != 1 || stoppedStates[0].State != "exited" {
+		t.Fatalf("all-container state source omitted stopped context: %#v, %v", stoppedStates, err)
 	}
+}
+
+func TestStatsCollectionKeepsStateScopeIndependentAndOffHidesWrites(t *testing.T) {
+	activeID, inactiveID := strings.Repeat("c", 64), strings.Repeat("d", 64)
+	root := t.TempDir()
+	activePath := filepath.Join(root, "active")
+	if err := os.Mkdir(activePath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(activePath, "compose.yaml"), []byte("name: app\nservices:\n  web:\n    image: example\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	docker := newCollectorDocker(t, []runtime.Container{
+		{ID: activeID, Name: "active", Project: "app", Service: "web", State: "running"},
+		{ID: inactiveID, Name: "inactive", Project: "other", Service: "db", State: "exited"},
+	})
+	store, now := newCollectorTestStore(t)
+	projects := projectReaderFunc(func(context.Context) ([]discovery.Project, error) {
+		return []discovery.Project{{Root: root, Path: activePath, Active: true, Available: true}}, nil
+	})
+	collector := &Collector{
+		docker:   docker,
+		projects: projects,
+		logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	continuity := &eventContinuity{}
+	previousCycleOK := false
+	var generation uint64
+	settings := Settings{Enabled: true, Scope: ScopeActivated, Interval: 15 * time.Second, StorageLimit: 10 << 20}
+	if err := collector.collectCycleWithScopes(context.Background(), settings, ScopeAll, store, continuity,
+		make(map[string]*Sampler), &previousCycleOK, &generation, true); err != nil {
+		t.Fatal(err)
+	}
+	activeStates, err := store.SelectStates(context.Background(), activeID, now.Add(-time.Minute), now.Add(time.Minute), 10)
+	if err != nil || len(activeStates) != 1 {
+		t.Fatalf("state source omitted active container: %#v, %v", activeStates, err)
+	}
+	inactiveStates, err := store.SelectStates(context.Background(), inactiveID, now.Add(-time.Minute), now.Add(time.Minute), 10)
+	if err != nil || len(inactiveStates) != 1 || inactiveStates[0].State != "exited" {
+		t.Fatalf("independent state scope omitted stopped container: %#v, %v", inactiveStates, err)
+	}
+	samples, err := store.Select(context.Background(), inactiveID, now.Add(-time.Minute), now.Add(time.Minute), 10)
+	if err != nil || len(samples) != 0 {
+		t.Fatalf("stats scope leaked to inactive project: %#v, %v", samples, err)
+	}
+
+	offStore, offNow := newCollectorTestStore(t)
+	offCollector := &Collector{docker: docker, projects: projects, logger: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	offContinuity := &eventContinuity{}
+	previousCycleOK, generation = false, 0
+	if err := offCollector.collectCycleWithScopes(context.Background(), settings, ScopeAll, offStore, offContinuity,
+		make(map[string]*Sampler), &previousCycleOK, &generation, false); err != nil {
+		t.Fatal(err)
+	}
+	offStates, err := offStore.SelectStates(context.Background(), activeID, offNow.Add(-time.Minute), offNow.Add(time.Minute), 10)
+	if err != nil || len(offStates) != 0 {
+		t.Fatalf("State Off persisted snapshots from shared stats inspections: %#v, %v", offStates, err)
+	}
+	var gaps int
+	if err := offStore.store.db.QueryRowContext(context.Background(), `SELECT COUNT(*) FROM container_state_gaps`).Scan(&gaps); err != nil || gaps != 0 {
+		t.Fatalf("State Off persisted observation gaps: %d, %v", gaps, err)
+	}
+	offSamples, err := offStore.Select(context.Background(), activeID, offNow.Add(-time.Minute), offNow.Add(time.Minute), 10)
+	if err != nil || len(offSamples) != 1 {
+		t.Fatalf("State Off suppressed shared stats collection: %#v, %v", offSamples, err)
+	}
+}
+
+func TestStatsEventWatcherAdmitsLifecycleEventsBetweenSampleCycles(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	id := strings.Repeat("9", 64)
+	root := t.TempDir()
+	projectPath := filepath.Join(root, "app")
+	if err := os.Mkdir(projectPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectPath, "compose.yaml"), []byte("name: app\nservices:\n  web:\n    image: example\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	listener, socket := newDockerSocket(t)
+	eventTime := time.Now().UTC()
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1.40/containers/json":
+			_, _ = fmt.Fprint(w, `[]`)
+		case "/v1.40/containers/" + id + "/json":
+			fmt.Fprintf(w, `{"Id":%q,"Config":{"Healthcheck":{"Test":["NONE"]}},"State":{"Status":"created"}}`, id)
+		case "/v1.40/events":
+			flusher := w.(http.Flusher)
+			fmt.Fprintf(w, `{"Type":"container","Action":"create","Actor":{"ID":%q,"Attributes":{"com.docker.compose.project":"app"}},"timeNano":%d}`+"\n", id, eventTime.UnixNano())
+			flusher.Flush()
+			<-r.Context().Done()
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	server.Listener = listener
+	server.Start()
+	defer server.Close()
+	store, err := OpenManaged(ctx, t.TempDir(), 10<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if err := store.Maintain(ctx, time.Now().UTC()); err != nil {
+		t.Fatal(err)
+	}
+	collector := &Collector{
+		docker: runtime.NewClient(socket),
+		projects: projectReaderFunc(func(context.Context) ([]discovery.Project, error) {
+			return []discovery.Project{{Root: root, Path: projectPath, Active: true, Available: true}}, nil
+		}),
+		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
+	}
+	done := make(chan struct{})
+	go func() {
+		collector.watchEvents(ctx, store, &eventContinuity{}, true, ScopeActivated)
+		close(done)
+	}()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		states, stateErr := store.SelectStates(ctx, id, eventTime.Add(-time.Minute), time.Now().UTC().Add(time.Minute), 10)
+		events, eventErr := store.SelectEvents(ctx, id, eventTime.Add(-time.Minute), time.Now().UTC().Add(time.Minute), 10)
+		if stateErr != nil || eventErr != nil {
+			cancel()
+			<-done
+			t.Fatalf("read event-driven state history: %v / %v", stateErr, eventErr)
+		}
+		if len(states) == 1 && len(events) == 1 {
+			if states[0].State != "created" || events[0].Kind != EventCreate {
+				t.Fatalf("between-cycle event history = states %#v, events %#v", states, events)
+			}
+			cancel()
+			<-done
+			return
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	cancel()
+	<-done
+	t.Fatalf("event was not admitted independently of sampling snapshots: %#v", collector.Status())
 }
 
 func TestCollectorStatusTracksStoragePressureEvictions(t *testing.T) {
@@ -214,7 +356,7 @@ func TestCollectorActivatedScopeMatchesSharedComposeName(t *testing.T) {
 		}),
 		logger: slog.New(slog.NewTextHandler(io.Discard, nil)),
 	}
-	continuity := &eventContinuity{eligible: make(map[string]bool)}
+	continuity := &eventContinuity{}
 	previousCycleOK := false
 	var generation uint64
 	settings := Settings{Enabled: true, Scope: ScopeActivated, Interval: time.Second, StorageLimit: 10 << 20}
@@ -248,6 +390,18 @@ func TestDisabledCollectorDoesNotOpenMetricsDatabase(t *testing.T) {
 	)`); err != nil {
 		t.Fatal(err)
 	}
+	for _, statement := range []string{
+		`CREATE TABLE state_settings (id INTEGER PRIMARY KEY, enabled INTEGER, scope TEXT, revision INTEGER)`,
+		`INSERT INTO state_settings VALUES (1, 1, 'all', 1)`,
+		`CREATE TABLE log_settings (
+			id INTEGER PRIMARY KEY, enabled INTEGER, profile TEXT, scope TEXT,
+			delivery_preset TEXT, storage_limit_bytes INTEGER, revision INTEGER, configured INTEGER
+		)`,
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatal(err)
+		}
+	}
 	dataDir := t.TempDir()
 	collector, err := NewCollector(dataDir, NewSettingsStore(db), projectReaderFunc(func(context.Context) ([]discovery.Project, error) {
 		return nil, nil
@@ -271,6 +425,7 @@ func TestCollectorRunOptInPersistsEventsAndStopsOnDisable(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	db.SetMaxOpenConns(1)
 	if _, err := db.Exec(`CREATE TABLE metrics_settings (
 		id INTEGER PRIMARY KEY,
 		enabled INTEGER NOT NULL,
@@ -281,6 +436,23 @@ func TestCollectorRunOptInPersistsEventsAndStopsOnDisable(t *testing.T) {
 		revision INTEGER NOT NULL
 	)`); err != nil {
 		t.Fatal(err)
+	}
+	for _, statement := range []string{
+		`CREATE TABLE state_settings (id INTEGER PRIMARY KEY, enabled INTEGER, scope TEXT, revision INTEGER)`,
+		`INSERT INTO state_settings VALUES (1, 1, 'all', 1)`,
+		`CREATE TABLE log_settings (
+			id INTEGER PRIMARY KEY, configured INTEGER, enabled INTEGER, profile TEXT, scope TEXT,
+			delivery_preset TEXT, storage_limit_bytes INTEGER, revision INTEGER
+		)`,
+		`CREATE TABLE collection_settings (
+			id INTEGER PRIMARY KEY, profile TEXT, restore_stats INTEGER, restore_state INTEGER,
+			restore_logs INTEGER, revision INTEGER
+		)`,
+		`INSERT INTO collection_settings VALUES (1, 'off', 0, 0, 0, 1)`,
+	} {
+		if _, err := db.Exec(statement); err != nil {
+			t.Fatal(err)
+		}
 	}
 	settingsStore := NewSettingsStore(db)
 	settings, err := settingsStore.Save(context.Background(), Settings{

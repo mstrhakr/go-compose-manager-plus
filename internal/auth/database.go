@@ -14,7 +14,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 4
+const schemaVersion = 6
 
 var (
 	ErrBootstrapComplete = errors.New("initial administrator is already provisioned")
@@ -159,9 +159,83 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES (4)`); err != nil {
 			return fmt.Errorf("record database schema version: %w", err)
 		}
+		currentVersion = 4
+	}
+	if currentVersion == 4 {
+		if err := migrateV5(ctx, tx); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES (5)`); err != nil {
+			return fmt.Errorf("record database schema version: %w", err)
+		}
+		currentVersion = 5
+	}
+	if currentVersion == 5 {
+		if err := migrateV6(ctx, tx); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations(version) VALUES (6)`); err != nil {
+			return fmt.Errorf("record database schema version: %w", err)
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit application database migration: %w", err)
+	}
+	return nil
+}
+
+func migrateV6(ctx context.Context, tx *sql.Tx) error {
+	for _, statement := range []string{
+		`CREATE TABLE collection_settings (
+			id INTEGER PRIMARY KEY CHECK (id = 1),
+			profile TEXT NOT NULL CHECK (profile IN ('off', 'low', 'medium', 'high', 'custom')),
+			restore_stats INTEGER NOT NULL CHECK (restore_stats IN (0, 1)),
+			restore_state INTEGER NOT NULL CHECK (restore_state IN (0, 1)),
+			restore_logs INTEGER NOT NULL CHECK (restore_logs IN (0, 1)),
+			revision INTEGER NOT NULL CHECK (revision > 0)
+		)`,
+		`INSERT INTO collection_settings (id, profile, restore_stats, restore_state, restore_logs, revision)
+			SELECT 1, CASE WHEN COALESCE(m.enabled, 0) = 0 AND COALESCE(s.enabled, 0) = 0
+				AND COALESCE(l.enabled, 0) = 0 THEN 'off' ELSE 'custom' END,
+				COALESCE(m.enabled, 0), COALESCE(s.enabled, 0), COALESCE(l.enabled, 0), 1
+			FROM (SELECT 1) seed LEFT JOIN metrics_settings m ON m.id = 1
+				LEFT JOIN state_settings s ON s.id = 1 LEFT JOIN log_settings l ON l.id = 1`,
+	} {
+		if _, err := tx.ExecContext(ctx, statement); err != nil {
+			return fmt.Errorf("apply database migration v6: %w", err)
+		}
+	}
+	return nil
+}
+
+func migrateV5(ctx context.Context, tx *sql.Tx) error {
+	for _, statement := range []string{
+		`CREATE TABLE state_settings (
+			id INTEGER PRIMARY KEY CHECK (id = 1),
+			enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+			scope TEXT NOT NULL CHECK (scope IN ('activated', 'all')),
+			revision INTEGER NOT NULL CHECK (revision > 0)
+		)`,
+		`INSERT INTO state_settings (id, enabled, scope, revision)
+			SELECT 1, enabled, scope, 1 FROM metrics_settings WHERE id = 1`,
+		`CREATE TABLE log_settings (
+			id INTEGER PRIMARY KEY CHECK (id = 1),
+			configured INTEGER NOT NULL CHECK (configured IN (0, 1)),
+			enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+			profile TEXT CHECK (profile IN ('low', 'medium', 'high', 'custom')),
+			scope TEXT NOT NULL CHECK (scope IN ('activated', 'all')),
+			delivery_preset TEXT CHECK (delivery_preset IN ('low', 'medium', 'high')),
+			storage_limit_bytes INTEGER NOT NULL CHECK (storage_limit_bytes > 0),
+			revision INTEGER NOT NULL CHECK (revision > 0),
+			CHECK (configured = 1 OR (enabled = 0 AND profile IS NULL AND delivery_preset IS NULL))
+		)`,
+		`INSERT INTO log_settings
+			(id, configured, enabled, profile, scope, delivery_preset, storage_limit_bytes, revision)
+			VALUES (1, 0, 0, NULL, 'activated', NULL, 256000000, 1)`,
+	} {
+		if _, err := tx.ExecContext(ctx, statement); err != nil {
+			return fmt.Errorf("apply database migration v5: %w", err)
+		}
 	}
 	return nil
 }

@@ -18,11 +18,11 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 8
+const schemaVersion = 10
 
 // ErrWriteOutcomeUnknown means a database commit failed and its outcome must
 // be reconciled before retrying the same batch.
-var ErrWriteOutcomeUnknown = errors.New("metrics write commit outcome is unknown")
+var ErrWriteOutcomeUnknown = errors.New("history write commit outcome is unknown")
 
 type Sample struct {
 	ContainerID string
@@ -45,7 +45,15 @@ type ContainerChartSeries struct {
 type Store struct {
 	db   *sql.DB
 	path string
+	kind historyDatabase
 }
+
+type historyDatabase uint8
+
+const (
+	metricsDatabase historyDatabase = iota
+	logsDatabase
+)
 
 // Open uses a separate database from application state without starting collection.
 func Open(ctx context.Context, dataDir string) (*Store, error) {
@@ -53,37 +61,51 @@ func Open(ctx context.Context, dataDir string) (*Store, error) {
 }
 
 func open(ctx context.Context, dataDir string, exclusive bool) (*Store, error) {
+	return openHistory(ctx, dataDir, metricsDatabase, exclusive)
+}
+
+func openHistory(ctx context.Context, dataDir string, kind historyDatabase, exclusive bool) (*Store, error) {
+	var name string
+	var migrate func(context.Context, *sql.DB) error
+	switch kind {
+	case metricsDatabase:
+		name, migrate = "metrics", initialize
+	case logsDatabase:
+		name, migrate = "logs", initializeLogs
+	default:
+		return nil, errors.New("invalid history database")
+	}
 	if dataDir == "" {
-		return nil, errors.New("metrics data directory is required")
+		return nil, fmt.Errorf("%s data directory is required", name)
 	}
 	if err := os.MkdirAll(dataDir, 0o700); err != nil {
-		return nil, fmt.Errorf("create metrics directory: %w", err)
+		return nil, fmt.Errorf("create %s directory: %w", name, err)
 	}
-	path := filepath.Join(dataDir, "metrics.db")
+	path := filepath.Join(dataDir, name+".db")
 	if info, err := os.Lstat(path); err == nil {
 		if !info.Mode().IsRegular() {
-			return nil, errors.New("metrics database must be a regular file")
+			return nil, fmt.Errorf("%s database must be a regular file", name)
 		}
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("inspect metrics database: %w", err)
+		return nil, fmt.Errorf("inspect %s database: %w", name, err)
 	}
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		return nil, fmt.Errorf("open metrics database: %w", err)
+		return nil, fmt.Errorf("open %s database: %w", name, err)
 	}
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	fail := func(err error) (*Store, error) {
 		if closeErr := db.Close(); closeErr != nil {
-			err = errors.Join(err, fmt.Errorf("close metrics database: %w", closeErr))
+			err = errors.Join(err, fmt.Errorf("close %s database: %w", name, closeErr))
 		}
 		return nil, err
 	}
 	if err := db.PingContext(ctx); err != nil {
-		return fail(fmt.Errorf("connect metrics database: %w", err))
+		return fail(fmt.Errorf("connect %s database: %w", name, err))
 	}
 	if err := os.Chmod(path, 0o600); err != nil {
-		return fail(fmt.Errorf("restrict metrics database permissions: %w", err))
+		return fail(fmt.Errorf("restrict %s database permissions: %w", name, err))
 	}
 	for _, statement := range []string{
 		`PRAGMA busy_timeout = 5000`,
@@ -91,22 +113,22 @@ func open(ctx context.Context, dataDir string, exclusive bool) (*Store, error) {
 		`PRAGMA journal_mode = WAL`,
 	} {
 		if _, err := db.ExecContext(ctx, statement); err != nil {
-			return fail(fmt.Errorf("configure metrics database: %w", err))
+			return fail(fmt.Errorf("configure %s database: %w", name, err))
 		}
 	}
 	if exclusive {
 		var mode string
 		if err := db.QueryRowContext(ctx, `PRAGMA locking_mode = EXCLUSIVE`).Scan(&mode); err != nil {
-			return fail(fmt.Errorf("reserve metrics database: %w", err))
+			return fail(fmt.Errorf("reserve %s database: %w", name, err))
 		}
 		if mode != "exclusive" {
-			return fail(fmt.Errorf("metrics database refused exclusive locking: %s", mode))
+			return fail(fmt.Errorf("%s database refused exclusive locking: %s", name, mode))
 		}
 	}
-	if err := initialize(ctx, db); err != nil {
+	if err := migrate(ctx, db); err != nil {
 		return fail(err)
 	}
-	return &Store{db: db, path: path}, nil
+	return &Store{db: db, path: path, kind: kind}, nil
 }
 
 func initialize(ctx context.Context, db *sql.DB) error {
@@ -275,23 +297,61 @@ func initialize(ctx context.Context, db *sql.DB) error {
 	}
 	if version == 7 {
 		for _, statement := range []string{
-			`CREATE TABLE container_logs (
-				sequence INTEGER PRIMARY KEY,
-				container_id TEXT NOT NULL,
-				observed_ns INTEGER NOT NULL CHECK (observed_ns > 0),
-				received_ns INTEGER NOT NULL CHECK (received_ns > 0),
-				stream TEXT NOT NULL CHECK (stream IN ('stdout', 'stderr', 'tty')),
-				message TEXT NOT NULL CHECK (length(CAST(message AS BLOB)) <= 65536),
-				truncated INTEGER NOT NULL CHECK (truncated IN (0, 1))
-			)`,
-			`CREATE INDEX container_logs_time ON container_logs(observed_ns, sequence)`,
-			`CREATE INDEX container_logs_container_time ON container_logs(container_id, observed_ns, sequence)`,
+			createLogsTable,
+			createLogsTimeIndex,
+			createLogsContainerIndex,
 			`PRAGMA user_version = 8`,
 		} {
 			if _, err := tx.ExecContext(ctx, statement); err != nil {
 				return fmt.Errorf("migrate metrics schema to version 8: %w", err)
 			}
 		}
+		version = 8
+	}
+	if version == 8 {
+		for _, statement := range []string{
+			`ALTER TABLE container_states ADD COLUMN reconnect_observed INTEGER NOT NULL DEFAULT 0 CHECK (reconnect_observed IN (0, 1))`,
+			`CREATE TABLE container_state_baselines (
+				container_id TEXT PRIMARY KEY,
+				observed_ns INTEGER NOT NULL,
+				state TEXT NOT NULL,
+				health TEXT NOT NULL,
+				reconnect_observed INTEGER NOT NULL CHECK (reconnect_observed IN (0, 1))
+			) WITHOUT ROWID`,
+			`CREATE TABLE container_state_gaps (
+				sequence INTEGER PRIMARY KEY,
+				container_id TEXT NOT NULL,
+				started_ns INTEGER NOT NULL,
+				ended_ns INTEGER,
+				CHECK (ended_ns IS NULL OR ended_ns > started_ns)
+			)`,
+			`CREATE INDEX container_state_gaps_range ON container_state_gaps(container_id, started_ns, ended_ns)`,
+			`CREATE UNIQUE INDEX container_state_gaps_open ON container_state_gaps(container_id) WHERE ended_ns IS NULL`,
+			`PRAGMA user_version = 9`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 9: %w", err)
+			}
+		}
+		version = 9
+	}
+	if version == 9 {
+		for _, statement := range []string{
+			`CREATE TABLE state_source_gaps (
+				sequence INTEGER PRIMARY KEY,
+				started_ns INTEGER NOT NULL,
+				ended_ns INTEGER,
+				CHECK (ended_ns IS NULL OR ended_ns > started_ns)
+			)`,
+			`CREATE INDEX state_source_gaps_range ON state_source_gaps(started_ns, ended_ns)`,
+			`CREATE UNIQUE INDEX state_source_gaps_open ON state_source_gaps((1)) WHERE ended_ns IS NULL`,
+			`PRAGMA user_version = 10`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 10: %w", err)
+			}
+		}
+		version = 10
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit metrics migration: %w", err)

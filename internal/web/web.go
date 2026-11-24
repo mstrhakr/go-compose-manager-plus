@@ -34,6 +34,7 @@ type pageData struct {
 	Notice               string
 	Charts               []chartPanel
 	Timeline             dashboardTimeline
+	LogHistory           dashboardLogHistory
 	ObservedContainers   []observedContainer
 	SelectedContainer    string
 	MetricsStatus        string
@@ -43,6 +44,7 @@ type pageData struct {
 	Filters              inventoryFilters
 	SubviewNav           viewNavigation
 	MetricsSettings      metricsSettingsForm
+	MetricsPresets       []metricsProfilePreset
 	CollectionStatusText string
 	CollectionWarning    string
 }

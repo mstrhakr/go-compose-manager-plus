@@ -181,6 +181,7 @@ func TestVersionSevenLogMigrationPreservesExistingHistoryAndPendingWrite(t *test
 	if err := store.InsertEvents(ctx, []Event{event}); err != nil {
 		t.Fatal(err)
 	}
+	removeCurrentStateSchema(t, store.db)
 	for _, statement := range []string{
 		`DROP TABLE container_logs`,
 		`INSERT INTO pending_write VALUES (1, 'events', 123, 0)`,
@@ -247,7 +248,7 @@ func TestDockerLogAPIToSQLiteAndOneHourExpiry(t *testing.T) {
 	defer server.Close()
 	ctx := context.Background()
 	dir := t.TempDir()
-	store, err := Open(ctx, dir)
+	store, err := OpenManagedLogs(ctx, dir, 10<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +265,7 @@ func TestDockerLogAPIToSQLiteAndOneHourExpiry(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = Open(ctx, dir)
+	store, err = OpenManagedLogs(ctx, dir, 10<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +277,7 @@ func TestDockerLogAPIToSQLiteAndOneHourExpiry(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	managed, err := OpenManaged(ctx, dir, 10<<20)
+	managed, err := OpenManagedLogs(ctx, dir, 10<<20)
 	if err != nil {
 		t.Fatal(err)
 	}

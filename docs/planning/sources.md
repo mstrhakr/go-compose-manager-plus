@@ -375,6 +375,84 @@ All screenshots remain a toolbox of optional patterns rather than a mandatory
 widget inventory. Exact geometry, pictured actions, assets, automatic saving,
 new capabilities and implementation fulfillment are not approved by this answer.
 
+On 2026-11-23 the owner answered "yes, i agree" to the bounded default/migration
+proposal: all three history sources Off on new installations; upgrades preserve
+existing stats settings, state/event capture enablement and storage budget;
+logs Off until explicitly enabled and saved. Mixed sources use overall Custom
+rather than automatically applying a log-enabling preset. LIVE-003 owns this
+standalone approval. Existing state/event persistence follows legacy metrics
+enablement; preserve its effective behavior when splitting the controls.
+This does not settle child preference seed values, state/event preset mappings,
+Custom delivery, shared pressure or disable/history-retention policy, and no
+migration/runtime outcome has been verified by recording the answer.
+
+On 2026-11-24 the owner answered "c but also im not sure what sensible defaults
+are for these sizes" to the choice between globally oldest-first sample/log
+eviction, logs-first eviction and separate source budgets. Option C selects
+separate metric-sample and log budgets, while explicitly leaving their amounts
+open. The offered boundary preserves existing event/state retention and
+pause/retry safeguards. This is not approval of initial amounts, preset
+mappings, accounting, source eviction, shared physical pressure or runtime
+implementation. The earlier globally oldest-first proposal was not approved
+and is not the selected direction. LIVE-003 owns this standalone decision.
+
+The owner then asked whether logs, metrics, system state and settings could
+use separate SQLite files and selected
+"Three databases — app.db, metrics.db and logs.db (recommended)".
+This approves keeping durable application state/authentication/settings/project
+metadata together in `app.db`, retaining stats and observed state/event history
+in `metrics.db`, and moving container logs into `logs.db` with a separate target
+and maintenance. It amends the earlier same-history-database direction, not
+one-hour retention or explicit capture consent. The files still share the host
+disk and application process. Defaults, file/index/WAL accounting, migration,
+cross-store expiry/recovery and eviction are not settled by the layout choice.
+No runtime or migration verification is implied by this decision record.
+
+The owner next selected
+"128 MB metrics / 256 MB logs — recommended" as independent initial targets
+using decimal MB (128,000,000 / 256,000,000 bytes). The offered scenario included
+the executed 50-container, one-second sample-only measurement (49.73 MB at
+ingestion end including WAL/SHM), its state/event/log and peak-usage exclusions,
+and variable log-volume limitations. The approved boundary keeps new sources
+Off, does not reserve disk space, does not automatically change these amounts
+with collection intensity, and does not overwrite existing configured amounts.
+Named storage presets, accounting, eviction, migration and remaining source
+preference seeds are not approved by this amount selection.
+
+The owner next selected
+"A — Rolling history: evict oldest eligible records within that database".
+This is the later, per-database option A, not approval of the earlier global
+oldest-first sample/log proposal. Samples and logs may be removed oldest-first
+in bounded batches within their respective history databases before ordinary
+expiry; event/state retention stays unchanged and neither source evicts the
+other's records or borrows its budget. Show separate shortened-history warnings.
+The offered boundary reuses DB/WAL/SHM accounting, reusable-page awareness and
+pause/retry safeguards, with no automatic file shrink. A log-budget problem
+does not pause healthy metrics, but host disk-full errors can affect both.
+Complete replay, Custom delivery/flush, Off behavior and detailed migration or
+recovery are not approved by this pressure choice.
+
+The owner selected
+"B — Hide retained history while Off, without erasing it" for an individual
+source or overall Off. The offered alternative would have kept history visible
+until normal expiry. The selected option retains the disabled-stats
+presentation, stops corresponding collection and hides retained history without
+making Off a clear-history action. Normal retention eligibility, preserved
+preferences and the separately selected state-baseline rule stay intact.
+The answer does not approve the alternative's background expiry maintenance
+while all sources are Off or settle in-flight buffers and baseline cleanup.
+
+The owner selected
+"Use Off / Activated stacks / All containers with the proposed overall mappings"
+for the state/events source. Overall Low and Medium select Activated stacks;
+High selects All containers. Enabled scopes include stopped-container state
+context, but numeric stats remain running-container observations. New installs
+keep state history Off with Activated stacks as the preserved starting scope.
+Required shared inspect/event work for stats correctness survives state-history
+persistence Off. This approves meaningful scope controls for change-based
+records, not repeated per-second state persistence or detailed reconnect and
+baseline cleanup.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

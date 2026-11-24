@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/mstrhakr/go-compose-manager-plus/internal/metrics"
@@ -22,6 +24,22 @@ type dashboardMetricsCollector interface {
 	SelectChartSeries(context.Context, string, time.Time, time.Time, time.Duration) ([]metrics.ContainerChartSeries, error)
 	SelectTimelineEvents(context.Context, string, time.Time, time.Time, int) ([]metrics.Event, error)
 	SelectObservedContainers(context.Context, time.Time, time.Time) ([]string, error)
+}
+
+type dashboardLogCollector interface {
+	SelectLogs(context.Context, string, time.Time, time.Time, int) (metrics.LogPage, error)
+}
+
+type dashboardStateCollector interface {
+	SelectStates(context.Context, string, time.Time, time.Time, int) ([]metrics.State, error)
+}
+
+type dashboardStateHistoryCollector interface {
+	SelectStateHistory(context.Context, string, time.Time, time.Time, int) (metrics.StateHistory, error)
+}
+
+type dashboardSourceContainerSelector interface {
+	SelectObservedContainersForSources(context.Context, time.Time, time.Time, bool, bool, bool) ([]string, error)
 }
 
 type dashboardChartData struct {
@@ -65,7 +83,7 @@ func dashboardTimeRange() (time.Time, time.Time) {
 
 func (server *authServer) dashboardChartsForRange(ctx context.Context, start, end time.Time, aggregate bool, containerID string) ([]chartPanel, string) {
 	panels := emptyDashboardCharts("Collection disabled", "No metrics are being collected. Enable opt-in collection in Settings to populate these charts.", aggregate)
-	settings, err := server.metricsSettings.Load(ctx)
+	settings, _, err := server.metricsSettings.LoadConfiguration(ctx)
 	if err != nil {
 		server.logger.ErrorContext(ctx, "load dashboard metrics settings", "error", err)
 		return emptyDashboardCharts("Unavailable", "Metrics settings could not be loaded.", aggregate), "Unavailable"
@@ -181,16 +199,29 @@ func (server *authServer) dashboardChartsForRange(ctx context.Context, start, en
 }
 
 type dashboardTimeline struct {
-	Start        int64
-	End          int64
-	SelectedTime int64
-	StartLabel   string
-	EndLabel     string
-	Status       string
-	Message      string
-	Events       []dashboardTimelineEvent
-	RecentEvents []dashboardTimelineEvent
-	Truncated    bool
+	Start                int64
+	End                  int64
+	SelectedTime         int64
+	StartLabel           string
+	EndLabel             string
+	Status               string
+	Message              string
+	Events               []dashboardTimelineEvent
+	RecentEvents         []dashboardTimelineEvent
+	StateSpans           []dashboardTimelineSpan
+	StateBoundsTruncated bool
+	Truncated            bool
+}
+
+type dashboardTimelineSpan struct {
+	StartPosition float64
+	SpanHeight    float64
+	Kind          string
+	Label         string
+}
+
+func (timeline dashboardTimeline) EndClock() string {
+	return time.UnixMilli(timeline.End).Format("15:04:05")
 }
 
 type dashboardTimelineEvent struct {
@@ -202,21 +233,37 @@ type dashboardTimelineEvent struct {
 	Kind        string
 }
 
+type dashboardLogHistory struct {
+	Enabled   bool
+	Status    string
+	Message   string
+	Truncated bool
+	Entries   []dashboardLogEntry
+}
+
+type dashboardLogEntry struct {
+	TimeLabel string
+	Stream    string
+	Message   string
+	Truncated bool
+}
+
 func (server *authServer) dashboardTimeline(ctx context.Context, start, end time.Time, containerID string) dashboardTimeline {
 	timeline := dashboardTimeline{
 		Start: start.UnixMilli(), End: end.UnixMilli(), SelectedTime: end.UnixMilli(),
 		StartLabel: start.Format("Jan 2 · 15:04 MST"), EndLabel: end.Format("Jan 2 · 15:04 MST"),
 		Status: "Unavailable", Message: "Timeline data could not be loaded.",
 		Events: []dashboardTimelineEvent{}, RecentEvents: []dashboardTimelineEvent{},
+		StateSpans: []dashboardTimelineSpan{},
 	}
-	settings, err := server.metricsSettings.Load(ctx)
+	_, sources, err := server.metricsSettings.LoadConfiguration(ctx)
 	if err != nil {
 		server.logger.ErrorContext(ctx, "load observability timeline settings", "error", err)
 		return timeline
 	}
-	if !settings.Enabled {
+	if !sources.StateEnabled {
 		timeline.Status = "Disabled"
-		timeline.Message = "Metrics collection is disabled. Enable opt-in collection in Settings to populate this timeline."
+		timeline.Message = "State and event history is Off. Enable it in Settings to populate this timeline."
 		return timeline
 	}
 	if containerID == "" {
@@ -229,10 +276,6 @@ func (server *authServer) dashboardTimeline(ctx context.Context, start, end time
 		server.logger.ErrorContext(ctx, "read observability timeline events", "error", err)
 		return timeline
 	}
-	if len(events) > timelineEventLimit {
-		timeline.Truncated = true
-		events = events[len(events)-timelineEventLimit:]
-	}
 	for _, event := range events {
 		description := timelineEventDescription(event)
 		timeline.Events = append(timeline.Events, dashboardTimelineEvent{
@@ -244,37 +287,222 @@ func (server *authServer) dashboardTimeline(ctx context.Context, start, end time
 			Kind:        string(event.Kind),
 		})
 	}
+	var states []metrics.State
+	var baseline *metrics.State
+	var gaps []metrics.StateGap
+	if stateHistoryCollector, ok := server.collector.(dashboardStateHistoryCollector); ok {
+		history, err := stateHistoryCollector.SelectStateHistory(ctx, containerID, start, end, timelineEventLimit+1)
+		if err != nil {
+			server.logger.ErrorContext(ctx, "read observability state history", "error", err)
+			return timeline
+		}
+		states, baseline, gaps = history.States, history.Baseline, history.Gaps
+		timeline.Truncated = history.Truncated
+		timeline.StateBoundsTruncated = history.Truncated
+	} else if stateCollector, ok := server.collector.(dashboardStateCollector); ok {
+		states, err = stateCollector.SelectStates(ctx, containerID, start, end, timelineEventLimit+1)
+		if err != nil {
+			server.logger.ErrorContext(ctx, "read observability state history", "error", err)
+			return timeline
+		}
+	}
+	if states != nil || baseline != nil {
+		for _, state := range states {
+			description, kind := timelineStateDescription(state)
+			timeline.Events = append(timeline.Events, dashboardTimelineEvent{
+				Time:        state.Time.UnixMilli(),
+				TimeLabel:   state.Time.UTC().Format("Jan 2 · 15:04:05 UTC"),
+				Position:    float64(state.Time.Sub(start)) / float64(end.Sub(start)) * 100,
+				Container:   "Container " + shortContainerID(state.ContainerID),
+				Description: description,
+				Kind:        kind,
+			})
+		}
+		if !timeline.StateBoundsTruncated {
+			timeline.StateSpans = stateTimelineSpans(start, end, baseline, states, gaps)
+		}
+	}
+	sort.SliceStable(timeline.Events, func(i, j int) bool { return timeline.Events[i].Time < timeline.Events[j].Time })
+	if len(timeline.Events) > timelineEventLimit {
+		timeline.Truncated = true
+		timeline.Events = timeline.Events[len(timeline.Events)-timelineEventLimit:]
+	}
 	for i := len(timeline.Events) - 1; i >= 0; i-- {
 		timeline.RecentEvents = append(timeline.RecentEvents, timeline.Events[i])
 	}
 	status := server.collector.Status()
+	stateProblem := status.StateProblem
+	collecting := status.StateCollecting || status.Collecting
 	switch {
-	case status.Problem != "":
+	case stateProblem != "" || status.Problem != "":
 		timeline.Status = "Collection degraded"
-	case !status.Collecting:
+	case !collecting:
 		timeline.Status = "Collector starting"
 	case !status.EventConnected:
 		timeline.Status = "Event stream disconnected"
 	default:
-		timeline.Status = fmt.Sprintf("%d observed events", len(timeline.Events))
+		timeline.Status = fmt.Sprintf("%d observed event and state records", len(timeline.Events))
 		if len(timeline.Events) == 1 {
-			timeline.Status = "1 observed event"
+			timeline.Status = "1 observed record"
 		}
 	}
-	if timeline.Truncated {
-		timeline.Message = fmt.Sprintf("Showing the newest %d recorded events. Docker event history may be incomplete.", timelineEventLimit)
-	} else if status.Problem != "" {
+	if timeline.StateBoundsTruncated {
+		timeline.Message = fmt.Sprintf("Showing the newest %d observed event and state records. State interval overlays are suppressed because omitted transitions or gap bounds could change their extent; Docker event history may also be incomplete.", timelineEventLimit)
+	} else if timeline.Truncated {
+		timeline.Message = fmt.Sprintf("Showing the newest %d observed event and state records. Docker event history may be incomplete.", timelineEventLimit)
+	} else if stateProblem != "" || status.Problem != "" {
 		timeline.Message = "Collection is reporting a problem; stored events are shown, but recent history may be incomplete."
-	} else if !status.Collecting {
+	} else if !collecting {
 		timeline.Message = "The metrics collector is starting. Previously recorded events may still appear below."
 	} else if !status.EventConnected {
 		timeline.Message = "The Docker event stream is disconnected. Recorded events may be incomplete."
-	} else if len(events) == 0 {
-		timeline.Message = "No lifecycle events were recorded in the last hour. Docker event history may be incomplete."
+	} else if len(timeline.Events) == 0 {
+		timeline.Message = "No observed lifecycle events or state changes were recorded in the last hour."
 	} else {
 		timeline.Message = "Observed lifecycle events only; Docker may not provide a complete event history."
 	}
 	return timeline
+}
+
+func timelineStateDescription(state metrics.State) (string, string) {
+	kind := "state"
+	switch state.Health {
+	case metrics.HealthUnhealthy:
+		kind = "state-unhealthy"
+	}
+	if state.ReconnectObserved {
+		switch state.Health {
+		case metrics.HealthStarting, metrics.HealthHealthy, metrics.HealthUnhealthy:
+			return "Observed " + string(state.Health) + " on reconnect · " + capitalizeState(state.State), kind
+		default:
+			return "Observed state on reconnect · " + capitalizeState(state.State), kind
+		}
+	}
+	description := "Observed " + capitalizeState(state.State)
+	if state.Health == metrics.HealthNone {
+		description += " · no health check"
+	} else if state.Health != metrics.HealthUnknown {
+		description += " · " + capitalizeState(string(state.Health))
+	}
+	return description, kind
+}
+
+func stateTimelineSpans(start, end time.Time, baseline *metrics.State, states []metrics.State, gaps []metrics.StateGap) []dashboardTimelineSpan {
+	observations := make([]metrics.State, 0, len(states)+1)
+	if baseline != nil {
+		observations = append(observations, *baseline)
+	}
+	observations = append(observations, states...)
+	sort.SliceStable(observations, func(i, j int) bool { return observations[i].Time.Before(observations[j].Time) })
+	spans := make([]dashboardTimelineSpan, 0, len(gaps)+len(states))
+	for i, state := range observations {
+		if state.Health != metrics.HealthUnhealthy {
+			continue
+		}
+		spanStart := state.Time
+		if spanStart.Before(start) {
+			spanStart = start
+		}
+		spanEnd := end
+		if i+1 < len(observations) && observations[i+1].Time.Before(spanEnd) {
+			spanEnd = observations[i+1].Time
+		}
+		if spanEnd.After(spanStart) {
+			spans = append(spans, makeTimelineSpan(start, end, spanStart, spanEnd, "unhealthy", "Observed unhealthy"))
+		}
+	}
+	for _, gap := range gaps {
+		gapStart := gap.Start
+		if gapStart.Before(start) {
+			gapStart = start
+		}
+		gapEnd := gap.End
+		if gapEnd.IsZero() || gapEnd.After(end) {
+			gapEnd = end
+		}
+		if gapEnd.After(gapStart) {
+			spans = append(spans, makeTimelineSpan(start, end, gapStart, gapEnd, "unavailable", "Observation unavailable"))
+		}
+	}
+	return spans
+}
+
+func makeTimelineSpan(start, end, spanStart, spanEnd time.Time, kind, label string) dashboardTimelineSpan {
+	duration := end.Sub(start)
+	return dashboardTimelineSpan{
+		StartPosition: float64(spanStart.Sub(start)) / float64(duration) * 100,
+		SpanHeight:    float64(spanEnd.Sub(spanStart)) / float64(duration) * 100,
+		Kind:          kind, Label: label,
+	}
+}
+
+func capitalizeState(value string) string {
+	if value == "" {
+		return value
+	}
+	return strings.ToUpper(value[:1]) + value[1:]
+}
+
+func (server *authServer) dashboardLogs(ctx context.Context, start, end time.Time, containerID string) dashboardLogHistory {
+	history := dashboardLogHistory{Status: "Disabled", Message: "Container-log collection is Off. Retained logs are hidden until it is enabled.", Entries: []dashboardLogEntry{}}
+	_, sources, err := server.metricsSettings.LoadConfiguration(ctx)
+	if err != nil {
+		server.logger.ErrorContext(ctx, "load container log settings", "error", err)
+		history.Status, history.Message = "Unavailable", "Container-log settings could not be loaded."
+		return history
+	}
+	if !sources.Logs.Enabled {
+		return history
+	}
+	history.Enabled = true
+	status := server.collector.Status()
+	switch {
+	case status.LogsProblem != "":
+		history.Status = "Collection degraded"
+		history.Message = status.LogsProblem
+	case !status.LogsCollecting:
+		history.Status = "Collector starting"
+		history.Message = "The log collector is starting. Previously retained output may still be available."
+	default:
+		history.Status = "Last hour"
+		history.Message = "Original Docker timestamps and message bytes; newest first."
+	}
+	if containerID == "" {
+		history.Status = "No selection"
+		history.Message = "Select a container to view its log history."
+		return history
+	}
+	collector, ok := server.collector.(dashboardLogCollector)
+	if !ok {
+		history.Status = "Unavailable"
+		history.Message = "Historical log storage is not available."
+		return history
+	}
+	page, err := collector.SelectLogs(ctx, containerID, start, end, timelineEventLimit+1)
+	if err != nil {
+		server.logger.ErrorContext(ctx, "read container logs", "error", err)
+		history.Status, history.Message = "Unavailable", "Stored container logs could not be loaded."
+		return history
+	}
+	history.Truncated = page.More || len(page.Logs) > timelineEventLimit
+	logs := page.Logs
+	if len(logs) > timelineEventLimit {
+		logs = logs[:timelineEventLimit]
+	}
+	for _, entry := range logs {
+		history.Entries = append(history.Entries, dashboardLogEntry{
+			TimeLabel: entry.Time.UTC().Format("Jan 2 · 15:04:05 UTC"),
+			Stream:    string(entry.Stream),
+			Message:   entry.Message,
+			Truncated: entry.Truncated,
+		})
+	}
+	if history.Truncated {
+		history.Message = "Showing the newest 200 records; more output is available in this hour."
+	} else if len(history.Entries) == 0 && status.LogsProblem == "" {
+		history.Message = "No container logs were retained for this container during the last hour."
+	}
+	return history
 }
 
 type observedContainer struct {
@@ -286,13 +514,17 @@ type observedContainer struct {
 }
 
 func (server *authServer) observabilityContainers(ctx context.Context, start, end time.Time, snapshot []runtime.Container, query url.Values) ([]observedContainer, string, inventoryFilters, error) {
-	settings, err := server.metricsSettings.Load(ctx)
+	settings, sources, err := server.metricsSettings.LoadConfiguration(ctx)
 	if err != nil {
 		return nil, "", inventoryFilters{}, fmt.Errorf("load observability settings: %w", err)
 	}
 	var ids []string
-	if settings.Enabled {
-		ids, err = server.collector.SelectObservedContainers(ctx, start, end)
+	if settings.Enabled || sources.StateEnabled || sources.Logs.Enabled {
+		if selector, ok := server.collector.(dashboardSourceContainerSelector); ok {
+			ids, err = selector.SelectObservedContainersForSources(ctx, start, end, settings.Enabled, sources.StateEnabled, sources.Logs.Enabled)
+		} else if settings.Enabled || sources.StateEnabled {
+			ids, err = server.collector.SelectObservedContainers(ctx, start, end)
+		}
 		if err != nil {
 			return nil, "", inventoryFilters{}, fmt.Errorf("load observed containers: %w", err)
 		}
@@ -343,14 +575,22 @@ func (server *authServer) observabilityContainers(ctx context.Context, start, en
 
 func timelineEventDescription(event metrics.Event) string {
 	switch event.Kind {
+	case metrics.EventCreate:
+		return "Created"
 	case metrics.EventStart:
 		return "Started"
 	case metrics.EventStop:
 		return "Stopped"
 	case metrics.EventExit:
 		return "Exited"
+	case metrics.EventDestroy:
+		return "Destroyed"
 	case metrics.EventRestart:
 		return "Restarted"
+	case metrics.EventPause:
+		return "Paused"
+	case metrics.EventUnpause:
+		return "Resumed"
 	case metrics.EventOOM:
 		return "Out of memory"
 	case metrics.EventHealth:

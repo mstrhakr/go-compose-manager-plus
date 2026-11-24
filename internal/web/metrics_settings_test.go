@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -82,7 +83,7 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 		t.Fatalf("save = %d %q", response.Code, response.Body.String())
 	}
 	saved, err := store.Load(ctx)
-	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileCustom || saved.Scope != metrics.ScopeActivated || saved.Interval != 15*time.Second || saved.StorageLimit != 10485760 || saved.Revision != 1 {
+	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileCustom || saved.Scope != metrics.ScopeAll || saved.Interval != time.Second || saved.StorageLimit != 10485760 || saved.Revision != 1 {
 		t.Fatalf("saved = %#v, %v", saved, err)
 	}
 	enable := url.Values{"profile": {"custom"}, "scope": {"activated"}, "interval": {"15s"}, "storage_limit": {"10.48576"}, "storage_unit": {"MB"}, "revision": {"1"}, "enabled": {"true"}}
@@ -134,6 +135,41 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 	if err != nil || saved.Profile != metrics.ProfileHigh || saved.Scope != metrics.ScopeAll || saved.Interval != time.Second || saved.StorageLimit != 500000 || saved.Revision != 4 {
 		t.Fatalf("preset settings = %#v, %v", saved, err)
 	}
+	off := url.Values{
+		"overall_profile": {"off"}, "profile": {"high"}, "scope": {"all"}, "interval": {"1s"},
+		"storage_limit": {"500000"}, "storage_unit": {"B"}, "revision": {"4"},
+		"logs_profile": {"off"}, "logs_storage_limit": {"300"}, "logs_storage_unit": {"MB"},
+	}
+	response = perform(handler, http.MethodPost, "/settings/metrics", off, cookies, token)
+	if response.Code != http.StatusSeeOther {
+		t.Fatalf("overall Off save = %d %q", response.Code, response.Body.String())
+	}
+	savedSources, err := store.LoadSources(ctx)
+	if err != nil || savedSources.Logs.Configured || savedSources.Logs.Enabled ||
+		savedSources.Logs.StorageLimit != 300_000_000 || savedSources.StateEnabled {
+		t.Fatalf("overall Off sources = %#v, %v", savedSources, err)
+	}
+	saved, err = store.Load(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	savedSources.RestoreStats, savedSources.RestoreState, savedSources.RestoreLogs = false, false, true
+	savedSources.Logs.Configured = true
+	savedSources.Logs.Profile, savedSources.Logs.DeliveryPreset = metrics.ProfileLow, metrics.ProfileLow
+	saved, savedSources, err = store.SaveConfiguration(ctx, saved, savedSources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	restore := url.Values{
+		"overall_profile": {"custom"}, "profile": {"off"}, "stats_saved_profile": {"high"},
+		"scope": {"all"}, "interval": {"1s"}, "storage_limit": {"500000"},
+		"revision": {strconv.FormatInt(saved.Revision, 10)}, "state_scope": {"off"},
+		"logs_profile": {"off"},
+	}
+	response = perform(handler, http.MethodPost, "/settings/metrics", restore, cookies, token)
+	if !strings.Contains(response.Body.String(), "Configure a Docker socket") {
+		t.Fatalf("restoring only logs bypassed Docker requirement = %d %q", response.Code, response.Body.String())
+	}
 	if err := db.SQL.Close(); err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +179,7 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 	}
 	defer func() { _ = reopened.SQL.Close() }()
 	saved, err = metrics.NewSettingsStore(reopened.SQL).Load(ctx)
-	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileHigh || saved.Scope != metrics.ScopeAll || saved.StorageLimit != 500000 || saved.Interval != time.Second || saved.Revision != 4 {
+	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileHigh || saved.Scope != metrics.ScopeAll || saved.StorageLimit != 500000 || saved.Interval != time.Second || saved.Revision != 6 {
 		t.Fatalf("reopened settings = %#v, %v", saved, err)
 	}
 }

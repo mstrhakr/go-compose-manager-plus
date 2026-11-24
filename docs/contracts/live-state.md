@@ -280,6 +280,18 @@ and explicit preset-based enablement. Source compatibility, defaults/migration,
 access details, synchronization, shared-budget pressure behavior and unavailable
 states still require refinement or verification.
 
+On 2026-11-24 the owner amended the earlier same-history-database direction
+by selecting three SQLite databases: `app.db` for durable application state,
+authentication, sessions, settings and project metadata; `metrics.db` for stats
+and observed state/event history; and `logs.db` for container logs, with its own
+storage target and maintenance. A separate settings/system database was not
+selected. This separates the two history files, not their host disk or the
+application process. One-hour history, single-copy event ownership and explicit
+log enablement remain unchanged. The log foundation still resides in
+`metrics.db`; the selected layout is not implemented or migration-verified.
+Layout approval alone does not settle default amounts, per-database file/index/WAL
+accounting, cross-store expiry/recovery, migration or eviction policy.
+
 The owner then approved read-only Docker container stdout/stderr as the initial
 source and authorized beginning implementation. Preserve the original message
 alongside Docker timestamp, receipt timestamp, immutable container ID and stream;
@@ -318,8 +330,22 @@ visible before Save; selecting a control does not itself apply collection change
 This approval replaces the tentative overall-selector proposal and permits
 explicit category-wide log enablement on Save, not automatic enablement through
 migration or merely because existing numeric metrics were enabled.
-New log defaults and the effects of Off on retained history and other observed
-state/event collection remain separate lifecycle decisions.
+At that stage, new log defaults and the effects of Off on retained history and
+other observed state/event collection remained separate lifecycle decisions.
+
+On 2026-11-23 the owner approved the new-install/upgrade policy under LIVE-003:
+new installations start with Container stats, Container state & events and
+Container logs all Off until explicitly configured. Upgrades preserve existing
+stats settings, existing state/event capture enablement and the storage budget;
+logs remain Off until explicitly enabled and saved. Existing state/event capture
+currently follows the legacy metrics enablement, so splitting controls must
+preserve that effective enablement rather than silently adding or removing it.
+Mixed source settings are represented as overall Custom, not coerced into a
+preset that enables logs. An explicit overall non-Off preset saved later can
+still enable logs as approved above. This settles the default/migration policy,
+not child preference seed values, state/event preset mappings, Custom delivery,
+storage pressure or disable/history-retention effects. Migration and runtime
+enforcement are not yet implemented or verified.
 
 The owner further refined the Settings interaction on 2026-11-23: reuse the
 same discrete slider/selector presentation for individual settings, with
@@ -400,12 +426,56 @@ The existing storage-pressure owner evicts
 metric samples only, so production capture requires an explicit shared-budget policy
 rather than pretending that sample eviction already bounds log storage.
 
-For later integration, the proposed shared-pressure policy is bounded eviction
-of the oldest sample/log records by observation time, preserving current
-event/state retention behavior and reporting shortened history separately for
-logs and samples. This is not approved yet; dedicated log budgets or prioritizing
-log removal are alternatives requiring an owner decision. No early log eviction
-or changed sample-eviction ordering is implemented by the foundation.
+On 2026-11-24 the owner selected separate budgets for metric samples and logs
+(option C), adding that sensible default sizes were uncertain. This approves
+the source-budget separation direction, not default amounts or a complete
+pressure implementation. Existing event/state retention and pause/retry
+safeguards remain unchanged within this decision's boundary. Storage-preset mappings,
+per-database/index/WAL accounting, source-specific eviction and shared physical
+pressure behavior still require refinement and runtime verification.
+
+The earlier proposal was bounded eviction of the oldest sample/log records
+together by observation time, with separate shortened-history reporting. It
+was not approved and was not selected in this decision; logs-first eviction
+was not selected either. No early log eviction, new budgets or changed
+sample-eviction ordering is implemented by recording the answer.
+
+The owner subsequently selected starting targets of **128 MB for `metrics.db`
+and 256 MB for `logs.db`**, using decimal units: **128,000,000 bytes and
+256,000,000 bytes**. These are independent initial storage preferences, not
+reserved disk space or amounts automatically changed by collection
+Low/Medium/High. New installations still start all sources Off, and existing
+configured amounts are not overwritten on upgrade. The answer does not assign
+named storage presets or settle accounting, eviction, migration or the other
+source preference seeds. No one-hour guarantee is implied: the sample-only
+benchmark and variable log-volume limitations were explained before selection.
+
+The owner next selected **rolling history within each history database** under
+pressure. Remove oldest eligible records in bounded batches before their
+normal one-hour expiry when needed: samples in `metrics.db`, logs in `logs.db`.
+This does not authorize early pressure eviction of state/event history,
+cross-database eviction or budget borrowing. Report shortened sample and log
+history separately. Logs reaching their own budget must not pause otherwise
+healthy metrics; shared host disk-full errors can still affect multiple stores.
+
+Reuse existing SQLite safeguards independently: account for each database's
+DB/WAL/SHM footprint and reusable pages, and pause affected history writes when
+maintenance cannot verify room. Do not automatically shrink database files.
+Retention, checkpoints and retry maintenance can recover usable space, but
+recovery is not guaranteed and may require an operator to increase the target.
+This approves rolling eviction and source-local safeguards, not a hard disk
+quota, complete replay, Custom delivery/flush or detailed migration/recovery.
+
+The owner selected **hide retained history while its source is Off, without
+erasing it**. This applies to a source Off selection and to sources disabled
+by overall Off. Stop the corresponding collection and hide its history;
+reenabling can show whatever remains eligible under normal retention.
+Off is not a clear-history action and does not override the preserved-preference
+rule, raw one-hour age eligibility or the separate state-baseline exception.
+This keeps the existing disabled-stats presentation rather than selecting the
+offered visible-history alternative. Background cleanup while all sources are
+Off, state-baseline cleanup lifetime and in-flight buffer handling were not
+settled by this visibility decision.
 
 A possible dedicated logs navigation view with stack, container and network
 filters is a follow-up idea, not an approved complete feature set. Network
@@ -596,6 +666,14 @@ LIVE contract or authorize implementation of future settings.
 - Container stats, Container state & events, and Container logs are independent
   history controls. Shared required inspect/event work remains enabled for
   correct stats even when state-history persistence is Off.
+- On 2026-11-24 the owner selected state/event source choices Off,
+  Activated stacks and All containers rather than artificial sampling-speed
+  presets. Overall Low and Medium map this source to Activated stacks; High
+  maps to All containers. Include stopped-container state context in either
+  enabled scope, while numeric stats still sample running containers only.
+  New installations keep this source Off with Activated stacks as its preserved
+  starting scope. These are change-based records; reconnect/reconciliation and
+  baseline cleanup remain separate decisions.
 
 #### Settled Control Behavior
 
@@ -614,6 +692,10 @@ LIVE contract or authorize implementation of future settings.
 - A leaf override marks its source and overall collection profile Custom,
   leaving siblings unchanged. Changes are staged until Save, with actual
   effects, especially newly enabled logs, visible before saving.
+- New installations start all history sources Off. Upgrades preserve existing
+  stats settings, state/event capture enablement and storage budget; logs stay
+  Off until explicitly enabled and saved. Mixed sources show overall Custom,
+  without automatically applying a preset during migration.
 - Low logs uses activated-stack scope with 60-second backlog reads; Medium
   uses that scope with 30-second reads; High uses all-container scope and live
   following. Include readable stopped-container backlog. Original Docker
@@ -661,18 +743,49 @@ cards, and table manage-mode behavior remain to be specified when applicable;
 browser verification is still required. A cropped screenshot is not a
 full-display size or scroll test.
 
+#### Implementation Evidence: Current Presentation Only
+
+On 2026-11-24, the explicitly requested alignment implemented and verified a
+bounded presentation subset: Settings > Containers identifies the Observability
+page; existing stats preferences stay in one card; preset scopes remain readable
+and the interval control becomes editable in place under Custom. Go supplies
+the displayed preset mappings and applies them before a storage override marks
+the profile Custom. The selected-container timeline has a contained local-time
+selection badge, readable ticks, a neutral rail, an end-of-window shortcut and
+denser chart/record alignment. See the
+[executed verification](../verification.md#observability-presentation-alignment).
+
+This is not fulfillment of the full Settings/history design. The existing
+metrics enable checkbox and preference editing while disabled remain unchanged;
+three independent source controls, overall/storage presets, migration and
+sparse state/gap spans are not implemented by this subset. Production logs
+remain unconnected. No pending pressure, replay, flush or Off/history proposal
+was adopted to bypass the gates below.
+
 #### Remaining Implementation Gates
 
-- New-install/migration defaults and concrete state/event preset mappings.
+The 2026-11-24 [source/capture integration](../verification.md#independent-observability-sources-and-production-capture)
+now implements the approved preset-only production transports, independent
+source controls, transactional consent-preserving migration, Off/Custom
+restoration, source-local managed `logs.db`, sparse state baselines and truthful
+observation-gap overlays. This supersedes the earlier subset's implementation
+limits, not the unresolved requirements below. Local full application,
+documentation and security checks passed; simulated Docker streams do not
+establish real driver continuity or physical disk-full recovery.
+
+- Remaining advanced log/source child preferences.
 - Custom log delivery design: the owner proposed an Off/Low/Medium/Live/Custom
   delivery selector, with Custom poll interval 0 meaning Live and a save interval
   shown only for Live. Terminology, save cadence, periodic flush behavior and
   validity limits remain proposals, not settled runtime policy.
-- Measured/selected storage preset amounts, shared pressure eviction and
-  shortened-history reporting for logs versus samples.
-- Stream bounds, replay/cancellation/reconciliation, baseline cleanup and
-  collection-disable/history-retention effects.
-- Save/navigation handling of dirty forms and final reference alignment.
+- Named storage-preset mappings for the selected separate sample/log
+  budgets. Selected DB/WAL/SHM accounting, source-local rolling eviction,
+  pause/retry and shortened-history reporting have local regression evidence;
+  physical disk-full and native-platform verification remain separate.
+- Exactly-once replay, detailed in-flight stop/flush guarantees, destructive
+  cross-store legacy-log migration and identity/baseline cleanup lifetime.
+- Save/navigation handling of dirty forms, in-flight stop/flush behavior,
+  dormant-store cleanup and final reference alignment.
 
 ### Approved Presentation Cases
 

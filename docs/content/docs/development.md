@@ -52,8 +52,8 @@ light/dark 2560×1440, reduced-content-area and compact screenshots under
 <code>test-results/observability-single-container-*.png</code>. Synthetic
 snapshot names are test-only; real names and filters use an on-demand read-only
 Docker snapshot, with retained IDs used for history absent from the snapshot.
-The container-log section is explicitly unavailable until production collection
-and access policy are implemented; it does not invent historical logs.</p>
+The preview does not seed synthetic log records. Production logs are shown only
+when their independent source is enabled; retained history is hidden while Off.</p>
 <p>Go tests use the standard testing and httptest packages. Add table-driven
 configuration tests and handler tests near the implementation. For an individual
 package, run <code>go test -race ./internal/web</code>.</p>
@@ -107,11 +107,18 @@ it on each collection cycle, and limits concurrent observations to eight.
 Rates require an uninterrupted event stream and a stable container start time;
 disconnects and errors discard rate continuity. Sampling intervals are targets,
 not schedule guarantees.</p>
-<p>The initial log foundation uses the read-only Docker logs API, inspecting the
+<p>Log capture uses the read-only Docker logs API, inspecting the
 container's TTY setting before decoding. Finite reads require an end time;
 live following uses an open-ended range with a caller-owned backfill start.
-Production collection must choose a start within the retained window; the
-store validates the current one-hour write boundary.
+Low reads activated containers every 60 seconds; Medium reads them every 30
+seconds; High follows all containers live. Periodic reads include stopped
+containers' readable backlog. The log collector batches up to 128 records into
+the managed <code>logs.db</code> during periodic reads and persists each live
+record immediately. Records that age beyond the one-hour retention window
+before a batch flush are discarded as expired. Periodic cursors advance only
+through committed batch timestamps and reach the finite range end only after a
+successful read; live reconnects resume from the latest acknowledged Docker
+timestamp rather than wall-clock time.
 Non-TTY frames preserve individual
 Docker messages, including multiline and non-newline-terminated output; TTY
 output is merged and line-oriented, without reliable individual partial-record
@@ -119,22 +126,40 @@ boundaries or stdout/stderr separation. It preserves message bytes with Docker
 and receipt timestamps, container identity, stream and explicit truncation.
 Messages are bounded to 64 KiB and frames to 1 MiB; malformed/oversized frames,
 unavailable sources, consumer failures and following EOF return errors.
-It does not parse application JSON, infer severity from stderr, reconnect or
-enable production capture. SQLite log batches are bounded to 128 records;
+It does not parse application JSON or infer severity from stderr. SQLite log batches are bounded to 128 records;
 selected-container and aggregate queries return at most 1,000 newest records
 with a 1 MiB message-byte budget over a range of at most an hour, explicitly
 indicating omitted results.
-Duplicate output is preserved rather than silently treated as replay. Shared
-maintenance expires logs with the same one-hour cutoff as metrics/events/states.
-Consent, durable managed log writes, shared pressure/replay policy and log UI
-wiring remain pending; no Docker connection or log output is collected merely
-by adding this foundation.</p>
+Duplicate output is preserved rather than silently treated as replay.
+<code>OpenManagedLogs</code> now owns a dedicated <code>logs.db</code>, using the
+same private-file, exclusive ownership, DB/WAL/SHM accounting and bounded
+maintenance implementation as metrics history. Its log-only schema has its own
+transactional pending-write marker and cumulative eviction history. Expiry is
+strictly older than an hour and atomic within each database, not across files.
+Log pressure evicts only oldest logs and cannot evict samples or state/events.
+Prepared/committed interrupted batches are reconciled without automatic replay,
+preserving original bytes and legitimate duplicates. Legacy metric-database
+log records remain unchanged; destructive cross-database migration is not
+implemented. Docker supplies no stable log-record IDs and its time-based replay
+is best-effort: disconnected output may be missing or repeated, and status
+reports this limitation. Custom keeps its selected Low/Medium/High
+delivery preset; custom transport selection, save cadence/buffering/shutdown/
+replay policy and lifetime cleanup remain deferred. No source-specific save
+interval or dormant-history cleanup policy is exposed.</p>
 <p>The SQLite metrics persistence foundation stores observations in a
 separate <code>metrics.db</code>, preserving unavailable fields as SQL NULL.
 Memory values use decimal text to retain the full unsigned Docker counter range.
 It persists observed event and state records but does not infer state between
 snapshots. The collector reconnects the read-only Docker event stream and
 deduplicates exact event replay keys (container, timestamp, kind and health).
+State-only capture stores supported native create/start/stop/die/destroy/
+restart/pause/unpause/OOM/health events. It inspects current context after
+create/start/stop/die/restart/pause/unpause/health events; destroy remains an
+event-only record because the container may no longer be inspectable. State
+snapshots use their inspection times, never Docker event timestamps as
+invented removal or recovery times. A shared Docker event-stream outage is
+stored once and projected only onto containers with prior state context;
+failed per-container inspections remain separate target-specific gaps.
 Replay identities expire with their one-hour event records, and deduplication
 cannot restore events missed during a disconnect. The approved inference of
 zero values from specific known states, such as stopped, remains
@@ -168,9 +193,21 @@ batch. The marker records the batch kind and start time, not the payload or a
 replay identity. Event replay deduplication is separate; neither mechanism
 reconstructs gaps. The implementation checkpoints frequently and its cost at
 target sampling rates is unmeasured.</p>
-<p>The authenticated Settings page can save Low, Medium, High or Custom metrics
-preferences and an explicit byte target, and collection is default-off until
-explicitly enabled. Enabling requires a configured Docker socket. Status shows
+<p>The authenticated Settings page stages and saves source-specific Stats,
+State/events and Logs preferences. New installations start with all capture
+Off; upgrades preserve prior metrics collection and state/event enablement but
+leave logs Off until a delivery preset is explicitly saved. Overall Low,
+Medium and High apply their concrete source values, Off hides retained history
+without erasing it, and mixed settings show Custom. Stats retain the 15-second,
+5-second and one-second transport profiles; State/events use Activated or All
+containers independently of numeric stats and default to Activated while Off.
+Logs use 60-second activated polling, 30-second activated polling or all-
+container live-follow for Low, Medium and High. Custom preserves current
+values and does not expose unapproved transport tuning. Independent decimal
+starting storage targets are 128,000,000 bytes for metrics/state and
+256,000,000 bytes for logs; they are configurable and are not changed by
+collection intensity. Collection is default-off until explicitly enabled.
+Enabling requires a configured Docker socket. Status shows
 the latest cycle, event-stream state and failures. Once the collector has read
 eviction history, Settings warns when storage pressure has removed samples,
 including the cumulative count and timestamp bounds (not a continuous-gap
@@ -187,18 +224,25 @@ does not reduce active usage also pauses until accounting conditions change or
 the configured limit increases. The collector retries maintenance every five
 seconds; failed writes pause metrics collection but leave the rest of the app
 usable.</p>
-<p>Metrics settings are persisted separately in application state. An
-unconfigured installation is disabled, and the storage limit must be explicitly
-provided; no preset storage defaults are assumed. The authenticated Settings
-page exposes enable/disable, the low, medium and high profile scopes and
-intervals, Custom controls, and collection status. Settings use revision
-checks to reject stale updates. Saving settings while disabled does not open
-the metrics database or access Docker. The collector uses the persisted
-opt-in after restart and closes on disable or application shutdown. The setup
-wizard and historical logs remain unimplemented. The Containers observability
-view shows per-container charts for the last hour, a shared time slider, observed
-lifecycle markers and a newest-first event list capped at 200 entries. Chart,
-slider, marker and list selection move the same selected-time cursor; the view
+<p>Metrics and source settings are persisted separately from history. The Go
+preset mapping supplies both rendered values and Save behavior, including
+no-JavaScript overall presets. Settings use revision checks to reject stale
+updates. Saving settings while disabled does not open history databases or
+access Docker. Collectors use persisted source opt-ins after restart and close
+on disable or application shutdown. The setup wizard remains unimplemented.
+The Containers observability view shows per-container charts for the last hour,
+a shared time slider, observed lifecycle markers, a newest-first event list
+capped at 200 entries, and a source switch for retained logs. State-only
+capture inspects containers and stores lifecycle/health observations without
+requesting numeric stats; when stats are also enabled, state observations are
+sparse rather than copied at every stats tick. Observation times come from
+Docker observations, not inferred transition times across disconnects. The
+retained pre-window baseline and explicit observation-unavailable/unhealthy
+duration spans are not yet rendered. Chart,
+slider, marker and list selection move the same selected-time cursor. A
+contained local-time badge follows selection, with the date, time zone and
+fractional seconds in the title/accessibility text; event rows remain UTC.
+The bottom arrow selects the fixed window end, not live following. The view
 does not claim Docker event history is complete. It uses stored events without
 requesting a live Docker snapshot. The overview dashboard reads the opted-in
 SQLite history and displays per-container CPU, Docker raw memory usage and

@@ -24,6 +24,15 @@ consistently. Network-shared databases and concurrent multi-instance operation
 are unsupported. Loss of the state volume has no automatic password-reset
 recovery flow. On Windows, Unix permission bits do not enforce database
 privacy; restrict access to the data directory using Windows access controls.</p>
+<p>The data directory contains <code>app.db</code> for accounts, settings and
+discovery, <code>metrics.db</code> for stats/state/event history, and
+<code>logs.db</code> for collected container output. History files are opened
+only when their sources need them. Back up the directory consistently,
+including SQLite sidecars while applicable; copying only an active main database
+file can miss committed WAL data. Protect log history as potentially sensitive
+application output. Legacy log rows in <code>metrics.db</code> are not silently
+moved or deleted by this prototype; automatic cross-store migration is not
+implemented.</p>
 <p>The app's built-in default listener is loopback-only for local use. For reverse
 proxy access, set <code>APP_PUBLIC_URL</code> to the external HTTPS origin and
 <code>APP_TRUSTED_PROXIES</code> to only the immediate proxy CIDRs. Prevent direct
@@ -33,6 +42,12 @@ loopback. The multistage image contains a static binary and CA certificates, run
 UID/GID 65532, and provides a built-in health check. Compose uses a read-only
 filesystem, drops capabilities, and prevents privilege escalation. No secrets,
 source files, shell, or docs are included in the runtime image.</p>
+<p>Do not cache application pages or <code>/static/</code> responses at the
+reverse proxy; preserve the app's <code>Cache-Control: no-store</code> header.
+After an upgrade, a cached stylesheet or script can leave new page content
+misaligned even after a browser refresh. If that happens, disable the proxy's
+cache for the app and purge its existing cached responses, then reload.
+A private browser window does not bypass a reverse proxy cache.</p>
 
 ## Container registry (off by default)
 

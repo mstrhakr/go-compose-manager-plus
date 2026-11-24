@@ -1190,3 +1190,247 @@ builds/local links. Commands used `/config/.local/bin` prepended to `PATH`.
 Security checks passed earlier on the same PR before these corrections; no
 dependency, workflow or container surface changed. No new live-Docker,
 native-device or physical-pressure verification is claimed.
+
+## Observability Presentation Alignment
+
+**2026-11-24; implementation authorized for approved LIVE-003 presentation,
+not unresolved collection policy.** Started from clean `9065078` on
+`feat/container-log-collection`. This is an independently completed subset of
+the requested logging/Settings/Observability slice, not completed production
+logging or full Settings migration.
+
+Three visual passes used the private Observability timeline, selection and
+event-marker references without copying their assets into the application:
+
+1. Replaced the detached multiline time readout and solid blue range track
+   with a selection-following clock badge, neutral slim track, minor ticks and
+   visible event focus/hover ordering.
+2. Clamped the badge inside both window edges, preserved the full date/time
+   zone/fractional seconds in caption/accessibility text, added a shortcut to
+   the fixed window end, and reduced desktop chart height so both fixture event
+   rows remain at least 90% visible at 1256 x 668.
+3. Reviewed selected-event alignment, light/dark contrast and compact access.
+   Tests require the middle-selection badge center within 8 pixels of the rail
+   midpoint and text/background contrast of at least 4.5:1. Screenshots include
+   the reference viewport, 2560 x 1440, selected-event states and compact views.
+
+Settings identifies Containers > Observability and contains the existing
+stats preferences in one card. Go owns the preset table used by Save and HTML;
+local JS reads the rendered mapping rather than duplicating cadence/scope
+values. Presets show named scopes and make the interval read-only. Custom
+unlocks that same interval control and discards no sibling values. Selecting a
+new preset replaces previous custom stats values while leaving storage intact.
+Changing storage marks Custom only after applying the chosen preset, including
+without JavaScript; the authenticated regression checks exact stored scope,
+interval, budget, revision and disabled state. Without JavaScript, presets
+remain readable and users save a preset before Custom to edit its values.
+
+Executed:
+
+- `go test -race ./internal/web -count=1` passed.
+- Targeted timeline and Settings workflows exercised Chromium, Firefox,
+  WebKit and mobile Chromium, plus keyboard, touch, no-JavaScript navigation,
+  selection isolation, compact overflow and stale/authenticated Settings Save.
+- `make check QUIET=1` passed Go vet/race tests/build, Node unit and HTTP tests,
+  the complete browser suite, asset verification and contract structure.
+  Commands used `/config/.local/bin` prepended to `PATH`.
+- `make docs check-docs check-contracts check-security QUIET=1` passed public
+  and opt-in documentation builds/local links, contract structure and security
+  checks; dependency vulnerability checks reported no vulnerabilities.
+
+During iteration, fixed a missing import in the preview fixture and used
+outcome-based interval editability assertions after a Firefox property-handle
+assertion crashed on the complete fixture. Real edits and the final full
+browser suite passed. An earlier unrelated Firefox legend timeout also passed
+in isolation and in the final full suite. No timeout increase, retries or
+browser exclusions were introduced.
+
+The existing enable checkbox, disabled-preference editing, one-hour history,
+pressure handling, collection lifecycle and log-unavailable view remain.
+Production logs, three independent sources/overall presets, state/event
+mappings, child seeds, Custom log delivery/flush, shared pressure,
+replay/reconciliation and Off/history effects are still gated. No synthetic
+health/unavailable spans are inferred from missing metric samples. No live
+Docker, native-device, physical-pressure, container or hosted-CI verification
+is claimed for this presentation-only subset; workflow/dependency/container
+surfaces were unchanged.
+
+## Separate Observability Budget Sizing Evidence
+
+**2026-11-24:** the owner selected separate metric-sample and log budgets, but
+did not choose default amounts. Ran the existing opt-in measurement:
+
+```sh
+PATH="/config/.local/bin:$PATH" CMP_METRICS_SQLITE_CAPACITY_TEST=1 \
+  go test ./internal/metrics -run '^TestSyntheticHourSQLiteCapacity$' -count=1 -v
+```
+
+All four cases passed and reopened/checked all samples. Each represents one
+synthetic hour at one sample per second per container, inserted in minute
+batches. Rounded decimal MB:
+
+| Containers | Samples | DB + WAL + SHM at ingestion end | DB after close |
+| --- | --- | --- | --- |
+| 1 | 3,600 | 3.41 MB | 0.98 MB |
+| 5 | 18,000 | 7.59 MB | 4.57 MB |
+| 25 | 90,000 | 26.66 MB | 22.84 MB |
+| 50 | 180,000 | 49.73 MB | 45.33 MB |
+
+These are sample-only storage observations, not peak file usage, per-source
+quota accounting, live throughput or a production one-hour guarantee.
+State/event/log records are absent; log-driver volume, original message sizes,
+index overhead, WAL activity and source accounting still need consideration.
+The measurement does not approve any default or preset amount and does not
+change existing collection or pressure behavior.
+
+## Three-Database Direction
+
+**2026-11-24:** the owner selected `app.db`, `metrics.db` and `logs.db`,
+amending the earlier same-history-file direction. This is a decision record,
+not executed migration: existing application state/settings remain in `app.db`,
+and the current log API/SQLite foundation still stores logs in `metrics.db`.
+The intended `logs.db` split, its defaults/accounting/maintenance, cross-store
+expiry/recovery and migration remain unimplemented and unverified.
+
+The owner subsequently chose independent initial storage targets of 128 MB
+for metrics history and 256 MB for logs, in decimal units, with all sources Off
+on new installs and existing configured amounts preserved. This is an approved
+amount decision, not executed defaults/migration enforcement or a capacity
+guarantee. Named storage-preset mappings, file accounting and pressure behavior
+remain unsettled.
+
+The owner then selected source-local rolling eviction: oldest eligible samples
+or logs may be removed in bounded batches within their own database, with
+separate shortened-history warnings and existing file/reusable-page/pause/retry
+safeguards. No cross-store eviction, borrowing or early state/event pressure
+eviction is selected. This is not executed pressure verification; the
+foundation still lacks managed production log writes and a dedicated log DB.
+
+The owner selected hiding retained source history while Off without erasing
+it. This matches the existing disabled-stats presentation, but independent
+state/log control enforcement, dormant cleanup and in-flight buffer handling
+remain unimplemented/unverified. Normal age eligibility and state-baseline
+exceptions are not changed by recording the visibility decision.
+
+## Dedicated Managed Log Storage Core
+
+**2026-11-24:** implemented the approved storage subset, not production
+collection or complete Settings migration. `OpenManagedLogs` owns a separate
+log-only `logs.db` schema (version 1) and reuses the existing connection,
+exclusive-lock, file/page accounting, maintenance and transactional write
+reconciliation implementation. Metrics schema 8 and legacy log rows remain
+unchanged; opening the new store neither copies nor deletes legacy history.
+
+New regressions verify:
+
+- The two history databases can be owned simultaneously without cross-writes.
+  Log pressure leaves samples, events, states and metric availability intact.
+- Original CRLF/NUL/non-UTF8 bytes, stream, timestamps, truncation and legitimate
+  duplicates survive managed writes and reopening.
+- Log insert rollback leaves no partial records; committed cleanup failures
+  retain the transactional marker. Both prepared and committed interrupted
+  writes reconcile after reopening without automatic replay.
+- Pressure removes one bounded oldest-first log batch and reports only log
+  eviction counts/time bounds. No-progress retries and reopening preserve the
+  guard; increasing the target can recover. Ordinary expiry is separate from
+  shortened-history reporting, with exact one-hour and one-nanosecond-over
+  checks.
+- A foreign versioned database is rejected. POSIX log-file permissions are
+  private; Windows ACL enforcement is not inferred from a POSIX mode check.
+- The simulated read-only Docker logs API round trip now uses managed
+  `logs.db`, with original messages and exact age-boundary expiry.
+
+Focused managed-log tests and `go test -race ./internal/metrics ./internal/web
+-count=1` passed during iteration. An initial full parallel-package run hit the
+existing collector activation timeout (active/connected but only two stats
+reads before its five-second deadline); the exact test passed in isolation.
+No timeout increase or retry configuration was added.
+`GOFLAGS="-p=1" make check QUIET=1` then passed Go vet/race tests/build,
+Node/HTTP/browser suites, assets and contract structure with serial Go packages
+on the shared host. This is local Linux/browser evidence, not hosted or other
+native-platform CI.
+
+Production transport/UI integration, cross-store migration, advanced Custom
+delivery, in-flight stop/flush and cleanup/replay policies are not verified by
+these storage checks.
+
+## Independent Observability Sources And Production Capture
+
+**2026-11-24:** implemented the approved LIVE-003 source/settings and capture
+subset on `feat/container-log-collection`. New installations keep all sources
+Off. Application schema 6 preserves legacy stats settings, target and state
+enablement without enabling logs. A single transaction saves overall/source
+revisions and retained Off/Custom preferences; configuration reads use one
+consistent SQLite snapshot. Explicit Custom does not revert merely because its
+values match a preset.
+
+The source cards expose stats presets/current readonly values, independent
+state/event scopes including stopped-container context, and log Low/Medium
+periodic backlog versus High live-follow. Separate exact decimal storage targets
+are not replaced by collection presets. Log Custom edits scope while preserving
+an explicitly established preset delivery; advanced transport/save controls
+remain unavailable. Off hides history without erasing preferences; overall
+Off-to-Custom restores the preceding source selections. No-JavaScript users
+save a selection before editing its values, as explained in the page.
+
+Production capture uses the dedicated managed log store. Fake Docker streams
+exercise a quiet live message becoming readable before stream closure, bounded
+periodic capture, original bytes and legitimate duplicates, stopped backlog,
+source isolation, cancellation and retention. Review corrections avoid replaying
+acknowledged committed batches, advancing reconnect cursors to wall-clock time,
+blocking all readable targets behind one unreadable container, or reporting
+healthy collection while a follower/storage failure remains.
+
+State capture persists sparse lifecycle/health changes, retains one
+pre-window baseline and projects explicitly recorded unavailable-observation
+intervals. Shared outages are recorded once, with target-specific inspection
+gaps separate. Grey unavailable spans override striped unhealthy spans; truncated
+state results suppress unsafe interval inference. Reconnect labels describe
+the new observation, not an invented transition timestamp. Lifecycle tests cover
+pause/unpause and newly observed containers as well as running/exited states.
+
+Focused combined runtime/auth/metrics/web race suites and Chromium preview tests
+passed during iteration. Settings browser regressions cover readonly preset
+values, current-value Custom, source siblings, overall Off/Custom restoration,
+storage edits, no-JavaScript fallback, and compact containment. The authenticated
+browser flow also verifies saving Off preferences, explicit enablement requiring
+a Docker socket, and touch access. The first complete browser run found stale
+stats-only labels in that authenticated flow; these expectations were updated
+to the independent-source UI and the exact test then passed.
+
+The subsequent complete `GOFLAGS="-p=1" make check QUIET=1` passed Go vet,
+all Go race suites, build, Node/HTTP tests, the four-project browser suite,
+asset verification and contract structure. `make docs check-docs check-security
+QUIET=1` passed documentation variants/links and dependency checks. No workflow
+files or dependency manifests changed; container publication and native
+Windows/macOS execution await hosted CI.
+
+Limits remain: capture is not an exactly-once log archive; Docker reconnection
+can replay output and cannot establish complete continuity. Advanced Custom
+transport/save cadence, destructive legacy-log migration, explicit clear-history
+controls, identity/baseline cleanup lifetime and manager lifecycle actions are
+not implemented or approved by these checks. Private visual references and
+synthetic screenshots are not Docker/native-platform verification.
+
+### Production-CSP And State-Capture PR Corrections
+
+PR #24's Copilot review identified eight concrete issues. The timeline
+correction uses data coordinates with self-hosted initialization, not CSP-blocked
+inline styles, and positions spans from the bottom to match the vertical axis.
+The browser fixture now sends the production CSP; geometry assertions exercise
+both span kinds and fragment initialization. All 20 preview checks passed across
+Chromium, Firefox, WebKit and mobile Chromium. Final light/dark captures also
+confirmed that an opaque grey overlay fully masks unhealthy striping.
+
+State-capture corrections admit new-container events by configured scope rather
+than a stale stats snapshot, reconcile event-driven lifecycle observations, and
+refresh activated-project scope while the stream stays connected. Shared
+outages close only after successful snapshot reconciliation, with target-specific
+unavailability preserved until each persisted observation; all-failed inspection
+is not treated as an empty successful scope. Watcher/settings/storage health are
+separate, so successful maintenance cannot disguise a failed capture operation.
+The Stats Off status reset preserves an independently active state connection.
+Focused deterministic regressions and combined auth/metrics/web race suites
+passed. The initial hosted CI and a later timeline-fix revision passed Linux,
+Windows, both macOS jobs, browser, docs/contracts, container and security checks;
+final state-fix hosted checks remain required before merge.

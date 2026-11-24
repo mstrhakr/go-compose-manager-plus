@@ -296,6 +296,7 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 		charts, metricsStatus = server.dashboardCharts(r.Context())
 	}
 	var timeline dashboardTimeline
+	var logHistory dashboardLogHistory
 	var observed []observedContainer
 	var selected string
 	if view == "observability" {
@@ -312,10 +313,11 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 		}
 		charts, metricsStatus = server.dashboardChartsForRange(r.Context(), start, end, false, selected)
 		timeline = server.dashboardTimeline(r.Context(), start, end, selected)
+		logHistory = server.dashboardLogs(r.Context(), start, end, selected)
 	}
 	server.render(w, pageData{Title: title, View: view, Username: user.Username, Initial: initial, Containers: containerList, ProjectColumns: listPanel{ID: "projects-title", Title: "Projects", Columns: []string{"Project", "Discovery", "Activation", "Containers"}}, Filters: filters, SubviewNav: subviews,
 		CSRFToken: nosurf.Token(r), Root: settings.Root, Projects: views, RuntimeMessage: runtimeMessage, RuntimeState: runtimeState,
-		Charts: charts, MetricsStatus: metricsStatus, Timeline: timeline, ObservedContainers: observed, SelectedContainer: selected,
+		Charts: charts, MetricsStatus: metricsStatus, Timeline: timeline, LogHistory: logHistory, ObservedContainers: observed, SelectedContainer: selected,
 		Metrics: []metricPanel{
 			{ID: "restart-title", Title: "Container restart & OOM rate", Status: "Unavailable", Value: "--", Detail: "No runtime data"},
 			{ID: "health-title", Title: "Stack health & readiness", Status: "Unavailable", Value: "--", Detail: "No runtime data"},

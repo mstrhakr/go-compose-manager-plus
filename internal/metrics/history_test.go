@@ -68,6 +68,31 @@ func TestEventAndStateHistoryReopenAndBoundaries(t *testing.T) {
 	}
 }
 
+func TestSelectLatestStateReturnsNewestObservation(t *testing.T) {
+	ctx := context.Background()
+	store, err := Open(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	id := strings.Repeat("a", 64)
+	base := time.Now().UTC().Truncate(time.Second)
+	if err := store.InsertStates(ctx, []State{
+		{ContainerID: id, Time: base, State: "running", Health: HealthStarting},
+		{ContainerID: id, Time: base.Add(time.Second), State: "running", Health: HealthHealthy},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	latest, err := store.SelectLatestState(ctx, id)
+	if err != nil || latest == nil || latest.Time != base.Add(time.Second) || latest.Health != HealthHealthy {
+		t.Fatalf("latest state=%#v error=%v", latest, err)
+	}
+	missing, err := store.SelectLatestState(ctx, strings.Repeat("b", 64))
+	if err != nil || missing != nil {
+		t.Fatalf("missing latest state=%#v error=%v", missing, err)
+	}
+}
+
 func TestSelectTimelineEventsReturnsNewestEventsInChronologicalOrder(t *testing.T) {
 	ctx := context.Background()
 	store, err := Open(ctx, t.TempDir())

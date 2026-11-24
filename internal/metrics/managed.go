@@ -9,9 +9,10 @@ import (
 )
 
 var (
-	ErrMetricsPaused  = errors.New("metrics writes paused")
-	ErrWriteCommitted = errors.New("metrics write committed but subsequent maintenance failed")
-	ErrReconcileWrite = errors.New("uncertain metrics write requires reconciliation")
+	ErrHistoryPaused  = errors.New("history writes paused")
+	ErrMetricsPaused  = ErrHistoryPaused
+	ErrWriteCommitted = errors.New("history write committed but subsequent maintenance failed")
+	ErrReconcileWrite = errors.New("uncertain history write requires reconciliation")
 )
 
 const evictionBatchSize = 128
@@ -39,6 +40,7 @@ type ManagedStatus struct {
 	Files          FileUsage
 	Pages          PageUsage
 	Evictions      EvictedSamples
+	LogEvictions   EvictedLogs
 	PendingWrite   *PendingWrite
 }
 
@@ -53,14 +55,18 @@ type PendingWrite struct {
 // must close it and must not open another metrics writer for the same database.
 // limit is a logical-file-length target, not a physical disk quota.
 func OpenManaged(ctx context.Context, dataDir string, limit int64) (*ManagedStore, error) {
+	return openManagedHistory(ctx, dataDir, limit, metricsDatabase)
+}
+
+func openManagedHistory(ctx context.Context, dataDir string, limit int64, kind historyDatabase) (*ManagedStore, error) {
 	if limit <= 0 {
-		return nil, errors.New("metrics storage limit must be positive")
+		return nil, errors.New("history storage limit must be positive")
 	}
-	store, err := open(ctx, dataDir, true)
+	store, err := openHistory(ctx, dataDir, kind, true)
 	if err != nil {
 		return nil, err
 	}
-	m := &ManagedStore{store: store, limit: limit, paused: errors.New("metrics maintenance has not run"), lock: make(chan struct{}, 1)}
+	m := &ManagedStore{store: store, limit: limit, paused: errors.New("history maintenance has not run"), lock: make(chan struct{}, 1)}
 	pending, err := m.pendingWrite(ctx)
 	if err != nil {
 		return nil, errors.Join(err, store.Close())
@@ -81,7 +87,7 @@ func (m *ManagedStore) pendingWrite(ctx context.Context) (*PendingWrite, error) 
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("read pending metrics write: %w", err)
+		return nil, fmt.Errorf("read pending history write: %w", err)
 	}
 	pending.CreatedAt = time.Unix(0, created).UTC()
 	return &pending, nil
@@ -90,14 +96,14 @@ func (m *ManagedStore) pendingWrite(ctx context.Context) (*PendingWrite, error) 
 func markPendingCommitted(ctx context.Context, tx *sql.Tx) error {
 	result, err := tx.ExecContext(ctx, `UPDATE pending_write SET committed = 1 WHERE id = 1 AND committed = 0`)
 	if err != nil {
-		return fmt.Errorf("mark metrics write committed: %w", err)
+		return fmt.Errorf("mark history write committed: %w", err)
 	}
 	count, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("check pending metrics write: %w", err)
+		return fmt.Errorf("check pending history write: %w", err)
 	}
 	if count != 1 {
-		return errors.New("pending metrics write is missing or already committed")
+		return errors.New("pending history write is missing or already committed")
 	}
 	return nil
 }
@@ -132,18 +138,18 @@ func (m *ManagedStore) snapshot(ctx context.Context) (storageSnapshot, error) {
 		return storageSnapshot{}, err
 	}
 	if pages.Pages*pages.PageSize != files.Database {
-		return storageSnapshot{}, errors.New("metrics page count differs from checkpointed database length")
+		return storageSnapshot{}, errors.New("history page count differs from checkpointed database length")
 	}
 	return storageSnapshot{files: files, pages: pages}, nil
 }
 
 func (m *ManagedStore) pause(err error) error {
 	m.paused = err
-	return fmt.Errorf("%w: %w", ErrMetricsPaused, err)
+	return fmt.Errorf("%w: %w", ErrHistoryPaused, err)
 }
 
 // Maintain expires history strictly older than one hour and attempts at most
-// one bounded sample eviction when logical usage exceeds the target. Repeated
+// one bounded source-local eviction when logical usage exceeds the target. Repeated
 // attempts stop if a batch produced no reusable pages.
 func (m *ManagedStore) Maintain(ctx context.Context, now time.Time) error {
 	if err := m.acquire(ctx); err != nil {
@@ -155,7 +161,7 @@ func (m *ManagedStore) Maintain(ctx context.Context, now time.Time) error {
 
 func (m *ManagedStore) maintain(ctx context.Context, now time.Time) error {
 	if m.closed {
-		return errors.New("metrics store is closed")
+		return errors.New("history store is closed")
 	}
 	if _, err := timestamp(now); err != nil {
 		return fmt.Errorf("invalid maintenance time: %w", err)
@@ -177,7 +183,7 @@ func (m *ManagedStore) maintain(ctx context.Context, now time.Time) error {
 		return m.pause(err)
 	}
 	if before.files.Total >= m.limit {
-		return m.pause(errors.New("metrics files leave no space under the configured limit; SQLite deletion does not shrink the database"))
+		return m.pause(errors.New("history files leave no space under the configured limit; SQLite deletion does not shrink the database"))
 	}
 	target := m.limit - (m.limit / 10) - boolInt(m.limit%10 != 0)
 	active := before.files.Total - before.pages.ReusablePages*before.pages.PageSize
@@ -187,10 +193,10 @@ func (m *ManagedStore) maintain(ctx context.Context, now time.Time) error {
 	}
 	if gate.Valid {
 		if active >= target && active >= gate.Int64 {
-			return m.pause(errors.New("sample eviction did not reduce active storage; waiting for storage conditions to change"))
+			return m.pause(errors.New("history eviction did not reduce active storage; waiting for storage conditions to change"))
 		}
 		if _, err := m.store.db.ExecContext(ctx, `UPDATE pressure_gate SET active_bytes = NULL WHERE id = 1`); err != nil {
-			return m.pause(fmt.Errorf("clear metrics pressure gate: %w", err))
+			return m.pause(fmt.Errorf("clear history pressure gate: %w", err))
 		}
 		if err := m.store.Checkpoint(ctx); err != nil {
 			return m.pause(err)
@@ -200,7 +206,7 @@ func (m *ManagedStore) maintain(ctx context.Context, now time.Time) error {
 			return m.pause(err)
 		}
 		if before.files.Total >= m.limit {
-			return m.pause(errors.New("metrics files leave no space under the configured limit; SQLite deletion does not shrink the database"))
+			return m.pause(errors.New("history files leave no space under the configured limit; SQLite deletion does not shrink the database"))
 		}
 		active = before.files.Total - before.pages.ReusablePages*before.pages.PageSize
 	}
@@ -208,12 +214,12 @@ func (m *ManagedStore) maintain(ctx context.Context, now time.Time) error {
 		m.paused = nil
 		return nil
 	}
-	evicted, err := m.store.evictOldestSamples(ctx, evictionBatchSize, &active)
+	evicted, err := m.store.evictOldest(ctx, evictionBatchSize, &active)
 	if err != nil {
 		return m.pause(err)
 	}
 	if evicted.Count == 0 {
-		return m.pause(errors.New("storage target exceeded and no samples remain to evict"))
+		return m.pause(errors.New("storage target exceeded and no eligible history remains to evict"))
 	}
 	if err := m.store.Checkpoint(ctx); err != nil {
 		return m.pause(err)
@@ -224,9 +230,9 @@ func (m *ManagedStore) maintain(ctx context.Context, now time.Time) error {
 	}
 	afterActive := after.files.Total - after.pages.ReusablePages*after.pages.PageSize
 	if afterActive >= active {
-		return m.pause(errors.New("sample eviction did not reduce active storage"))
+		return m.pause(errors.New("history eviction did not reduce active storage"))
 	}
-	return m.pause(errors.New("bounded sample eviction completed; retry maintenance to verify recovery"))
+	return m.pause(errors.New("bounded history eviction completed; retry maintenance to verify recovery"))
 }
 
 func boolInt(v bool) int64 {
@@ -244,25 +250,31 @@ func (m *ManagedStore) Status(ctx context.Context) (ManagedStatus, error) {
 	}
 	defer m.release()
 	if m.closed {
-		return ManagedStatus{}, errors.New("metrics store is closed")
+		return ManagedStatus{}, errors.New("history store is closed")
 	}
 	files, err := m.store.FileUsage()
 	if err != nil {
-		return ManagedStatus{}, fmt.Errorf("read metrics status: %w", err)
+		return ManagedStatus{}, fmt.Errorf("read history status: %w", err)
 	}
 	pages, err := m.store.PageUsage(ctx)
 	if err != nil {
-		return ManagedStatus{}, fmt.Errorf("read metrics status: %w", err)
+		return ManagedStatus{}, fmt.Errorf("read history status: %w", err)
 	}
-	evictions, err := m.store.SampleEvictionHistory(ctx)
+	evictions, err := m.store.evictionHistory(ctx)
 	if err != nil {
-		return ManagedStatus{}, fmt.Errorf("read metrics status: %w", err)
+		return ManagedStatus{}, fmt.Errorf("read history status: %w", err)
 	}
 	pending, err := m.pendingWrite(ctx)
 	if err != nil {
 		return ManagedStatus{}, err
 	}
-	return ManagedStatus{Paused: m.paused != nil, Problem: m.paused, UncertainWrite: m.uncertain, Files: files, Pages: pages, Evictions: evictions, PendingWrite: pending}, nil
+	status := ManagedStatus{Paused: m.paused != nil, Problem: m.paused, UncertainWrite: m.uncertain, Files: files, Pages: pages, PendingWrite: pending}
+	if m.store.kind == logsDatabase {
+		status.LogEvictions = evictions
+	} else {
+		status.Evictions = evictions
+	}
+	return status, nil
 }
 
 // AcknowledgeReconciledWrite clears the durable and in-process guards only
@@ -327,6 +339,9 @@ func (m *ManagedStore) write(ctx context.Context, now time.Time, kind string, in
 		return err
 	}
 	defer m.release()
+	if m.store.kind == logsDatabase && kind != "logs" || m.store.kind == metricsDatabase && kind == "logs" {
+		return fmt.Errorf("write kind %q does not belong to this history database", kind)
+	}
 	if err := m.maintain(ctx, now); err != nil {
 		return err
 	}
@@ -406,6 +421,24 @@ func (m *ManagedStore) InsertStates(ctx context.Context, now time.Time, states [
 	return m.write(ctx, now, "states", func() error { return m.store.insertStates(ctx, states, true) })
 }
 
+func (m *ManagedStore) InsertLogs(ctx context.Context, now time.Time, logs []Log) error {
+	if err := validateLogs(now, logs); err != nil {
+		return err
+	}
+	return m.write(ctx, now, "logs", func() error { return m.store.insertLogs(ctx, now, logs, true) })
+}
+
+func (m *ManagedStore) SelectLogs(ctx context.Context, id string, start, end time.Time, limit int) (LogPage, error) {
+	if err := m.acquire(ctx); err != nil {
+		return LogPage{}, err
+	}
+	defer m.release()
+	if m.closed {
+		return LogPage{}, errors.New("history store is closed")
+	}
+	return m.store.SelectLogs(ctx, id, start, end, limit)
+}
+
 func withinHistory(now, at time.Time) error {
 	if _, err := timestamp(now); err != nil {
 		return fmt.Errorf("invalid write time: %w", err)
@@ -471,6 +504,17 @@ func (m *ManagedStore) SelectObservedContainers(ctx context.Context, start, end 
 	return m.store.SelectObservedContainers(ctx, start, end)
 }
 
+func (m *ManagedStore) SelectObservedContainersForSources(ctx context.Context, start, end time.Time, samples, states, events, logs bool) ([]string, error) {
+	if err := m.acquire(ctx); err != nil {
+		return nil, err
+	}
+	defer m.release()
+	if m.closed {
+		return nil, errors.New("history store is closed")
+	}
+	return m.store.SelectObservedContainersForSources(ctx, start, end, samples, states, events, logs)
+}
+
 func (m *ManagedStore) SelectStates(ctx context.Context, id string, start, end time.Time, limit int) ([]State, error) {
 	if err := m.acquire(ctx); err != nil {
 		return nil, err
@@ -480,6 +524,108 @@ func (m *ManagedStore) SelectStates(ctx context.Context, id string, start, end t
 		return nil, errors.New("metrics store is closed")
 	}
 	return m.store.SelectStates(ctx, id, start, end, limit)
+}
+
+func (m *ManagedStore) SelectLatestState(ctx context.Context, id string) (*State, error) {
+	if err := m.acquire(ctx); err != nil {
+		return nil, err
+	}
+	defer m.release()
+	if m.closed {
+		return nil, errors.New("history store is closed")
+	}
+	return m.store.SelectLatestState(ctx, id)
+}
+
+func (m *ManagedStore) SelectStateHistory(ctx context.Context, id string, start, end time.Time, limit int) (StateHistory, error) {
+	if err := m.acquire(ctx); err != nil {
+		return StateHistory{}, err
+	}
+	defer m.release()
+	if m.closed {
+		return StateHistory{}, errors.New("metrics store is closed")
+	}
+	return m.store.SelectStateHistory(ctx, id, start, end, limit)
+}
+
+func (m *ManagedStore) StartStateGaps(ctx context.Context, ids []string, at time.Time) error {
+	if m.store.kind != metricsDatabase {
+		return errors.New("state observation gaps require metrics.db")
+	}
+	if _, err := timestamp(at); err != nil {
+		return fmt.Errorf("invalid state gap start: %w", err)
+	}
+	for _, id := range ids {
+		if err := validateID(id); err != nil {
+			return fmt.Errorf("invalid state gap identity: %w", err)
+		}
+	}
+	return m.write(ctx, at, "states", func() error { return m.store.startStateGaps(ctx, ids, at, true) })
+}
+
+func (m *ManagedStore) EndStateGap(ctx context.Context, id string, at time.Time) error {
+	if m.store.kind != metricsDatabase {
+		return errors.New("state observation gaps require metrics.db")
+	}
+	if err := validateID(id); err != nil {
+		return err
+	}
+	if _, err := timestamp(at); err != nil {
+		return fmt.Errorf("invalid state gap end: %w", err)
+	}
+	return m.write(ctx, at, "states", func() error { return m.store.endStateGap(ctx, id, at, true) })
+}
+
+func (m *ManagedStore) StartGlobalStateGap(ctx context.Context, at time.Time) error {
+	if m.store.kind != metricsDatabase {
+		return errors.New("shared state-source gaps require metrics.db")
+	}
+	if _, err := timestamp(at); err != nil {
+		return fmt.Errorf("invalid shared state gap start: %w", err)
+	}
+	return m.write(ctx, at, "states", func() error { return m.store.startGlobalStateGap(ctx, at, true) })
+}
+
+func (m *ManagedStore) EndGlobalStateGap(ctx context.Context, at time.Time) error {
+	if m.store.kind != metricsDatabase {
+		return errors.New("shared state-source gaps require metrics.db")
+	}
+	if _, err := timestamp(at); err != nil {
+		return fmt.Errorf("invalid shared state gap end: %w", err)
+	}
+	return m.write(ctx, at, "states", func() error { return m.store.endGlobalStateGap(ctx, at, true) })
+}
+
+func (m *ManagedStore) HasOpenStateGap(ctx context.Context, id string) (bool, error) {
+	_, exists, err := m.OpenStateGap(ctx, id)
+	return exists, err
+}
+
+func (m *ManagedStore) OpenStateGap(ctx context.Context, id string) (time.Time, bool, error) {
+	if err := m.acquire(ctx); err != nil {
+		return time.Time{}, false, err
+	}
+	defer m.release()
+	if m.closed {
+		return time.Time{}, false, errors.New("metrics store is closed")
+	}
+	return m.store.OpenStateGap(ctx, id)
+}
+
+func (m *ManagedStore) HasOpenGlobalStateGap(ctx context.Context) (bool, error) {
+	_, exists, err := m.OpenGlobalStateGap(ctx)
+	return exists, err
+}
+
+func (m *ManagedStore) OpenGlobalStateGap(ctx context.Context) (time.Time, bool, error) {
+	if err := m.acquire(ctx); err != nil {
+		return time.Time{}, false, err
+	}
+	defer m.release()
+	if m.closed {
+		return time.Time{}, false, errors.New("metrics store is closed")
+	}
+	return m.store.OpenGlobalStateGap(ctx)
 }
 
 func (m *ManagedStore) Close() error {
