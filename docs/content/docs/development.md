@@ -124,11 +124,18 @@ enable production capture. SQLite log batches are bounded to 128 records;
 selected-container and aggregate queries return at most 1,000 newest records
 with a 1 MiB message-byte budget over a range of at most an hour, explicitly
 indicating omitted results.
-Duplicate output is preserved rather than silently treated as replay. Shared
-maintenance expires logs with the same one-hour cutoff as metrics/events/states.
-Consent, durable managed log writes, shared pressure/replay policy and log UI
-wiring remain pending; no Docker connection or log output is collected merely
-by adding this foundation.</p>
+Duplicate output is preserved rather than silently treated as replay.
+<code>OpenManagedLogs</code> now owns a dedicated <code>logs.db</code>, using the
+same private-file, exclusive ownership, DB/WAL/SHM accounting and bounded
+maintenance implementation as metrics history. Its log-only schema has its own
+transactional pending-write marker and cumulative eviction history. Expiry is
+strictly older than an hour and atomic within each database, not across files.
+Log pressure evicts only oldest logs and cannot evict samples or state/events.
+Prepared/committed interrupted batches are reconciled without automatic replay,
+preserving original bytes and legitimate duplicates. Legacy metric-database
+log records remain unchanged; production migration and collection are not yet
+wired. Transport/replay, in-flight stop/flush and log UI integration remain
+pending; this storage layer alone does not collect Docker output.</p>
 <p>The SQLite metrics persistence foundation stores observations in a
 separate <code>metrics.db</code>, preserving unavailable fields as SQL NULL.
 Memory values use decimal text to retain the full unsigned Docker counter range.

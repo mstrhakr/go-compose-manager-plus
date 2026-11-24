@@ -285,11 +285,18 @@ func (s *Store) SelectObservedContainers(ctx context.Context, start, end time.Ti
 	if end.Sub(start) > time.Hour {
 		return nil, errors.New("observed container range exceeds one hour")
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT container_id FROM samples WHERE observed_ns >= ? AND observed_ns < ?
+	query := `SELECT container_id FROM samples WHERE observed_ns >= ? AND observed_ns < ?
 		UNION SELECT container_id FROM container_events WHERE observed_ns >= ? AND observed_ns < ?
 		UNION SELECT container_id FROM container_states WHERE observed_ns >= ? AND observed_ns < ?
 		UNION SELECT container_id FROM container_logs WHERE observed_ns >= ? AND observed_ns < ?
-		ORDER BY container_id`, from, to, from, to, from, to, from, to)
+		ORDER BY container_id`
+	args := []any{from, to, from, to, from, to, from, to}
+	if s.kind == logsDatabase {
+		query = `SELECT DISTINCT container_id FROM container_logs
+			WHERE observed_ns >= ? AND observed_ns < ? ORDER BY container_id`
+		args = []any{from, to}
+	}
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query observed containers: %w", err)
 	}

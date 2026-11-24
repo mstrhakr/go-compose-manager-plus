@@ -1311,3 +1311,45 @@ it. This matches the existing disabled-stats presentation, but independent
 state/log control enforcement, dormant cleanup and in-flight buffer handling
 remain unimplemented/unverified. Normal age eligibility and state-baseline
 exceptions are not changed by recording the visibility decision.
+
+## Dedicated Managed Log Storage Core
+
+**2026-11-24:** implemented the approved storage subset, not production
+collection or complete Settings migration. `OpenManagedLogs` owns a separate
+log-only `logs.db` schema (version 1) and reuses the existing connection,
+exclusive-lock, file/page accounting, maintenance and transactional write
+reconciliation implementation. Metrics schema 8 and legacy log rows remain
+unchanged; opening the new store neither copies nor deletes legacy history.
+
+New regressions verify:
+
+- The two history databases can be owned simultaneously without cross-writes.
+  Log pressure leaves samples, events, states and metric availability intact.
+- Original CRLF/NUL/non-UTF8 bytes, stream, timestamps, truncation and legitimate
+  duplicates survive managed writes and reopening.
+- Log insert rollback leaves no partial records; committed cleanup failures
+  retain the transactional marker. Both prepared and committed interrupted
+  writes reconcile after reopening without automatic replay.
+- Pressure removes one bounded oldest-first log batch and reports only log
+  eviction counts/time bounds. No-progress retries and reopening preserve the
+  guard; increasing the target can recover. Ordinary expiry is separate from
+  shortened-history reporting, with exact one-hour and one-nanosecond-over
+  checks.
+- A foreign versioned database is rejected. POSIX log-file permissions are
+  private; Windows ACL enforcement is not inferred from a POSIX mode check.
+- The simulated read-only Docker logs API round trip now uses managed
+  `logs.db`, with original messages and exact age-boundary expiry.
+
+Focused managed-log tests and `go test -race ./internal/metrics ./internal/web
+-count=1` passed during iteration. An initial full parallel-package run hit the
+existing collector activation timeout (active/connected but only two stats
+reads before its five-second deadline); the exact test passed in isolation.
+No timeout increase or retry configuration was added.
+`GOFLAGS="-p=1" make check QUIET=1` then passed Go vet/race tests/build,
+Node/HTTP/browser suites, assets and contract structure with serial Go packages
+on the shared host. This is local Linux/browser evidence, not hosted or other
+native-platform CI.
+
+Production transport/UI integration, cross-store migration, advanced Custom
+delivery, in-flight stop/flush and cleanup/replay policies are not verified by
+these storage checks.

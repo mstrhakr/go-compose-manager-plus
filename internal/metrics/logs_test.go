@@ -247,7 +247,7 @@ func TestDockerLogAPIToSQLiteAndOneHourExpiry(t *testing.T) {
 	defer server.Close()
 	ctx := context.Background()
 	dir := t.TempDir()
-	store, err := Open(ctx, dir)
+	store, err := OpenManagedLogs(ctx, dir, 10<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +264,7 @@ func TestDockerLogAPIToSQLiteAndOneHourExpiry(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	store, err = Open(ctx, dir)
+	store, err = OpenManagedLogs(ctx, dir, 10<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +276,7 @@ func TestDockerLogAPIToSQLiteAndOneHourExpiry(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-	managed, err := OpenManaged(ctx, dir, 10<<20)
+	managed, err := OpenManagedLogs(ctx, dir, 10<<20)
 	if err != nil {
 		t.Fatal(err)
 	}

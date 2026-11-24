@@ -24,11 +24,11 @@ func (s *Store) PageUsage(ctx context.Context) (PageUsage, error) {
 		(SELECT freelist_count FROM pragma_freelist_count)`).
 		Scan(&usage.PageSize, &usage.Pages, &usage.ReusablePages)
 	if err != nil {
-		return PageUsage{}, fmt.Errorf("inspect metrics database pages: %w", err)
+		return PageUsage{}, fmt.Errorf("inspect history database pages: %w", err)
 	}
 	if usage.PageSize <= 0 || usage.Pages < 0 || usage.ReusablePages < 0 ||
 		usage.ReusablePages > usage.Pages || usage.Pages > math.MaxInt64/usage.PageSize {
-		return PageUsage{}, errors.New("invalid metrics database page accounting")
+		return PageUsage{}, errors.New("invalid history database page accounting")
 	}
 	return usage, nil
 }
@@ -60,14 +60,14 @@ func (s *Store) FileUsage() (FileUsage, error) {
 			continue
 		}
 		if err != nil {
-			return FileUsage{}, fmt.Errorf("inspect metrics file %q: %w", file.path, err)
+			return FileUsage{}, fmt.Errorf("inspect history file %q: %w", file.path, err)
 		}
 		if !info.Mode().IsRegular() {
-			return FileUsage{}, fmt.Errorf("metrics file %q is not regular", file.path)
+			return FileUsage{}, fmt.Errorf("history file %q is not regular", file.path)
 		}
 		*file.size = info.Size()
 		if *file.size < 0 || usage.Total > math.MaxInt64-*file.size {
-			return FileUsage{}, errors.New("metrics file sizes exceed accounting range")
+			return FileUsage{}, errors.New("history file sizes exceed accounting range")
 		}
 		usage.Total += *file.size
 	}

@@ -54,22 +54,12 @@ func validateLog(log Log) (int64, int64, error) {
 // not start collection or choose replay, pressure eviction or scheduling policy.
 // Shared maintenance owns expiry; production writes need managed-store wiring.
 func (s *Store) InsertLogs(ctx context.Context, now time.Time, logs []Log) error {
-	if len(logs) == 0 || len(logs) > maxLogBatch {
-		return errors.New("log batch must contain between 1 and 128 records")
-	}
-	if _, err := timestamp(now); err != nil {
-		return fmt.Errorf("invalid log write time: %w", err)
-	}
-	for i, log := range logs {
-		if _, _, err := validateLog(log); err != nil {
-			return fmt.Errorf("invalid log %d: %w", i, err)
-		}
-		if err := withinHistory(now, log.Time); err != nil {
-			return fmt.Errorf("invalid log %d: %w", i, err)
-		}
-		if log.Time.After(now) || log.ReceivedAt.After(now) {
-			return fmt.Errorf("invalid log %d: timestamp is after write time", i)
-		}
+	return s.insertLogs(ctx, now, logs, false)
+}
+
+func (s *Store) insertLogs(ctx context.Context, now time.Time, logs []Log, tracked bool) error {
+	if err := validateLogs(now, logs); err != nil {
+		return err
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -88,8 +78,34 @@ func (s *Store) InsertLogs(ctx context.Context, now time.Time, logs []Log) error
 			return fmt.Errorf("insert log %d: %w", i, err)
 		}
 	}
+	if tracked {
+		if err := markPendingCommitted(ctx, tx); err != nil {
+			return err
+		}
+	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("%w: commit logs: %w", ErrWriteOutcomeUnknown, err)
+	}
+	return nil
+}
+
+func validateLogs(now time.Time, logs []Log) error {
+	if len(logs) == 0 || len(logs) > maxLogBatch {
+		return errors.New("log batch must contain between 1 and 128 records")
+	}
+	if _, err := timestamp(now); err != nil {
+		return fmt.Errorf("invalid log write time: %w", err)
+	}
+	for i, log := range logs {
+		if _, _, err := validateLog(log); err != nil {
+			return fmt.Errorf("invalid log %d: %w", i, err)
+		}
+		if err := withinHistory(now, log.Time); err != nil {
+			return fmt.Errorf("invalid log %d: %w", i, err)
+		}
+		if log.Time.After(now) || log.ReceivedAt.After(now) {
+			return fmt.Errorf("invalid log %d: timestamp is after write time", i)
+		}
 	}
 	return nil
 }
