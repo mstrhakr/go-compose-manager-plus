@@ -192,6 +192,23 @@ stats sampling uses inspections and event continuity as well as stats requests.
 Detailed separation of history enablement from supporting safety observations,
 and how shared API work is deduplicated, remain to be refined.
 
+The owner approved three separately configurable container-history groups:
+Container stats, Container state & events, and Container logs. Enabling
+state/events and logs while stats is Off must not require numeric sampling.
+Disabling state/event history persistence must not remove inspect/event
+observations needed for correct enabled stats; share required backend work
+instead of duplicating collectors. Supporting system continuity records are
+owned once, as already approved. Overall presets may configure all three;
+concrete new state/event mappings, defaults and detailed dependency lifecycle
+still require refinement.
+
+The owner requested a container-specific Settings identity and proposed
+Observability > Containers, a flat Container Observability category, or
+Containers > Observability. Sidebar sections, top tabs or another sidebar
+layer were offered as possible navigation structures, with a UI reference
+available. The hierarchy and exact navigation remain undecided; this refines
+the earlier general Observability label rather than selecting one alternative.
+
 The owner further distinguished overall action/activity history from selected
 container history on 2026-11-23. Up, Down, Stop, Restart and Update are distinct
 manager actions to record on the overall timeline and in an activity record,

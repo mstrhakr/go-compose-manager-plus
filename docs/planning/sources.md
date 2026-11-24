@@ -317,6 +317,14 @@ endpoint overlap must not silently remove required safety observations or
 justify duplicate collector work. Prior preset/UI decisions apply to the
 renamed category, not newly invented source mappings or defaults.
 
+The owner approved the three-source split: stats, state/events and logs, with
+shared required API work underneath and state-history persistence distinct from
+stats safety observations. New state/event presets/defaults remain open.
+For Settings navigation the owner proposed Observability > Containers, flat
+Container Observability, or Containers > Observability; sidebar sections,
+tabs or an additional sidebar layer were possible presentations, not selected
+layouts. A UI-equivalent reference can be supplied; exact hierarchy is pending.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
