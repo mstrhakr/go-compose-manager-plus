@@ -442,6 +442,17 @@ preferences and the separately selected state-baseline rule stay intact.
 The answer does not approve the alternative's background expiry maintenance
 while all sources are Off or settle in-flight buffers and baseline cleanup.
 
+The owner selected
+"Use Off / Activated stacks / All containers with the proposed overall mappings"
+for the state/events source. Overall Low and Medium select Activated stacks;
+High selects All containers. Enabled scopes include stopped-container state
+context, but numeric stats remain running-container observations. New installs
+keep state history Off with Activated stacks as the preserved starting scope.
+Required shared inspect/event work for stats correctness survives state-history
+persistence Off. This approves meaningful scope controls for change-based
+records, not repeated per-second state persistence or detailed reconnect and
+baseline cleanup.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

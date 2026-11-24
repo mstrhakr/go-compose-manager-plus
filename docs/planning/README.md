@@ -139,12 +139,17 @@ were subsequently selected. The owner approved all sources Off on new installs;
 upgrades preserve existing stats settings, state/event capture enablement and
 storage budget while leaving logs Off until explicitly enabled and saved.
 Mixed sources show overall Custom without applying a preset during migration.
-Child preference seeds, state/event preset mappings and Off-history effects
-still require refinement; migration/runtime enforcement remains unverified.
+Remaining log child preferences still require refinement; migration/runtime
+enforcement remains unverified. State/event choices are Off, Activated stacks
+and All containers: overall Low/Medium select Activated stacks, High selects
+All containers, and initial scope is Activated stacks while Off. State scopes
+include stopped-container context without changing running-only numeric stats.
+Off hides retained source history without making it a clear-history action.
 Individual settings reuse the selector style with meaningful setting-specific
 choices (including named scopes), optional positions and parent-dependent
 visibility. Storage presets reveal a reusable exact amount/unit input under
-Custom; concrete default sizes remain undecided. Off preserves saved child
+Custom; starting targets are selected but named storage-preset mappings remain
+undecided. Off preserves saved child
 preferences for restoration under Custom. Every preset must show its concrete
 effects through visible noneditable value controls, editable under Custom;
 named choices use explanatory text. Off collapses dependent controls.

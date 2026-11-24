@@ -666,6 +666,14 @@ LIVE contract or authorize implementation of future settings.
 - Container stats, Container state & events, and Container logs are independent
   history controls. Shared required inspect/event work remains enabled for
   correct stats even when state-history persistence is Off.
+- On 2026-11-24 the owner selected state/event source choices Off,
+  Activated stacks and All containers rather than artificial sampling-speed
+  presets. Overall Low and Medium map this source to Activated stacks; High
+  maps to All containers. Include stopped-container state context in either
+  enabled scope, while numeric stats still sample running containers only.
+  New installations keep this source Off with Activated stacks as its preserved
+  starting scope. These are change-based records; reconnect/reconciliation and
+  baseline cleanup remain separate decisions.
 
 #### Settled Control Behavior
 
@@ -756,7 +764,7 @@ was adopted to bypass the gates below.
 
 #### Remaining Implementation Gates
 
-- Concrete state/event preset mappings and remaining initial child preferences;
+- Remaining initial log/source child preferences;
   approved new-install/upgrade policy still needs migration/runtime verification.
 - Custom log delivery design: the owner proposed an Off/Low/Medium/Live/Custom
   delivery selector, with Custom poll interval 0 meaning Live and a save interval
