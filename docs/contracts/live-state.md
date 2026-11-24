@@ -4,8 +4,9 @@ weight = 8
 +++
 # LIVE: Dashboard And Live State
 
-**Status:** Draft / prototype scope and SSE preference recorded; detailed live
-state and recovery policies proposed; opt-in metrics direction recorded
+**Status:** Draft / bounded dashboard, container-history and Settings design
+decisions recorded; detailed collection, storage and recovery policies remain
+partially unresolved. Approval is not implementation verification.
 
 **Baseline:** 2026-11-19, product `68ab9d2`, documentation-only planning. Plugin
 runtime-plan passages and metrics-publisher boundaries were inspected, not
@@ -157,8 +158,9 @@ Existing lifecycle/health events and repeated discrete state snapshots are
 implementation evidence; they do not already fulfill transition-only history.
 Lifecycle, health and observation availability must not be conflated: running
 does not establish healthy, and a failed observation does not establish stopped.
-Exact state vocabulary, transition reconciliation, baseline retention and
-uncertain-span presentation remain to be refined.
+At that stage, state vocabulary, transition reconciliation, baseline retention
+and uncertain-span presentation were open; later decisions below settle the
+vocabulary, bounded baseline and grey-gap precedence, not all reconciliation.
 
 The owner subsequently approved separate lifecycle and health dimensions:
 lifecycle Created, Running, Paused, Restarting, Exited, Removing, Dead and
@@ -169,9 +171,9 @@ history records changes in either dimension plus retained starting context.
 The owner requested unhealthy periods be conspicuous as red striped/highlighted
 timeline areas, distinct from grey Docker-observation gaps. The purpose is
 at-a-glance understanding of what happened over time, not merely a textual list.
-Use accessible descriptions beyond color alone. Exact styling and precedence
-when an unhealthy observation intersects an observation gap remain to be refined;
-do not imply continuous knowledge where observation is unavailable.
+Use accessible descriptions beyond color alone. Exact styling remains open;
+the later decision below settles observation-gap precedence.
+Do not imply continuous knowledge where observation is unavailable.
 
 The owner selected unknown-gap precedence: grey unavailable-observation spans
 override red unhealthy spans while Docker observation is lost. Preserve the
@@ -206,8 +208,8 @@ The owner requested a container-specific Settings identity and proposed
 Observability > Containers, a flat Container Observability category, or
 Containers > Observability. Sidebar sections, top tabs or another sidebar
 layer were offered as possible navigation structures, with a UI reference
-available. The hierarchy and exact navigation remain undecided; this refines
-the earlier general Observability label rather than selecting one alternative.
+available. These were navigation alternatives, superseded by the resource-first
+design direction in the current Settings design summary below.
 
 The owner further distinguished overall action/activity history from selected
 container history on 2026-11-23. Up, Down, Stop, Restart and Update are distinct
@@ -254,8 +256,8 @@ disconnections, following the supplied reference presentation. This area
 represents unavailable Docker observation, not proof that the container was
 offline/stopped. Use a readable label or equivalent accessible description in
 addition to grey styling. Exact reference geometry and synchronization with
-other charts remain to be aligned; this answer does not approve baseline
-retention or the full transition/reconciliation algorithm.
+other charts remain to be aligned; this particular answer did not approve
+baseline retention (selected separately above) or the full reconciliation algorithm.
 
 The owner raised possible other change-based container information, such as
 update status, without approving an update checker or additional history source.
@@ -273,9 +275,10 @@ the same local observability SQLite database with one-hour retention; optional
 TimescaleDB support is deferred for longer log and metric history. The owner
 also requested an aggregated dashboard log view over that history. This is
 approval of the bounded feature/backend/retention direction, not evidence that
-logs are already collected. Log-source compatibility, collection consent,
-access, synchronization, shared-budget pressure behavior and unavailable
-states remain to be settled and verified.
+logs are already collected. Later decisions settle the initial Docker source
+and explicit preset-based enablement. Source compatibility, defaults/migration,
+access details, synchronization, shared-budget pressure behavior and unavailable
+states still require refinement or verification.
 
 The owner then approved read-only Docker container stdout/stderr as the initial
 source and authorized beginning implementation. Preserve the original message
@@ -291,13 +294,15 @@ prevent a guarantee of complete history.
 Application output can contain sensitive data. The earlier recommendation for
 an additional default-off "Collect container logs" checkbox was not approved.
 On 2026-11-23 the owner instead requested log settings inside the Metrics
-category, with separate Docker stats and Container logs controls using five
+category (subsequently refined to Containers > Observability), with separate
+Docker stats and Container logs controls using five
 discrete positions: Off, Low, Medium, High and Custom. Off represents disabled
 collection for that source, not merely hiding its view. Each source's selector
 and expanded settings must remain contained together in its own card/panel;
 exact card styling, dimensions and disclosure behavior are not yet selected.
 This approves the category, per-source profile-control direction and containment,
-not log preset values, default/migration behavior or production capture.
+not concrete log preset values at that stage, default/migration behavior or
+production capture. Later decisions below select log scope and delivery.
 The existing Docker stats sampling targets remain unchanged by this presentation
 decision.
 
@@ -351,7 +356,8 @@ values; Off alone still preserves preferences as approved above. Upward
 Custom propagation through source/category presets is now approved:
 changing one leaf setting marks its source and category Custom
 without changing sibling values; selecting an explicit category preset reapplies
-that preset to both sources.
+that preset to the collection sources, including the subsequently approved
+state/events source; its concrete mappings remain open.
 
 The owner clarified that parent presets need not select an identically named
 position in every child: some children have only Low/High or lack Off. Each
@@ -563,6 +569,103 @@ does not implement these behaviors.
 
 ## Acceptance Cases
 
+### Current Settings Design Summary
+
+**Owner-guided final design pass, 2026-11-23:** the owner accepted the
+resource-first organization direction after reviewing broader potential
+settings, then supplied deeper references for a final contract pass.
+The following consolidates settled decisions; screenshot-inspired proposals
+and unresolved behavior are explicitly separate. It does not approve the whole
+LIVE contract or authorize implementation of future settings.
+
+#### Settled Navigation And Ownership Direction
+
+- Use Settings > Containers > Observability for container collection settings.
+  Resource categories can contain subpages; shared data/backend/retention
+  configuration has one owner rather than duplicate editable copies per resource.
+  Future stack/host observability may consume that owner without adding another
+  container collector. Actual future categories/features remain candidates in
+  the [product plan](../planning/README.md#settings-organization-candidates).
+- Settings-category navigation is distinct from application navigation.
+  Where useful, a category-specific panel provides subpage navigation separately
+  from the selected page's controls. Do not populate unused future pages or
+  force another panel onto every single-page category.
+- Global settings configure manager defaults/collection policies; selected
+  resources retain their own configuration/overrides where approved. This
+  does not authorize replacing Compose-native configuration with manager rules.
+- Container stats, Container state & events, and Container logs are independent
+  history controls. Shared required inspect/event work remains enabled for
+  correct stats even when state-history persistence is Off.
+
+#### Settled Control Behavior
+
+- An overall collection preset applies to the container-observability sources,
+  not unrelated Containers settings. Explicit presets map actual child values;
+  children need not have matching labels or all Off/Low/Medium/High choices.
+- Source controls and their expanded leaf settings stay in contained cards.
+  Reuse a discrete selector style with meaningful setting-specific labels,
+  named scope choices, and a reusable exact amount/unit input for Custom storage.
+- Enabled preset values remain visible and noneditable; Custom unlocks the
+  currently displayed values. Named choices use explanatory text instead of
+  redundant fields. Card disclosure alone never changes configuration.
+- Off stops the corresponding collection, hides dependent controls and
+  preserves their preferences; Off directly to Custom restores them. An
+  explicit non-Off preset replaces previous custom values with its mapping.
+- A leaf override marks its source and overall collection profile Custom,
+  leaving siblings unchanged. Changes are staged until Save, with actual
+  effects, especially newly enabled logs, visible before saving.
+- Low logs uses activated-stack scope with 60-second backlog reads; Medium
+  uses that scope with 30-second reads; High uses all-container scope and live
+  following. Include readable stopped-container backlog. Original Docker
+  timestamps are preserved; frequency is freshness, not message sampling.
+- Existing stats targets remain Low 15s, Medium 5s, High 1s, with existing
+  activated/all-running scope mappings. High streaming preference does not
+  silently change the stats transport.
+
+#### Settled Container History Presentation
+
+- Selected-container Observability stays single-container: separate filters
+  and name navigation, vertical timeline, stacked charts and bottom records.
+- Container-specific lifecycle/health observations remain distinct from
+  overall manager action/activity history. System records are stored once
+  and projected into container timelines, not duplicated per container.
+- Grey spans represent unavailable Docker observation; red striped/highlighted
+  spans emphasize unhealthy periods. Grey uncertainty overrides red state
+  assertions across a disconnect. Labels/descriptions supplement color.
+- Track state changes rather than repeated identical events. Retain one latest
+  pre-window state baseline for context; do not invent transition times across
+  gaps or extend raw metric/log retention through that exception.
+- Desktop alignment comes first. Preserve existing basic compact access;
+  final mobile feature availability and layout remain deferred.
+
+#### Screenshot-Inspired Proposals, Not Yet Approved Widgets
+
+The references show compact label/control rows, section headings and explanatory
+text, collapsible table-summary cards, a distinct table selection/manage mode,
+and persistent subpage cards containing titles/descriptions. Some subpages use
+setup guidance or diagrams instead of a settings form. These are reusable
+presentation candidates, not authorization for setup actions, diagrams/assets,
+new tables, automatic saving, or every pictured feature.
+
+Proposed visual fit: restrained borders, clear selected/focus states, bounded
+content widths with deliberate unused space, and compact aligned value rows
+inside source cards. Exact dimensions, disclosure defaults, the use of summary
+cards, and table manage-mode behavior still need owner acceptance and browser
+verification. A cropped screenshot is not a full-display size or scroll test.
+
+#### Remaining Implementation Gates
+
+- New-install/migration defaults and concrete state/event preset mappings.
+- Custom log delivery design: the owner proposed an Off/Low/Medium/Live/Custom
+  delivery selector, with Custom poll interval 0 meaning Live and a save interval
+  shown only for Live. Terminology, save cadence, periodic flush behavior and
+  validity limits remain proposals, not settled runtime policy.
+- Measured/selected storage preset amounts, shared pressure eviction and
+  shortened-history reporting for logs versus samples.
+- Stream bounds, replay/cancellation/reconciliation, baseline cleanup and
+  collection-disable/history-retention effects.
+- Save/navigation handling of dirty forms and final reference alignment.
+
 ### Approved Presentation Cases
 
 - On 2026-11-23 the owner requested fixed navigation and side panels with
@@ -572,16 +675,18 @@ does not implement these behaviors.
   is an implementation choice, not an owner-approved exact widget dimension.
 - Settings navigation is separate from the selected category's content and
   remains usable on desktop, narrow screens, keyboard and touch.
-- Preset profiles hide Custom-only scope and interval controls; selecting
-  Custom reveals them. Editing an individual setting selects Custom.
+- The earlier hide-Custom-fields presentation is superseded for enabled value
+  settings by visible noneditable preset values, editable under Custom.
+  Editing one setting propagates Custom without resetting siblings.
 - On 2026-11-23 the owner requested Docker stats and Container logs profile
-  controls together in Metrics, each with Off/Low/Medium/High/Custom positions.
+  controls together (now Containers > Observability), each with
+  Off/Low/Medium/High/Custom source positions.
   Expanded source settings stay contained with their own selector in a
   card/panel rather than spilling into another source's controls. The overall
   selector applies the owner-approved category-wide preset described above;
-  no concrete log preset value, default,
-  migration, shared-budget or collection implementation is approved merely by
-  approving this presentation.
+  concrete log scope/delivery values were selected separately. Defaults,
+  migration, shared-budget and executed collection behavior are not established
+  merely by approving this presentation.
 - Storage targets accept B, KB, MB and GB, convert using decimal units to exact
   whole bytes, default to MB for initial setup, and reject invalid or
   overflowing amounts without saving. The unit selector appears within the
@@ -607,7 +712,8 @@ does not implement these behaviors.
   default, the timeline is vertical, metric charts are stacked, and records sit
   underneath. There is no multi-container overlay or aggregate option on this
   page. This supersedes the earlier all-container Observability presentation,
-  not aggregate Overview.   The owner clarified that filters belong in the main sidebar and container
+  not aggregate Overview. The owner clarified that filters belong in the main
+  sidebar and container
   names in a separate slimmer sidebar, and supplied an additional unscaled
   1080p desktop reference with Chrome occupying part of the screen. The
   implementation uses an on-demand read-only snapshot for names and filters,
@@ -617,7 +723,8 @@ does not implement these behaviors.
   The bottom section exposes observed lifecycle events and an explicitly
   unavailable container-log view. That presentation request did not authorize
   a new log collector; the subsequent one-hour SQLite collection direction is
-  recorded above, with consent and remaining policies still unresolved.
+  recorded above, with explicit enablement selected separately and remaining
+  default/migration/collection policies still unresolved.
 - The owner subsequently confirmed desktop-first delivery and deferred mobile
   alignment. Full desktop/mobile parity and 100% mobile feature coverage are
   not required. Basic controls and basic statistics should remain usable when
@@ -663,6 +770,14 @@ does not implement these behaviors.
   automatic collection for every configured Docker socket.
 
 ## Verification
+
+The final Settings design pass on 2026-11-23 was documentation-only, based on
+`a28b6f7` with the refinement uncommitted during validation. Contract structure,
+public/opt-in documentation builds and local links, and whitespace checks passed.
+Nine new private references were copied and byte-compared against originals.
+No runtime/UI code changed; app/browser, live Docker, container, workflow and
+security checks were not run for this pass. References and document checks do
+not verify visual fulfillment or settle the remaining implementation gates.
 
 The approved Settings/chart presentation refinement and the bounded
 authenticated timeline implementation were exercised on Linux on 2026-11-23.

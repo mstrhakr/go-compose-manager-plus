@@ -108,20 +108,21 @@ reduced advanced views to be designed later rather than requiring desktop
 parity. The next requested observability slice is container-log collection in
 the same local SQLite history store, retaining one hour, followed by an
 aggregated dashboard log view. TimescaleDB is deferred for longer metric/log
-history. Collection consent and shared log/metric storage-pressure behavior
+history. Collection defaults/migration and shared log/metric storage-pressure behavior
 remain production-collection gates under [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
 a dedicated log view and network-aware filters remain follow-up ideas.
 The owner subsequently approved beginning the Docker API implementation that
 preserves original messages and metadata. The first bounded API/SQLite
-foundation does not enable production collection or resolve the unanswered
-consent/pressure gates.
+foundation does not enable production collection or resolve the remaining
+default/migration/pressure gates.
 The owner next requested separate five-position Docker stats and Container logs
 controls under Metrics, with each source's expanded settings contained in its
 own card/panel. The owner then selected a category-wide overall preset:
-Low/Medium/High sets both sources, including enabling logs when saved; Off
-sets both Off, and individual source changes make the overall value Custom.
-Effects must be visible before Save. Concrete log preset values, migration
-defaults and Off-history effects still require refinement before implementation.
+Low/Medium/High sets the collection sources, including enabling logs when saved;
+Off disables their collection and individual source changes make the overall
+value Custom. Effects must be visible before Save. Log scope/delivery mappings
+were subsequently selected; migration defaults, state/event mappings and
+Off-history effects still require refinement before implementation.
 Individual settings reuse the selector style with meaningful setting-specific
 choices (including named scopes), optional positions and parent-dependent
 visibility. Storage presets reveal a reusable exact amount/unit input under
@@ -144,14 +145,49 @@ Existing stats collection is not changed by the streaming preference.
 Not every future setting must conform to this pattern.
 
 The owner also requested change-based container state history under LIVE-003
-alongside the log slice. State history should appear beside logs in Observability without
-repeating unchanged status events; vocabulary, reconciliation and uncertain
-timeline spans remain undecided. Update-status history remains a candidate,
-not an authorized new checker.
-The Settings category is now owner-directed as Observability rather than
-Metrics, with collection controls grouped by required API/backend work.
-Exact source separation and shared dependency enablement remain to be refined;
-existing preset/UI decisions apply to the renamed category.
+alongside the log slice. State history should appear beside logs without
+repeating unchanged status events. Separate lifecycle/health vocabulary, one
+pre-window baseline, grey observation gaps and red unhealthy areas with grey
+precedence are approved; detailed reconciliation remains open. Update-status
+history remains a candidate, not an authorized new checker.
+After considering the wider settings inventory, the owner accepted resource-first
+Settings > Containers > Observability. Stats, state/events and logs are separate
+history controls, sharing required API work without disabling stats safety
+observations when state-history persistence is Off. The
+[current design summary](../contracts/live-state.md#current-settings-design-summary)
+separates settled interactions, reference-inspired proposals and remaining gates.
+
+### Settings Organization Candidates
+
+**2026-11-23:** owner accepted the resource-first organization direction, not
+every future capability below. Sidebar group headings are organization, not
+extra navigation layers. Category-specific title/description subpage panels
+are useful where several pages exist; only actual available pages should appear.
+The candidate inventory is deliberately broader than the next implementation.
+
+| Sidebar group | Potential category | Candidate subpages/settings, not feature approval |
+| --- | --- | --- |
+| Workloads | Stacks | Discovery/registration, Compose defaults, Git/deployment, future stack observability |
+| Workloads | Containers | Observability (stats, state/events, logs), inspection/inventory options |
+| Workloads | Images & registries | Registry connections, update checks, pull/build defaults, verification/cleanup safeguards |
+| Workloads | Networks | Inventory refresh, creation/attachment defaults, resource protection, topology history |
+| Workloads | Volumes | Inventory/creation defaults, protection, supported usage and backup integration |
+| Operations | Automation | Schedules, maintenance windows, queue/concurrency, timeouts/retries, activity history |
+| Operations | Notifications & alerts | Destinations, rules, grouping/cooldowns, quiet hours |
+| Operations | Integrations | Git/CI/webhooks, authorized deployment triggers, future external monitoring/Grafana/log forwarding |
+| Administration | Users & access | Accounts/roles, authentication, sessions, possible future MFA/tokens/resource permissions |
+| Administration | Docker hosts | Connections, diagnostics/reconciliation, future host observability and remote hosts |
+| Administration | Data & retention | Shared backend/budgets, retention/downsampling, indexing/redaction, collector health |
+| Administration | Application & recovery | Manager configuration/diagnostics, backup/restore/migrations, update/self-management safeguards |
+| Personal | Interface & preferences | Theme/density, timezone, dashboard/table defaults, accessibility and compact presentation |
+
+Global Settings owns defaults and collection policies, not every selected
+resource's configuration. Shared data/retention has one owner; container/stack/
+host pages can display and link to it without independent editable copies.
+Future stack observability reuses relevant history instead of duplicating
+container collectors. Compose-native configuration remains authoritative.
+No empty future navigation, extension framework, generic remote execution,
+new runtime integration or all-feature implementation is authorized by this map.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,

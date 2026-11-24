@@ -340,6 +340,31 @@ Containers-versus-Observability hierarchy, exact dimensions, summary content or
 every displayed feature. A container-category/subpage adaptation remains to be
 selected with the owner.
 
+The owner then requested a broad future-settings inventory before selecting the
+hierarchy. The assistant compared existing product/contract scope with
+exploratory future candidates; no source-plugin capability was automatically
+adopted. The owner responded "i like it" and requested a final design pass.
+Record resource-first Settings > Containers > Observability as the accepted
+organization direction, with shared Data & retention ownership and category
+subpages where useful. The broader category list remains candidate scope, not
+approval of every feature or a fixed permanent navigation tree.
+
+Nine additional owner screenshots were saved byte-identically under the same
+ignored private reference directory, without editing originals:
+`unifi-settings-overview-top.png`, `unifi-settings-overview-lower.png`,
+`unifi-settings-table-manage.png`, `unifi-settings-table-normal.png`,
+`unifi-settings-network-controls.png`, `unifi-settings-subpage-controls.png`,
+`unifi-settings-subpage-setup.png`, `unifi-settings-subpage-diagram.png` and
+`unifi-settings-subpage-instructions.png`. Do not commit/publish these images.
+They show collapsible summary tables, normal versus checkbox-selection table
+presentations, compact label/control rows, dependent fields, and a persistent
+title/description subpage panel across form, setup and explanatory-diagram
+pages. These are visual evidence/inspiration, not copied product assets,
+approval of pictured actions or proof of dynamic saving/scroll ownership.
+The final pass consolidates settled design and marks exact dimensions,
+disclosure/manage-mode details and new widgets as proposals. Runtime code and
+browser verification were not changed by this documentation-only review.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
