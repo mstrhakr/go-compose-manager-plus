@@ -202,6 +202,14 @@ records the bounded direction and remaining interaction/content decisions.
 Tags/groups are a requested later organization feature, not required for this
 drawer slice. Global application/collection settings retain their existing owner.
 No new mutation or action/job policy is approved by selecting this UI surface.
+The owner subsequently authorized implementing the reusable base and relevant
+read-only resource information, refining as work proceeds. Stack expansion is
+explicitly removed: both inventories use the shared table, and details
+consolidate in the drawer. The existing permission-only Activate form moves
+with stack details; its backend/CSRF/eligibility rules remain unchanged.
+Overview/Configuration, interactive desktop background and a full-width
+narrow-screen dialog are bounded implementation defaults. Lifecycle actions,
+editable settings, tags/groups and final action entry points remain later work.
 
 ### Settings Organization Candidates
 

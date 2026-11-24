@@ -632,17 +632,40 @@ content. Follow the supplied UniFi references approximately for placement,
 proportions and design vocabulary; their device/network fields and capabilities
 are not standalone feature requirements or assets to ship.
 
-**Approval:** Owner-requested presentation direction on 2026-11-24. The exact
-tabs/content, background interaction, narrow-screen behavior, navigation and
-unsaved-edit handling remain to refine. This does not authorize management
+**Approval:** Owner-requested presentation direction on 2026-11-24, followed by
+explicit authorization to implement the reusable base and relevant read-only
+stack/container information, refining as implementation proceeds. A final visual
+alignment pass may follow. Overview and read-only Configuration, an interactive
+desktop background and a full-width narrow-screen dialog are implementation
+defaults for this bounded slice, not separately approved permanent policies.
+Action placement, editable settings and unsaved-edit handling remain to refine.
+During implementation the owner explicitly requested removing stack-row
+expansion: stacks and containers use the same list component, and the drawer
+is the single resource-details surface. The existing permission-only Activate
+control moves into stack details with its eligibility and POST/CSRF checks
+unchanged; it is not a new lifecycle action.
+This does not authorize management
 operations, arbitrary configuration editing or new telemetry. Tags/groups are
 requested future organization capability, explicitly deferrable from this slice.
 
 **Source provenance:** Seven owner-provided reference images, preserved unchanged
 and privately; see the [source register](../planning/sources.md).
 
-**Enforcement:** Not implemented or verified. Existing inventory/Observability
-panels do not establish this overlay behavior.
+**Enforcement:** The bounded base/read-only information slice is implemented on
+`feat/resource-details-drawer`, based on `969437b`; the unrelated owner workspace
+edit is excluded. Authenticated inventory selection matches a saved project path
+or an exact current container ID before filtering; an arbitrary path is never
+resolved as a new project. Go owns the escaped model/partial; a small JS module
+owns tabs, responsive dialog mode, request replacement/abort and focus restoration.
+Stack/container tables share the list component. The existing permission-only
+activation POST retains its backend rules.
+
+**Verification:** Linux web/runtime race suites, targeted desktop Chromium,
+WebKit and mobile/touch browser cases, Firefox cases with the disclosed local
+90-second startup budget, and the authenticated no-JS/desktop/mobile activation
+flow passed. Full-gate results and remaining platform qualifications are recorded
+in the [verification record](../verification.md#resource-details-drawer-live-004).
+This is not whole-LIVE approval or fulfillment.
 
 ## Dependencies
 
@@ -664,6 +687,9 @@ panels do not establish this overlay behavior.
 
 - Opening stack/container details on desktop overlays a right-hand drawer while
   the underlying content keeps its layout; it does not open a new layout column.
+- Stack rows do not expand into a second details surface. Both resource
+  inventories use the shared list component; keyboard-accessible name links
+  open details, with whole-row selection as a pointer enhancement.
 - Resource settings/actions must retain their owning permission and execution
   policies. Reference-only controls and deferred tags/groups are not presented
   as working capabilities merely to fill the drawer.

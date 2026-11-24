@@ -21,6 +21,17 @@ type Container struct {
 	Project string
 	Service string
 	State   string
+	Image   string
+	Status  string
+	Created int64
+	Ports   []ContainerPort
+}
+
+type ContainerPort struct {
+	IP          string
+	PrivatePort uint16
+	PublicPort  uint16
+	Type        string
 }
 
 type Snapshot struct {
@@ -73,10 +84,14 @@ func (c *Client) Snapshot(ctx context.Context) (*Snapshot, error) {
 		return nil, errors.New("Docker container list exceeds size limit")
 	}
 	var containers []struct {
-		ID     string            `json:"Id"`
-		Names  []string          `json:"Names"`
-		State  string            `json:"State"`
-		Labels map[string]string `json:"Labels"`
+		ID      string            `json:"Id"`
+		Names   []string          `json:"Names"`
+		State   string            `json:"State"`
+		Image   string            `json:"Image"`
+		Status  string            `json:"Status"`
+		Created int64             `json:"Created"`
+		Ports   []ContainerPort   `json:"Ports"`
+		Labels  map[string]string `json:"Labels"`
 	}
 	if err := json.Unmarshal(body, &containers); err != nil {
 		return nil, fmt.Errorf("decode Docker container list: %w", err)
@@ -95,7 +110,8 @@ func (c *Client) Snapshot(ctx context.Context) (*Snapshot, error) {
 		if state == "" {
 			state = "unknown"
 		}
-		entry := Container{ID: container.ID, Name: name, Project: project, Service: container.Labels["com.docker.compose.service"], State: state}
+		entry := Container{ID: container.ID, Name: name, Project: project, Service: container.Labels["com.docker.compose.service"], State: state,
+			Image: container.Image, Status: container.Status, Created: container.Created, Ports: container.Ports}
 		result.Containers = append(result.Containers, entry)
 		if project != "" {
 			result.ByProject[project] = append(result.ByProject[project], entry)

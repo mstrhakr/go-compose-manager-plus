@@ -2,36 +2,7 @@
 <div class="inventory-toolbar"><div><h1>Compose projects</h1><p>{{.Filters.Shown}} of {{.Filters.Total}} projects</p></div><a class="inventory-filter-link" href="#inventory-filter-toggle">Filters &amp; sort</a><span>{{.RuntimeMessage}}</span></div>
 {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
 {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
-<section class="list-panel inventory-panel" aria-labelledby="projects-list-title" data-column-manager="projects-title">
-  <h2 class="visually-hidden" id="projects-list-title">Projects</h2>
-  {{template "column-customizer" .ProjectColumns}}
-  <div class="inventory-columns" aria-hidden="true"><span data-column="Project">Project</span><span data-column="Discovery">Discovery</span><span data-column="Activation">Activation</span><span data-column="Containers">Containers</span></div>
-  {{if .Projects}}
-  <ul class="inventory-list">
-    {{range .Projects}}
-    <li><details class="inventory-item">
-      <summary><span class="inventory-name" data-column="Project"><span class="project-glyph" aria-hidden="true">&#9636;</span>{{.DisplayName}}</span><span data-column="Discovery"><span class="inventory-mobile-label">Discovery: </span>{{.DiscoveryStatus}}</span><span data-column="Activation"><span class="inventory-mobile-label">Activation: </span>{{.ActivationStatus}}</span><span data-column="Containers"><span class="inventory-mobile-label">Containers: </span>{{if .RuntimeName}}{{len .Containers}}{{else}}Unknown{{end}}</span></summary>
-      <div class="inventory-details">
-        <p>Folder: {{.Path}}</p>
-        {{if ne .Root $.Root}}<p>Outside the current discovery root; save its root to activate.</p>{{end}}
-        {{if .ResolutionError}}<p class="project-error">{{.ResolutionError}}</p>{{end}}
-        {{if .RuntimeError}}<p>{{.RuntimeError}}</p>{{end}}
-        {{if .RuntimeName}}
-        <p>Docker project: <strong>{{.RuntimeName}}</strong></p>
-        {{if .Containers}}<div class="list-scroll"><table class="data-table"><thead><tr><th scope="col">Container</th><th scope="col">Service</th><th scope="col">State</th></tr></thead><tbody>
-          {{range .Containers}}<tr><td>{{if .Name}}{{.Name}}{{else if .ID}}{{.ID}}{{else}}Unknown{{end}}</td><td>{{if .Service}}{{.Service}}{{else}}—{{end}}</td><td>{{.State}}</td></tr>{{end}}
-        </tbody></table></div>{{else}}<p>No matching containers in this snapshot.</p>{{end}}
-        {{else if ne $.RuntimeState "Snapshot"}}<p>Runtime status unavailable; {{$.RuntimeMessage}}</p>{{end}}
-        {{if not .Active}}<form action="/discovery/activate" method="post">
-          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}"><input type="hidden" name="path" value="{{.Path}}"><input type="hidden" name="return_to" value="/projects">
-          <button class="quiet-button" type="submit" {{if or (not .Available) .ResolutionError (ne .Root $.Root)}}disabled{{end}}>Activate</button>
-        </form>{{end}}
-      </div>
-    </details></li>
-    {{end}}
-  </ul>
-  {{else}}<div class="list-empty">{{if .Filters.Total}}No projects match these filters.{{else}}No projects discovered. Set a discovery root and scan from the overview.{{end}}</div>{{end}}
-</section>
+<div class="inventory-panel">{{template "list-panel" .ProjectList}}</div>
 <p class="inventory-footnote">Availability reflects the last successful scan. Projects sharing a Compose name show the same containers; this does not establish ownership.</p>
 {{end}}
 

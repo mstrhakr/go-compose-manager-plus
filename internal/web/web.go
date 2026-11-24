@@ -41,13 +41,14 @@ type pageData struct {
 	MetricsStatus        string
 	Metrics              []metricPanel
 	Containers           listPanel
-	ProjectColumns       listPanel
+	ProjectList          listPanel
 	Filters              inventoryFilters
 	SubviewNav           viewNavigation
 	MetricsSettings      metricsSettingsForm
 	MetricsPresets       []metricsProfilePreset
 	CollectionStatusText string
 	CollectionWarning    string
+	ResourceDetails      *resourceDetails
 }
 
 type projectView struct {
@@ -55,6 +56,7 @@ type projectView struct {
 	DisplayName  string
 	RuntimeName  string
 	RuntimeError string
+	DetailsHref  string
 	Containers   []runtime.Container
 }
 

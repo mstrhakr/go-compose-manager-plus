@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { mkdtemp, mkdir, writeFile, unlink, rmdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 
 test('unauthenticated home opens the login view without horizontal overflow', async ({ page }) => {
   await page.goto('/');
@@ -238,16 +238,16 @@ test('first login forces password setup before protected dashboard and works on 
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page.getByText('No projects match these filters.')).toBeVisible();
     await page.getByRole('link', { name: 'Clear filters' }).click();
-    const projectRow = page.locator('.inventory-item').filter({ hasText: project });
-    const projectSummary = projectRow.locator('summary');
-    await projectSummary.focus();
+    const projectRow = page.getByRole('row').filter({ hasText: basename(project) });
+    await projectRow.getByRole('link', { name: basename(project), exact: true }).focus();
     await page.keyboard.press('Enter');
-    await expect(projectRow).toHaveAttribute('open', '');
-    await expect(projectRow.getByText('Runtime status unavailable', { exact: false })).toBeVisible();
-    await projectRow.getByRole('button', { name: 'Activate' }).click();
+    const projectDetails = page.getByRole('dialog', { name: basename(project), exact: true });
+    await expect(projectDetails).toBeVisible();
+    await expect(projectDetails).toContainText('Docker status unavailable');
+    await projectDetails.getByRole('button', { name: 'Activate' }).click();
     await expect(page).toHaveURL(/\/projects$/);
     await expect(page.getByRole('status')).toContainText('No Compose operation was performed');
-    await expect(projectRow.locator('summary')).toContainText('Active');
+    await expect(projectRow).toContainText('Active');
     await page.getByRole('link', { name: 'Overview', exact: true }).click();
     await page.getByRole('button', { name: 'Refresh Docker status' }).click();
     await expect(page.getByText('Docker status unavailable: no socket configured.').first()).toBeVisible();
@@ -365,19 +365,19 @@ test('first login forces password setup before protected dashboard and works on 
       const projectColumns = themedPage.locator('[data-column-manager="projects-title"]');
       await projectColumns.locator('[data-column-controls] summary').click();
       await projectColumns.getByLabel('Activation', { exact: true }).uncheck();
-      await expect(projectColumns.locator('.inventory-item summary > [data-column="Activation"]')).toBeHidden();
+      await expect(projectColumns.locator('tbody [data-column="Activation"]')).toBeHidden();
       await themedPage.reload();
-      await expect(projectColumns.locator('.inventory-item summary > [data-column="Activation"]')).toBeHidden();
+      await expect(projectColumns.locator('tbody [data-column="Activation"]')).toBeHidden();
       await projectColumns.locator('[data-column-controls] summary').click();
       await projectColumns.getByRole('button', { name: 'Restore defaults' }).click();
-      await expect(projectColumns.locator('.inventory-item summary > [data-column="Activation"]')).toBeVisible();
+      await expect(projectColumns.locator('tbody [data-column="Activation"]')).toBeVisible();
       await projectColumns.locator('[data-column-controls] summary').click();
       const filters = themedPage.locator('.inventory-filter-disclosure');
       for (const width of [1024, 901, 621]) {
         await themedPage.setViewportSize({ width, height: 900 });
         expect(await themedPage.evaluate(() => {
           const panel = document.querySelector('.inventory-panel').getBoundingClientRect();
-          const elements = document.querySelectorAll('.inventory-columns, .inventory-columns > span, .inventory-item summary, .inventory-item summary > span');
+          const elements = document.querySelectorAll('.inventory-panel .list-scroll');
           return document.documentElement.scrollWidth <= window.innerWidth &&
             [...elements].every(element => {
               const rect = element.getBoundingClientRect();
@@ -444,10 +444,12 @@ test('first login forces password setup before protected dashboard and works on 
       await touchPage.getByRole('button', { name: 'Apply filters' }).tap();
       await expect(touchPage.getByText('No projects match these filters.')).toBeVisible();
       await touchPage.getByRole('link', { name: 'Clear filters' }).tap();
-      const touchRow = touchPage.locator('.inventory-item').filter({ hasText: project });
-      await touchRow.locator('summary').tap();
-      await expect(touchRow).toHaveAttribute('open', '');
+      const touchRow = touchPage.getByRole('row').filter({ hasText: basename(project) });
+      await touchRow.getByRole('link', { name: basename(project), exact: true }).tap();
+      const touchDetails = touchPage.getByRole('dialog', { name: basename(project), exact: true });
+      await expect(touchDetails).toBeVisible();
       expect(await touchPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await touchDetails.getByRole('link', { name: 'Close details' }).tap();
       await touchPage.getByRole('link', { name: 'Containers', exact: true }).tap();
       await expect(touchPage.locator('.list-empty')).toContainText('Docker status unavailable');
       await touchPage.getByRole('navigation', { name: 'Container views' }).getByRole('link', { name: 'Observability' }).tap();

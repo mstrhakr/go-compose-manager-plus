@@ -385,6 +385,24 @@ interactive background behavior, dimensions and editing/navigation policy are
 not approved merely by the references. LIVE-004 records this bounded direction;
 no private images or pictured device data are published or shipped.
 
+The owner subsequently authorized implementation of the reusable component
+base and relevant read-only stack/container details, refining as work proceeds.
+An Actions tab was tentative, not approved; quicker table/overflow entry points
+remain candidates for the later management slice. Interactive desktop background,
+full-width narrow-screen dialog and Overview/Configuration tabs are implementation
+defaults within the read-only slice, not additional owner decisions.
+The owner then explicitly requested removing stack-list expansion and using
+the same component as the container list. Details consolidate in the drawer;
+the existing permission-only Activate form retains its backend/CSRF/eligibility
+rules rather than being dropped or replaced with a lifecycle action.
+
+The owner also reported the first post-merge main CI failure: macOS Intel
+`TestChartSeriesLargeHistory` exceeded its 30-second context. Its diagnostic
+screenshot is saved unchanged and SHA-256 verified privately as
+`scratch/ui-references/main-ci-macos-intel-chart-history-deadline.png`.
+Investigating and correcting that regression is explicitly included in this branch;
+the screenshot alone does not establish a root cause or authorize timeout inflation.
+
 The owner then requested a broad future-settings inventory before selecting the
 hierarchy. The assistant compared existing product/contract scope with
 exploratory future candidates; no source-plugin capability was automatically

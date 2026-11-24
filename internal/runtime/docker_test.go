@@ -39,7 +39,7 @@ func TestSnapshotGroupsAllContainerStatesByComposeName(t *testing.T) {
 			t.Fatalf("unexpected Docker request: %s %s", request.Method, request.URL)
 		}
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(`[
-			{"Names":["/first"],"State":"running","Labels":{"com.docker.compose.project":"shared","com.docker.compose.service":"web"}},
+			{"Names":["/first"],"State":"running","Image":"example/web:latest","Status":"Up 2 hours (healthy)","Created":1795500000,"Ports":[{"IP":"::","PrivatePort":8080,"PublicPort":18080,"Type":"tcp"}],"Labels":{"com.docker.compose.project":"shared","com.docker.compose.service":"web","private":"do-not-display"}},
 			{"Names":["/second"],"State":"exited","Labels":{"com.docker.compose.project":"shared","com.docker.compose.service":"db"}},
 			{"Names":["/other"],"State":"running","Labels":{"com.docker.compose.project":"other"}},
 			{"Names":["/unmanaged"],"State":"running","Labels":{}}
@@ -53,6 +53,11 @@ func TestSnapshotGroupsAllContainerStatesByComposeName(t *testing.T) {
 		got.ByProject["shared"][0].Service != "web" || got.ByProject["shared"][0].State != "running" ||
 		got.ByProject["shared"][1].State != "exited" || len(got.ByProject["other"]) != 1 || got.Containers[3].Project != "" {
 		t.Fatalf("unexpected snapshot: %#v", got)
+	}
+	first := got.Containers[0]
+	if first.Image != "example/web:latest" || first.Status != "Up 2 hours (healthy)" || first.Created != 1795500000 ||
+		len(first.Ports) != 1 || first.Ports[0] != (ContainerPort{IP: "::", PrivatePort: 8080, PublicPort: 18080, Type: "tcp"}) {
+		t.Fatalf("missing read-only list metadata: %#v", first)
 	}
 }
 

@@ -29,11 +29,12 @@ type chartPanel struct {
 }
 
 type listRow struct {
-	Value     string
-	Label     string
-	Cells     []string
-	Indicator string
-	Disabled  bool
+	Value       string
+	Label       string
+	Cells       []string
+	Indicator   string
+	Disabled    bool
+	DetailsHref string
 }
 
 type listPanel struct {
