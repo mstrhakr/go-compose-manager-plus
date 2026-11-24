@@ -25,6 +25,20 @@ type metricsSettingsForm struct {
 	Revision  string
 }
 
+type metricsProfilePreset struct {
+	Profile    metrics.Profile
+	Label      string
+	Scope      metrics.CollectionScope
+	ScopeLabel string
+	Interval   time.Duration
+}
+
+var metricsProfilePresets = [...]metricsProfilePreset{
+	{metrics.ProfileLow, "Low", metrics.ScopeActivated, "Activated stacks", 15 * time.Second},
+	{metrics.ProfileMedium, "Medium", metrics.ScopeActivated, "Activated stacks", 5 * time.Second},
+	{metrics.ProfileHigh, "High", metrics.ScopeAll, "All running containers", time.Second},
+}
+
 func formFromMetricsSettings(settings metrics.Settings) metricsSettingsForm {
 	if settings.Revision == 0 {
 		return metricsSettingsForm{Profile: string(metrics.ProfileLow), Scope: string(metrics.ScopeActivated), Interval: "15s", LimitUnit: "MB", Revision: "0"}
@@ -122,6 +136,12 @@ func (server *authServer) renderMetricsSettings(w http.ResponseWriter, r *http.R
 	if runes := []rune(user.Username); len(runes) != 0 {
 		initial = strings.ToUpper(string(runes[0]))
 	}
+	for _, preset := range metricsProfilePresets {
+		if string(preset.Profile) == form.Profile {
+			form.Scope, form.Interval = string(preset.Scope), preset.Interval.String()
+			break
+		}
+	}
 	status := server.collector.Status()
 	statusText := "Disabled; no background metrics collection is running."
 	if status.Enabled {
@@ -141,6 +161,7 @@ func (server *authServer) renderMetricsSettings(w http.ResponseWriter, r *http.R
 	}
 	server.render(w, pageData{Title: "Settings", View: "settings", Username: user.Username, Initial: initial,
 		CSRFToken: nosurf.Token(r), MetricsSettings: form, CollectionStatusText: statusText,
+		MetricsPresets:    metricsProfilePresets[:],
 		CollectionWarning: collectionHistoryWarning(status.Evictions), Error: problem, Notice: notice})
 }
 
@@ -175,33 +196,30 @@ func (server *authServer) saveMetricsSettings(w http.ResponseWriter, r *http.Req
 		return
 	}
 	profile := metrics.Profile(form.Profile)
-	switch profile {
-	case metrics.ProfileLow, metrics.ProfileMedium, metrics.ProfileHigh, metrics.ProfileCustom:
-	default:
-		fail("Choose a valid metrics profile.")
-		return
-	}
-	if limit != current.StorageLimit {
-		profile = metrics.ProfileCustom
-	}
 	settings := metrics.Settings{Profile: profile, StorageLimit: limit, Revision: revision}
-	switch settings.Profile {
-	case metrics.ProfileLow:
-		settings.Scope, settings.Interval = metrics.ScopeActivated, 15*time.Second
-	case metrics.ProfileMedium:
-		settings.Scope, settings.Interval = metrics.ScopeActivated, 5*time.Second
-	case metrics.ProfileHigh:
-		settings.Scope, settings.Interval = metrics.ScopeAll, time.Second
-	case metrics.ProfileCustom:
+	if profile == metrics.ProfileCustom {
 		settings.Scope = metrics.CollectionScope(form.Scope)
 		settings.Interval, err = time.ParseDuration(form.Interval)
 		if err != nil || settings.Interval <= 0 || (settings.Scope != metrics.ScopeActivated && settings.Scope != metrics.ScopeAll) {
 			fail("Choose a valid custom scope and a positive duration such as 5s.")
 			return
 		}
-	default:
-		fail("Choose a valid metrics profile.")
-		return
+	} else {
+		found := false
+		for _, preset := range metricsProfilePresets {
+			if preset.Profile == profile {
+				settings.Scope, settings.Interval = preset.Scope, preset.Interval
+				found = true
+				break
+			}
+		}
+		if !found {
+			fail("Choose a valid metrics profile.")
+			return
+		}
+	}
+	if limit != current.StorageLimit {
+		settings.Profile = metrics.ProfileCustom
 	}
 	if form.Enabled && server.docker == nil {
 		fail("Configure a Docker socket before enabling metrics collection.")

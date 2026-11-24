@@ -43,6 +43,7 @@ type pageData struct {
 	Filters              inventoryFilters
 	SubviewNav           viewNavigation
 	MetricsSettings      metricsSettingsForm
+	MetricsPresets       []metricsProfilePreset
 	CollectionStatusText string
 	CollectionWarning    string
 }

@@ -82,7 +82,7 @@ func TestMetricsSettingsAuthenticatedConfiguration(t *testing.T) {
 		t.Fatalf("save = %d %q", response.Code, response.Body.String())
 	}
 	saved, err := store.Load(ctx)
-	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileCustom || saved.Scope != metrics.ScopeActivated || saved.Interval != 15*time.Second || saved.StorageLimit != 10485760 || saved.Revision != 1 {
+	if err != nil || saved.Enabled || saved.Profile != metrics.ProfileCustom || saved.Scope != metrics.ScopeAll || saved.Interval != time.Second || saved.StorageLimit != 10485760 || saved.Revision != 1 {
 		t.Fatalf("saved = %#v, %v", saved, err)
 	}
 	enable := url.Values{"profile": {"custom"}, "scope": {"activated"}, "interval": {"15s"}, "storage_limit": {"10.48576"}, "storage_unit": {"MB"}, "revision": {"1"}, "enabled": {"true"}}
