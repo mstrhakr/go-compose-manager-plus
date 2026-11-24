@@ -386,8 +386,8 @@ circle.chart-line { fill: currentColor; stroke: none; }
 .timeline-rail { --timeline-anchor: min(72px, 12%); position: relative; flex: 1; min-height: 0; margin: 8px -8px 0; overflow: hidden; touch-action: none; cursor: grab; }
 .timeline-rail:active { cursor: grabbing; }
 .timeline-rail:has(.timeline-slider:focus-visible) { outline: 2px solid var(--blue); outline-offset: -2px; }
-.timeline-selected-time { position: absolute; top: var(--timeline-anchor); left: 12px; z-index: 6; max-width: calc(100% - 24px); padding: 4px 7px; transform: translateY(-50%); overflow: hidden; color: #fff; background: #0067d6; border-radius: 4px; font-size: 10px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; box-shadow: 0 2px 6px #007bff30; }
-.timeline-latest { position: absolute; right: 12px; bottom: 12px; z-index: 7; display: grid; place-items: center; width: 28px; height: 28px; min-height: 28px; padding: 0; color: #fff; background: var(--blue); border: 1px solid var(--blue); border-radius: 50%; font-size: 21px; line-height: 1; cursor: pointer; }
+.timeline-selected-time { position: absolute; top: var(--timeline-anchor); left: 12px; z-index: 6; max-width: calc(100% - 24px); padding: 4px 7px; transform: translateY(-50%); overflow: hidden; color: #fff; background: #0067d6; border-radius: 4px; font-size: 10px; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; text-overflow: ellipsis; box-shadow: 0 2px 6px #007bff30; }
+.timeline-latest { position: absolute; right: 12px; bottom: 12px; z-index: 7; display: grid; place-items: center; width: 28px; height: 28px; min-height: 28px; padding: 0; color: #fff; background: #0067d6; border: 1px solid #0067d6; border-radius: 50%; font-size: 21px; line-height: 1; cursor: pointer; }
 .timeline-latest[hidden] { display: none; }
 .timeline-selection { position: absolute; top: var(--timeline-anchor); left: 0; right: 0; z-index: 5; border-top: 2px solid var(--blue); pointer-events: none; }
 .timeline-selection[hidden] { display: none; }
@@ -405,7 +405,7 @@ circle.chart-line { fill: currentColor; stroke: none; }
 .observability-workspace .timeline-marker .timeline-dot { position: absolute; left: 0; top: 12px; width: 10px; height: 10px; transform: translateY(-50%); background: var(--timeline-event-color, var(--blue)); border: 0; box-shadow: none; }
 .observability-workspace .timeline-marker .timeline-badge { position: absolute; top: 0; left: 18px; display: grid; place-items: center; width: 24px; height: 24px; color: var(--blue); background: var(--blue-soft); border: 0; border-radius: 3px; box-shadow: none; font-size: 11px; font-weight: 650; }
 .observability-workspace .timeline-marker:not(.timeline-cluster) .timeline-badge::after { width: 13px; height: 13px; border: 1px solid currentColor; border-radius: 50%; content: ''; background: radial-gradient(circle, transparent 3px, currentColor 3px 4px, transparent 4px); }
-.observability-workspace .timeline-marker:hover .timeline-badge, .observability-workspace .timeline-marker:focus-visible .timeline-badge { color: #fff; background: var(--blue); }
+.observability-workspace .timeline-marker:hover .timeline-badge, .observability-workspace .timeline-marker:focus-visible .timeline-badge { color: #fff; background: #0067d6; }
 .observability-workspace .timeline-slider { min-height: 0; margin: 0; }
 .timeline-tooltip { position: fixed; z-index: 100; max-width: min(340px, calc(100vw - 16px)); padding: 8px 10px; color: #f3f5f8; background: #292c31; border-radius: 4px; box-shadow: 0 2px 8px #0003; font-size: 11px; pointer-events: none; }
 :root[data-theme="dark"] .observability-workspace .timeline-panel { background: var(--bg); }

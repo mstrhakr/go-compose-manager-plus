@@ -1552,3 +1552,23 @@ visible viewport, and its no-JavaScript assertion checks the disabled control.
 The entire authenticated desktop/touch flow then passed at the default
 30-second test timeout. This was an obsolete test interaction, not a reason to
 make the hidden keyboard control pointer-interactive.
+
+Copilot review identified a reconnect interleaving: a sampling observation
+captured before a shared gap could be discarded and still allow the cycle to
+close that gap. A deterministic regression reproduced the closed gap with no
+fresh reconnect observation, including a newer state from the other writer.
+Gap-related rejection now reports incomplete reconciliation before stale-cache
+filtering. Shared-gap opening uses the same persistence lock as reconciliation,
+so a disconnect cannot slip between observation validation and gap closure.
+Focused race checks cover the rejected cycle and a later genuinely observed
+recovery, shared sparse writers, commit acknowledgement and snapshot recovery.
+
+The review also corrected selected-time badge hit testing and dark-theme filled
+control contrast. Four browser projects passed the actual badge hover and
+measured foreground/background contrast checks (4.5:1 for the hovered count,
+3:1 for the return icon), along with scrolling, grouping and gap tooltips.
+The first added tooltip assertion incorrectly assumed a four-digit year; the
+corrected check verifies the title matches the full accessible timestamp.
+New generated screenshots preserve both themes and the disconnection hover.
+Hosted CI passed all gates at `aaf57a3`, before these review follow-ups; final
+revision results remain a separate delivery gate.

@@ -107,6 +107,21 @@ test('timeline scrolls under a fixed cursor, splits clusters with zoom, and expl
     }).sort((a, b) => a.top - b.top));
   for (let index = 1; index < badges.length; index++) expect(badges[index].top).toBeGreaterThanOrEqual(badges[index - 1].bottom);
   await capture('split-three-and-three');
+  await timeline.locator('[data-timeline-output]').hover();
+  await expect(timeline.locator('[data-timeline-output]')).toHaveAttribute('title', await slider.getAttribute('aria-valuetext'));
+  const group = timeline.locator('[data-timeline-group]').first();
+  await group.hover();
+  const contrastRatio = control => control.evaluate(element => {
+    const luminance = color => color.match(/\d+/g).slice(0, 3).map(Number).map(value => {
+      const channel = value / 255;
+      return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, channel, index) => sum + channel * [0.2126, 0.7152, 0.0722][index], 0);
+    const style = getComputedStyle(element);
+    const values = [luminance(style.color), luminance(style.backgroundColor)].sort((a, b) => b - a);
+    return (values[0] + 0.05) / (values[1] + 0.05);
+  });
+  expect(await contrastRatio(group.locator('.timeline-badge'))).toBeGreaterThanOrEqual(4.5);
+  expect(await contrastRatio(timeline.getByRole('button', { name: 'Select end of displayed hour' }))).toBeGreaterThanOrEqual(3);
   const selected = await timeline.getAttribute('data-selected');
   await timeline.locator('[data-timeline-group]').first().press('Enter');
   await expect(zoom).toHaveValue('5');
