@@ -129,6 +129,8 @@ Custom; concrete default sizes remain undecided. Off preserves saved child
 preferences for restoration under Custom. Every preset must show its concrete
 effects through visible noneditable value controls, editable under Custom;
 named choices use explanatory text. Off collapses dependent controls.
+Custom unlocks currently displayed preset values rather than restoring a
+separately remembered custom configuration; Off alone preserves preferences.
 Not every future setting must conform to this pattern.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and

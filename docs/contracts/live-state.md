@@ -227,9 +227,13 @@ Custom. Prefer read-only controls where supported so values remain focusable and
 copyable; controls without read-only support use a readable summary. Named scope
 choices use an explanation rather than a redundant value field. Off collapses
 dependent controls and shows "Not collecting" for a disabled collection source.
-Expanding a card alone does not change saved settings. How individual-setting changes propagate
-Custom through source/category presets and how custom values survive explicit
-preset changes remain to be refined; Off preservation is settled separately.
+Expanding a card alone does not change saved settings. The owner selected
+"unlock-current" when moving from an explicit preset to Custom: Custom starts
+from the values currently displayed by that preset, not a separately remembered
+earlier custom configuration. Explicit preset selection replaces earlier custom
+values; Off alone still preserves preferences as approved above. How
+individual-setting changes propagate Custom through source/category presets
+remains to be refined.
 
 The existing storage-pressure owner evicts
 metric samples only, so production capture requires an explicit shared-budget policy

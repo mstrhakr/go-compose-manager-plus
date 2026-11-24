@@ -221,6 +221,12 @@ named scope choices use explanatory text without a redundant field. Off still
 collapses dependent controls, with a "Not collecting" source summary. This
 settles the earlier subtext-versus-value-control presentation proposal.
 
+The owner selected "unlock-current" for returning to Custom after an explicit
+preset: unlock the currently displayed preset values rather than restoring a
+separate earlier custom configuration. Explicit preset selection replaces prior
+custom values; disabling via Off alone continues to preserve preferences.
+Nested individual-setting/source/category Custom propagation remains open.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
