@@ -1474,3 +1474,38 @@ The precise cause of the owner's intermittent Observability hang and every
 deployed duplicate record has not been traced on their host. Query reproduction
 and shared-cache regressions establish narrower fixes; they do not prove every
 deployment issue resolved or authorize destructive database cleanup.
+
+### Timeline And Page Evidence
+
+The blue cursor now stays fixed within the rail while ticks, state spans and
+markers move beneath it. Zoom-dependent nonoverlapping count badges split a
+six-record cluster into two groups of three. Maximum zoom explains how to use
+the records list for coincident events. Gap hover/focus describes unavailable
+observation with local date/time bounds, and Escape dismisses it without
+requiring keyboard focus inside the timeline. No live refresh was added.
+
+Generated light/dark panels and a full dark hover capture were opened and
+compared with the private references after multiple visual passes. Corrections
+included panel/axis geometry, the horizontal zoom capsule, dark panel background,
+opaque grey hatching over unhealthy striping, a genuinely round return button
+and readable selected-time contrast. The one-hour label, honest snapshot
+"Latest" wording and darker accessible blue intentionally differ from references.
+No numerical visual-similarity percentage was measured.
+
+Focused Chromium, Firefox, WebKit and mobile Chromium checks exercised scrolling,
+dragging, fixed positioning, clustering, coincident events at maximum zoom,
+keyboard/fractional-time synchronization, production CSP, fragment initialization
+and no-JavaScript navigation. The four-project run passed 15/16; its remaining
+mobile assertion incorrectly compared screen coordinates across automatic page
+scrolling. After switching to rail-relative coordinates, that complete mobile
+case passed. The older standalone component fixture was also updated to the
+current timeline contract. Firefox needed a 90-second test budget on this host.
+
+History reads share a five-second context budget after Docker snapshot loading.
+Snapshot identities and an explicit alert survive unavailable history/settings;
+the focused web race regression passed. The subsequent full Go attempt again
+hit the baseline activation deadline, then exhausted the metrics package's
+ten-minute suite budget while executing SQLite filesystem synchronization.
+Other Go packages passed. This remains failed local full-suite evidence.
+Node/HTTP tests, docs variants/links and dependency checks passed separately;
+final hosted checks remain required.

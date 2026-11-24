@@ -852,6 +852,15 @@ establish real driver continuity or physical disk-full recovery.
   implemented; advanced views may later be simplified, truncated or disabled.
   Exact mobile feature availability remains a later decision. This direction
   does not authorize implementing Up/Down effects or disabling existing views.
+- On 2026-11-24 the owner clarified the supplied timeline references: the blue
+  selected-time marker stays fixed while time ticks, observed events and state
+  spans scroll beneath it. Nearby event badges group to avoid overlap and
+  separate dynamically as zoom increases. Hover detail includes the recorded
+  unavailable-observation interval, not an invented container-offline event.
+  Wheel, pointer/touch and keyboard access must preserve chart synchronization.
+  The reference's 24-hour label does not expand the approved one-hour retention,
+  authorize network-management features or imply a new live-refresh transport.
+  Private image provenance is recorded in the [source register](../planning/sources.md).
 
 ### Proposed Cases Requiring Review And Eventual Execution-Based Checks
 

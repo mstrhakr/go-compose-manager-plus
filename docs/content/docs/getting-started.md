@@ -110,13 +110,22 @@ apply filters in the first sidebar, and select a name in the second sidebar.
 The first filtered container is selected by default. The vertical timeline
 and stacked charts share the selected time; selecting an observed event also
 moves that selection. Missing observations remain gaps, not zero values.</p>
-<p>The blue time label follows your selection and shows local time. Hover
-<strong>Selected time</strong> for the date, time zone and any fractional seconds;
-the slider's accessible value includes those details for screen readers.
-Event rows display UTC explicitly. Use the arrow at the bottom of the timeline
-to return all charts to the end of the displayed hour; this does not start
-live following or refresh the page. Keyboard users can use the arrow keys,
-Home and End on the slider.</p>
+<p>The blue selection line stays in place while time ticks, event markers and
+state bands move beneath it. Scroll over the timeline or drag its empty rail
+to browse earlier observations; click or tap an empty point to select its time.
+The minus, slider and plus controls change zoom without extending the retained
+hour. Nearby records share a count badge to avoid overlapping labels; zoom in
+or select the badge to separate them. Individual event markers and event rows
+also select a time.</p>
+<p>The blue badge shows local time, or <strong>Latest</strong> at the end of the
+displayed snapshot. Hover <strong>Selected time</strong> for the date, time zone
+and any fractional seconds; the time slider's accessible value includes those
+details for screen readers. Event rows display UTC explicitly. Hover or focus
+a marker or state band for its description and recorded time range; Escape
+dismisses the detail. Use the round arrow at the bottom to return all charts to
+the end of the displayed hour. This does not start live following or refresh
+the page. Keyboard users can use arrow keys, Home, End, Page Up and Page Down
+on the selected-time slider.</p>
 <p>The records area contains state/event history and
 <strong>Container logs</strong>. Log records show Docker time, stream and
 message text. Stderr is a stream, not an inferred severity; application JSON
@@ -149,6 +158,12 @@ target and available disk space; do not delete the state volume to reset a
 chart. If the layout itself is broken after an upgrade, check the
 <a href="../deployment/">reverse proxy caching guidance</a> before changing
 collection settings.</p>
+<p>Observability allows five seconds for its stored-history reads after obtaining
+the Docker snapshot. If retained container identities cannot be read, it shows
+an explicit warning and keeps available snapshot names; charts, logs or state
+history may also be unavailable. Refresh after checking collection status.
+Previously recorded duplicate state rows are not deleted by an upgrade; normal
+retention removes old in-window rows.</p>
 
 ## Configuration
 

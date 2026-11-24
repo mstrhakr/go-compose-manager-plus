@@ -115,15 +115,23 @@ test('timeline markers and keyboard selection stay synchronized with every chart
   }
   await page.evaluate(() => {
     const timeline = document.createElement('div');
-    timeline.className = 'observability-timeline';
+    timeline.className = 'observability-timeline observability-workspace';
     timeline.dataset.timeline = '';
     timeline.dataset.start = '1000';
     timeline.dataset.end = '4000';
     timeline.dataset.selected = '4000';
     timeline.innerHTML = `<section class="timeline-panel">
       <label for="timeline-fixture">Selected time <output data-timeline-output for="timeline-fixture">Initial</output></label>
+      <div data-timeline-zoom-controls hidden><input type="range" min="0" max="6" value="0" data-timeline-zoom aria-label="Timeline zoom"></div>
+      <div class="timeline-rail" data-timeline-viewport>
+      <div class="timeline-axis" data-timeline-axis></div>
+      <div class="timeline-track">
+        <button type="button" class="timeline-marker" data-timeline-marker data-timeline-select="2000" data-position="33.333" aria-label="Start event"></button>
+      </div>
+      <span data-timeline-cursor hidden></span>
       <input id="timeline-fixture" type="range" min="1000" max="4000" step="1000" value="4000" data-timeline-slider aria-label="Selected time in the last hour">
-      <button type="button" data-timeline-marker data-timeline-select="2000" data-position="33.333" aria-label="Start event"></button>
+      </div>
+      <div data-timeline-tooltip role="tooltip" hidden></div>
     </section>
     <section class="timeline-events">
       <button type="button" class="timeline-event" data-timeline-select="2000" aria-label="Select event at 2000">Start event</button>
@@ -135,7 +143,7 @@ test('timeline markers and keyboard selection stay synchronized with every chart
   const timeline = page.locator('[data-timeline]');
   const slider = timeline.getByLabel('Selected time in the last hour');
   await expect(slider).toHaveValue('4000');
-  expect(await timeline.locator('[data-timeline-marker]').evaluate(element => element.style.left)).toBe('33.333%');
+  expect(await timeline.locator('[data-timeline-marker]').evaluate(element => parseFloat(element.style.top))).toBeGreaterThan(0);
 
   if (testInfo.project.name === 'mobile-chromium') {
     await timeline.getByRole('button', { name: 'Start event' }).tap();

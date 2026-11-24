@@ -159,24 +159,28 @@
       {{else if eq .View "containers"}}
       {{template "containers-page" .}}
       {{else if eq .View "observability"}}
+      {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
       <div class="workspace-toolbar">
         <div><h1>Container observability</h1><p>{{range .ObservedContainers}}{{if .Current}}{{.Label}} · {{end}}{{end}}Last hour · single-container history</p></div>
         <span class="toolbar-pill">Collection <span>{{.MetricsStatus}}</span></span>
       </div>
       <div class="observability-timeline observability-workspace" data-container="{{.SelectedContainer}}" data-timeline data-timeline-vertical data-start="{{.Timeline.Start}}" data-end="{{.Timeline.End}}" data-selected="{{.Timeline.SelectedTime}}">
       <section class="timeline-panel" aria-labelledby="observability-timeline-title">
-        <h2 id="observability-timeline-title">Last hour</h2>
-        <label class="timeline-caption" data-timeline-caption for="observability-time" title="{{.Timeline.EndLabel}}">Selected time</label>
-        <div class="timeline-rail">
+        <h2 id="observability-timeline-title">Last hour ({{len .Timeline.Events}} records)</h2>
+        <div class="timeline-zoom" data-timeline-zoom-controls hidden><button type="button" data-timeline-zoom-out aria-label="Zoom out timeline">−</button><input type="range" min="0" max="6" step="1" value="0" data-timeline-zoom aria-label="Timeline zoom"><button type="button" data-timeline-zoom-in aria-label="Zoom in timeline">+</button></div>
+        <label class="visually-hidden" for="observability-time">Selected time in the last hour</label>
+        <div class="timeline-rail" data-timeline-viewport>
         <output class="timeline-selected-time" data-timeline-output for="observability-time" title="{{.Timeline.EndLabel}}">{{.Timeline.EndClock}}</output>
         <div class="timeline-selection" data-timeline-cursor aria-hidden="true" hidden></div>
-        <div class="timeline-axis" aria-hidden="true"><span>Now</span><span>−15m</span><span>−30m</span><span>−45m</span><span>−60m</span></div>
+        <div class="timeline-axis" data-timeline-axis aria-hidden="true"></div>
         <div class="timeline-track" role="group" aria-label="Observed container events and state">
+          <span class="timeline-track-past" aria-hidden="true"></span>
           {{range .Timeline.StateSpans}}<span class="timeline-span timeline-span-{{.Kind}}" data-timeline-span="{{.Kind}}" data-span-start="{{printf "%.3f" .StartPosition}}" data-span-height="{{printf "%.3f" .SpanHeight}}" role="img" aria-label="{{.Label}}" title="{{.Label}}" hidden></span>{{end}}
-          {{range .Timeline.Events}}<button class="timeline-marker" type="button" data-timeline-select="{{.Time}}" data-timeline-marker data-position="{{printf "%.3f" .Position}}" data-kind="{{.Kind}}" aria-label="Select {{.Description}} at {{.TimeLabel}} for {{.Container}}" title="{{.Description}} · {{.Container}} · {{.TimeLabel}}"><span aria-hidden="true"></span></button>{{end}}
+          {{range .Timeline.Events}}<button class="timeline-marker" type="button" data-timeline-select="{{.Time}}" data-timeline-marker data-position="{{printf "%.3f" .Position}}" data-kind="{{.Kind}}" aria-label="Select {{.Description}} at {{.TimeLabel}} for {{.Container}}" data-timeline-description="{{.Description}} · {{.TimeLabel}}" hidden><span class="timeline-dot" aria-hidden="true"></span><span class="timeline-badge" aria-hidden="true"></span></button>{{end}}
         </div>
-        <input id="observability-time" class="timeline-slider" type="range" min="{{.Timeline.Start}}" max="{{.Timeline.End}}" step="1000" value="{{.Timeline.SelectedTime}}" data-timeline-slider aria-label="Selected time in the last hour" aria-orientation="vertical">
+        <input id="observability-time" class="timeline-slider visually-hidden" type="range" min="{{.Timeline.Start}}" max="{{.Timeline.End}}" step="1000" value="{{.Timeline.SelectedTime}}" data-timeline-slider aria-label="Selected time in the last hour" aria-orientation="vertical" disabled>
         </div>
+        <div class="timeline-tooltip" data-timeline-tooltip role="tooltip" hidden></div>
         <button class="timeline-latest" type="button" data-timeline-latest data-timeline-select="{{.Timeline.End}}" aria-label="Select end of displayed hour" title="Return to the end of this displayed hour" hidden><span aria-hidden="true">&#8593;</span></button>
       </section>
       <div class="observability-detail">

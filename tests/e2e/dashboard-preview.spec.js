@@ -38,6 +38,98 @@ function serveObservability(route) {
   });
 }
 
+test('timeline scrolls under a fixed cursor, splits clusters with zoom, and explains observation gaps', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1024 });
+  await page.route('**/containers/observability*', serveObservability);
+  const cspErrors = [];
+  page.on('console', message => {
+    if (message.type() === 'error') cspErrors.push(message.text());
+  });
+  await page.goto('/containers/observability');
+  const timeline = page.locator('[data-timeline]');
+  const panel = timeline.locator('.timeline-panel');
+  const viewport = timeline.locator('[data-timeline-viewport]');
+  const cursor = timeline.locator('[data-timeline-cursor]');
+  const slider = timeline.locator('[data-timeline-slider]');
+  const zoom = page.getByRole('slider', { name: 'Timeline zoom' });
+  const tooltip = timeline.getByRole('tooltip');
+  const gap = timeline.locator('[data-timeline-span="unavailable"]');
+  await gap.hover();
+  await expect(tooltip).toContainText('Observation unavailable');
+  await expect(tooltip).toContainText('–');
+  if (testInfo.project.name === 'chromium') {
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.screenshot({ path: 'test-results/timeline-disconnection-hover-dark.png' });
+  }
+  await page.keyboard.press('Escape');
+  await expect(tooltip).toBeHidden();
+  await gap.focus();
+  await expect(tooltip).toBeVisible();
+  const fixed = await cursor.boundingBox();
+  const oldTime = Number(await timeline.getAttribute('data-selected'));
+  await viewport.hover({ position: { x: 8, y: 200 } });
+  await page.mouse.wheel(0, 120);
+  await expect.poll(async () => Number(await timeline.getAttribute('data-selected'))).toBeLessThan(oldTime);
+  expect((await cursor.boundingBox()).y).toBeCloseTo(fixed.y, 1);
+  const scrolledTime = Number(await timeline.getAttribute('data-selected'));
+  const viewportBounds = await viewport.boundingBox();
+  await page.mouse.move(viewportBounds.x + 8, viewportBounds.y + 220);
+  await page.mouse.down();
+  await page.mouse.move(viewportBounds.x + 8, viewportBounds.y + 280, { steps: 6 });
+  await page.mouse.up();
+  expect(Number(await timeline.getAttribute('data-selected'))).toBeGreaterThan(scrolledTime);
+  expect((await cursor.boundingBox()).y).toBeCloseTo(fixed.y, 1);
+  const start = Number(await timeline.getAttribute('data-start'));
+  await slider.evaluate((element, value) => {
+    element.value = String(value);
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  }, start + (41 * 60 + 25) * 1000);
+  const setZoom = value => zoom.evaluate((element, level) => {
+    element.value = String(level);
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  }, value);
+  await setZoom(3);
+  await expect(timeline.locator('[data-timeline-group] .timeline-badge')).toHaveText(['6']);
+  const capture = async suffix => {
+    if (testInfo.project.name !== 'chromium') return;
+    for (const theme of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: theme });
+      await panel.screenshot({ path: `test-results/timeline-alignment-${theme}-${suffix}.png` });
+    }
+  };
+  await capture('grouped-six');
+  await setZoom(4);
+  await expect(timeline.locator('[data-timeline-group] .timeline-badge')).toHaveText(['3', '3']);
+  const badges = await timeline.locator('.timeline-marker:not([hidden]) .timeline-badge').evaluateAll(elements =>
+    elements.map(element => {
+      const bounds = element.getBoundingClientRect();
+      return { top: bounds.top, bottom: bounds.bottom };
+    }).sort((a, b) => a.top - b.top));
+  for (let index = 1; index < badges.length; index++) expect(badges[index].top).toBeGreaterThanOrEqual(badges[index - 1].bottom);
+  await capture('split-three-and-three');
+  const selected = await timeline.getAttribute('data-selected');
+  await timeline.locator('[data-timeline-group]').first().press('Enter');
+  await expect(zoom).toHaveValue('5');
+  await expect(slider).toBeFocused();
+  await expect(timeline).not.toHaveAttribute('data-selected', selected);
+  expect((await cursor.boundingBox()).y).toBeCloseTo(fixed.y, 1);
+  await timeline.locator('[data-timeline-marker][data-kind="restart"]').evaluate(element => element.after(element.cloneNode(true)));
+  await slider.evaluate((element, value) => {
+    element.value = String(value);
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  }, start + 42 * 60 * 1000);
+  await setZoom(6);
+  await timeline.locator('[data-timeline-group]').hover();
+  await expect(tooltip).toContainText('Maximum timeline zoom');
+  await timeline.locator('[data-timeline-group]').press('Enter');
+  await expect(zoom).toHaveValue('6');
+  await expect(slider).toBeFocused();
+  await timeline.getByRole('button', { name: 'Select end of displayed hour' }).click();
+  await expect(timeline).toHaveAttribute('data-selected', await timeline.getAttribute('data-end'));
+  await expect(timeline.locator('[data-timeline-output]')).toHaveText('Latest');
+  expect(cspErrors).toEqual([]);
+});
+
 test('compact observability keeps long container lists inside their scrolling pane', async ({ page }) => {
   await page.route('**/containers/observability*', serveObservability);
   await page.goto('/containers/observability');
@@ -82,8 +174,8 @@ test('single-container observability has a vertical synchronized timeline and st
   await expect(timeline).toHaveAttribute('data-container', 'a'.repeat(64));
   const unhealthySpan = page.locator('[data-timeline-span="unhealthy"]');
   const unavailableSpan = page.locator('[data-timeline-span="unavailable"]');
-  await expect(unhealthySpan).toHaveAttribute('aria-label', 'Observed unhealthy');
-  await expect(unavailableSpan).toHaveAttribute('aria-label', 'Observation unavailable');
+  await expect(unhealthySpan).toHaveAttribute('aria-label', /^Observed unhealthy · .+ – .+/);
+  await expect(unavailableSpan).toHaveAttribute('aria-label', /^Observation unavailable · .+ – .+/);
   const spanLayers = await page.evaluate(() => [
     getComputedStyle(document.querySelector('[data-timeline-span="unhealthy"]')).zIndex,
     getComputedStyle(document.querySelector('[data-timeline-span="unavailable"]')).zIndex,
@@ -93,14 +185,17 @@ test('single-container observability has a vertical synchronized timeline and st
     const geometry = await span.evaluate(element => {
       const bounds = element.getBoundingClientRect();
       const track = element.parentElement.getBoundingClientRect();
+      const cursor = element.closest('[data-timeline]').querySelector('[data-timeline-cursor]').getBoundingClientRect();
+      const start = Number(element.dataset.spanStart);
+      const height = Number(element.dataset.spanHeight);
       return {
-        start: Number(element.dataset.spanStart), height: Number(element.dataset.spanHeight),
-        bottom: (track.bottom - bounds.bottom) / track.height * 100,
-        renderedHeight: bounds.height / track.height * 100,
+        top: bounds.top, bottom: bounds.bottom,
+        expectedTop: Math.max(track.top, cursor.top + (100 - start - height) / 100 * track.height),
+        expectedBottom: Math.min(track.bottom, cursor.top + (100 - start) / 100 * track.height),
       };
     });
-    expect(geometry.bottom).toBeCloseTo(geometry.start, 0);
-    expect(geometry.renderedHeight).toBeCloseTo(geometry.height, 0);
+    expect(geometry.top).toBeCloseTo(geometry.expectedTop, 0);
+    expect(geometry.bottom).toBeCloseTo(geometry.expectedBottom, 0);
   }
   await unavailableSpan.evaluate(element => {
     const replacement = element.cloneNode(true);
@@ -140,22 +235,25 @@ test('single-container observability has a vertical synchronized timeline and st
   await expect(containers.getByRole('link', { name: 'api', exact: true })).toBeVisible();
   const slider = page.getByRole('slider', { name: 'Selected time in the last hour' });
   await expect(slider).toHaveAttribute('aria-orientation', 'vertical');
-  const bounds = await slider.boundingBox();
-  expect(bounds.height).toBeGreaterThan(bounds.width * 5);
+  const viewport = timeline.locator('[data-timeline-viewport]');
+  const bounds = await viewport.boundingBox();
+  expect(bounds.height).toBeGreaterThan(bounds.width * 2);
+  const fixedCursor = await timeline.locator('[data-timeline-cursor]').boundingBox();
   if (testInfo.project.name === 'mobile-chromium') {
-    await slider.tap({ position: { x: bounds.width / 2, y: bounds.height / 2 } });
+    await viewport.tap({ position: { x: 4, y: bounds.height / 2 } });
   } else {
-    await slider.click({ position: { x: bounds.width / 2, y: bounds.height / 2 } });
+    await viewport.click({ position: { x: 4, y: bounds.height / 2 } });
   }
   const fraction = (Number(await slider.inputValue()) - Number(await timeline.getAttribute('data-start'))) /
     (Number(await timeline.getAttribute('data-end')) - Number(await timeline.getAttribute('data-start')));
-  expect(fraction).toBeGreaterThan(0.4);
-  expect(fraction).toBeLessThan(0.6);
+  expect(fraction).toBeGreaterThan(0.55);
+  expect(fraction).toBeLessThan(0.7);
   const clock = timeline.locator('[data-timeline-output]');
   const rail = timeline.locator('.timeline-rail');
   const clockBounds = await clock.boundingBox();
   const railBounds = await rail.boundingBox();
-  expect(Math.abs(clockBounds.y + clockBounds.height / 2 - (railBounds.y + railBounds.height / 2))).toBeLessThan(8);
+  expect(Math.abs(clockBounds.y + clockBounds.height / 2 - railBounds.y -
+    (fixedCursor.y - bounds.y))).toBeLessThan(2);
   await expect(clock).toHaveAttribute('title', await slider.getAttribute('aria-valuetext'));
   await expect(clock).toHaveText(/\d{2}:\d{2}:\d{2}/);
   const chartBounds = await charts.evaluateAll(elements => elements.map(element => {
@@ -177,7 +275,7 @@ test('single-container observability has a vertical synchronized timeline and st
   const marker = page.locator('[data-timeline-marker][data-kind="restart"]');
   const position = await marker.evaluate(element => ({ left: element.style.left, top: parseFloat(element.style.top) }));
   expect(position.left).toBe('');
-  expect(position.top).toBeCloseTo(30, 1);
+  expect(position.top).toBeCloseTo(fixedCursor.y - bounds.y, 0);
   await slider.focus();
   await page.keyboard.press('Home');
   await expect(slider).toHaveValue(await timeline.getAttribute('data-start'));
@@ -259,13 +357,13 @@ test('single-container observability has a vertical synchronized timeline and st
     const nameBounds = await namePanel.boundingBox();
     expect(nameBounds.x).toBeGreaterThanOrEqual(filterBounds.x + filterBounds.width);
     expect(nameBounds.width).toBeLessThan(filterBounds.width);
-    expect((await slider.boundingBox()).x).toBeGreaterThanOrEqual(nameBounds.x + nameBounds.width);
+    expect((await viewport.boundingBox()).x).toBeGreaterThanOrEqual(nameBounds.x + nameBounds.width);
     const sidebarTop = await containers.evaluate(element => element.getBoundingClientRect().top);
     const railTop = await page.locator('.timeline-panel').evaluate(element => element.getBoundingClientRect().top);
     await page.locator('.console-main').evaluate(element => { element.scrollTop = 180; });
     expect(await containers.evaluate(element => element.getBoundingClientRect().top)).toBe(sidebarTop);
     expect(await page.locator('.timeline-panel').evaluate(element => element.getBoundingClientRect().top)).toBeLessThanOrEqual(railTop);
-    await expect(slider).toBeInViewport();
+    await expect(viewport).toBeInViewport();
     await page.locator('.console-main').evaluate(element => { element.scrollTop = 0; });
     await page.setViewportSize({ width: 390, height: 844 });
     const contentBounds = await filterPanel.locator('.sidebar-content').boundingBox();
