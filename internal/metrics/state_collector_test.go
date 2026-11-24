@@ -171,6 +171,50 @@ func TestStateReconnectRecordsGapAndObservedSnapshot(t *testing.T) {
 	}
 }
 
+func TestStateWritersShareSparseHistory(t *testing.T) {
+	ctx := context.Background()
+	store, start := newCollectorTestStore(t)
+	id := strings.Repeat("a", 64)
+	collector := &Collector{}
+	known := make(map[string]State)
+	initial := State{ContainerID: id, Time: start.Add(-time.Minute), State: "running", Health: HealthHealthy}
+	if err := collector.persistObservedState(ctx, store, known, initial); err != nil {
+		t.Fatal(err)
+	}
+	changed := initial
+	changed.Health = HealthUnhealthy
+	changed.Time = initial.Time.Add(time.Second)
+	states, err := collector.changedStates(ctx, store, []State{changed})
+	if err != nil || len(states) != 1 {
+		t.Fatalf("sampled change = %#v, %v", states, err)
+	}
+	if err := store.InsertStates(ctx, time.Now().UTC(), states); err != nil {
+		t.Fatal(err)
+	}
+	collector.rememberStates(states)
+	stale := initial
+	stale.Time = initial.Time.Add(500 * time.Millisecond)
+	states, err = collector.changedStates(ctx, store, []State{stale})
+	if err != nil || len(states) != 0 {
+		t.Fatalf("late sample rewound newer event state: %#v, %v", states, err)
+	}
+	for cycle := range 4 {
+		observed := changed
+		observed.Time = changed.Time.Add(time.Duration(cycle+1) * time.Second)
+		if err := collector.persistObservedState(ctx, store, known, observed); err != nil {
+			t.Fatal(err)
+		}
+		states, err := collector.changedStates(ctx, store, []State{observed})
+		if err != nil || len(states) != 0 {
+			t.Fatalf("unchanged sampling cycle %d = %#v, %v", cycle, states, err)
+		}
+	}
+	history, err := store.SelectStates(ctx, id, initial.Time, time.Now().UTC().Add(time.Second), 10)
+	if err != nil || len(history) != 2 {
+		t.Fatalf("stable state was recorded repeatedly across writers: %#v, %v", history, err)
+	}
+}
+
 func TestStateReconciliationKeepsSharedGapUntilFailureFreeRestartSnapshot(t *testing.T) {
 	ctx := context.Background()
 	firstID, secondID := strings.Repeat("b", 64), strings.Repeat("c", 64)
@@ -301,11 +345,12 @@ func TestEmptySuccessfulStateReconciliationClosesSharedGap(t *testing.T) {
 }
 
 func TestStateOnlyLifecycleEventsCaptureCreatedAndPausedObservations(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	id := strings.Repeat("a", 64)
 	var inspectionState atomic.Int64
 	var inspections atomic.Int64
+	inspected := make(chan struct{}, 2)
 	listener, socket := newDockerSocket(t)
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -318,6 +363,10 @@ func TestStateOnlyLifecycleEventsCaptureCreatedAndPausedObservations(t *testing.
 			}
 			inspections.Add(1)
 			fmt.Fprintf(w, `{"Id":%q,"Config":{"Healthcheck":{"Test":["NONE"]}},"State":{"Status":%q}}`, id, state)
+			select {
+			case inspected <- struct{}{}:
+			case <-r.Context().Done():
+			}
 		case "/v1.40/events":
 			flusher, ok := w.(http.Flusher)
 			if !ok {
@@ -329,12 +378,16 @@ func TestStateOnlyLifecycleEventsCaptureCreatedAndPausedObservations(t *testing.
 				flusher.Flush()
 			}
 			writeEvent("create", time.Now().UTC().Add(-time.Second))
-			if !waitForAtomicValue(r.Context(), &inspections, 1) {
+			select {
+			case <-inspected:
+			case <-r.Context().Done():
 				return
 			}
 			inspectionState.Store(1)
 			writeEvent("pause", time.Now().UTC().Add(-500*time.Millisecond))
-			if !waitForAtomicValue(r.Context(), &inspections, 2) {
+			select {
+			case <-inspected:
+			case <-r.Context().Done():
 				return
 			}
 			writeEvent("destroy", time.Now().UTC().Add(-250*time.Millisecond))
@@ -360,8 +413,7 @@ func TestStateOnlyLifecycleEventsCaptureCreatedAndPausedObservations(t *testing.
 		collector.watchStateEvents(ctx, store, ScopeAll)
 		close(done)
 	}()
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
+	for ctx.Err() == nil {
 		windowEnd := time.Now().UTC().Add(time.Second)
 		windowStart := windowEnd.Add(-time.Hour)
 		history, historyErr := store.SelectStateHistory(ctx, id, windowStart, windowEnd, 10)

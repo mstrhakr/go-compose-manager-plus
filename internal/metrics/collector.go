@@ -201,10 +201,10 @@ func (c *Collector) collect(ctx context.Context, settings Settings, sources Sour
 	defer func() {
 		c.storeMu.Lock()
 		c.store = nil
+		c.storeMu.Unlock()
 		if err := store.Close(); err != nil {
 			c.logger.Error("close managed metrics store", "error", err)
 		}
-		c.storeMu.Unlock()
 	}()
 	pending, err := store.ReconcilePendingWrite(ctx)
 	if err != nil {
@@ -635,11 +635,17 @@ func (c *Collector) changedStates(ctx context.Context, store *ManagedStore, stat
 				c.stateCache[current.ContainerID] = previous
 			}
 		}
+		if known && !current.Time.After(previous.Time) {
+			continue
+		}
 		gapStart, gapOpen, err := store.OpenStateGap(ctx, current.ContainerID)
 		if err != nil {
 			return nil, fmt.Errorf("read open state gap for %s: %w", current.ContainerID, err)
 		}
-		if globalGapOpen {
+		if gapOpen && !current.Time.After(gapStart) || globalGapOpen && !current.Time.After(globalGapStart) {
+			continue
+		}
+		if gapOpen || globalGapOpen {
 			current.ReconnectObserved = true
 			states[i] = current
 		}

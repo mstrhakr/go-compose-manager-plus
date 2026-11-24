@@ -182,10 +182,10 @@ func (c *Collector) collectStateOnlySession(ctx context.Context, settings Settin
 	defer func() {
 		c.storeMu.Lock()
 		c.store = nil
+		c.storeMu.Unlock()
 		if err := store.Close(); err != nil {
 			c.logger.Error("close managed state store", "error", err)
 		}
-		c.storeMu.Unlock()
 	}()
 	pending, err := store.ReconcilePendingWrite(ctx)
 	if err != nil {
@@ -447,42 +447,16 @@ func (c *Collector) persistObservedState(ctx context.Context, store *ManagedStor
 	if err != nil {
 		return fmt.Errorf("read open state gap for %s: %w", current.ContainerID, err)
 	}
-	globalGapStart, globalGapOpen, err := store.OpenGlobalStateGap(ctx)
+	current.ReconnectObserved = current.ReconnectObserved || (gapOpen && !gapStart.IsZero())
+	changed, err := c.changedStates(ctx, store, []State{current})
 	if err != nil {
-		return fmt.Errorf("read shared state observation gap: %w", err)
+		return err
 	}
-	current.ReconnectObserved = current.ReconnectObserved || (gapOpen && !gapStart.IsZero()) || (globalGapOpen && !globalGapStart.IsZero())
-	previous, found := known[current.ContainerID]
-	if !found {
-		latest, err := store.SelectLatestState(ctx, current.ContainerID)
-		if err != nil {
-			return fmt.Errorf("read previous state for %s: %w", current.ContainerID, err)
-		}
-		if latest != nil {
-			previous, found = *latest, true
-			known[current.ContainerID] = previous
-		}
+	if len(changed) == 0 {
+		return nil
 	}
-	if found && previous.State == current.State && previous.Health == current.Health {
-		if !gapOpen && !globalGapOpen {
-			return nil
-		}
-		relevantGapStart := gapStart
-		if globalGapStart.After(relevantGapStart) {
-			relevantGapStart = globalGapStart
-		}
-		if previous.ReconnectObserved && !previous.Time.Before(relevantGapStart) {
-			known[current.ContainerID] = previous
-			c.rememberStates([]State{previous})
-			if gapOpen {
-				if err := store.EndStateGap(ctx, current.ContainerID, previous.Time); err != nil {
-					return fmt.Errorf("end state observation gap for %s: %w", current.ContainerID, err)
-				}
-			}
-			return nil
-		}
-	}
-	if err := c.reconcileWrite(ctx, store, store.InsertStates(ctx, time.Now().UTC(), []State{current})); err != nil {
+	current = changed[0]
+	if err := c.reconcileWrite(ctx, store, store.InsertStates(ctx, time.Now().UTC(), changed)); err != nil {
 		return fmt.Errorf("persist changed container state: %w", err)
 	}
 	known[current.ContainerID] = current

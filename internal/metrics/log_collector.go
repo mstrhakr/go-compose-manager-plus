@@ -104,10 +104,10 @@ func (c *Collector) collectLogSession(ctx context.Context, settings LogSettings)
 	defer func() {
 		c.logStoreMu.Lock()
 		c.logStore = nil
+		c.logStoreMu.Unlock()
 		if err := store.Close(); err != nil {
 			c.logger.Error("close managed log store", "error", err)
 		}
-		c.logStoreMu.Unlock()
 	}()
 	pending, err := store.ReconcilePendingWrite(ctx)
 	if err != nil {

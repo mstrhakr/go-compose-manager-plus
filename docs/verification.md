@@ -1434,3 +1434,43 @@ Focused deterministic regressions and combined auth/metrics/web race suites
 passed. The initial hosted CI and a later timeline-fix revision passed Linux,
 Windows, both macOS jobs, browser, docs/contracts, container and security checks;
 final state-fix hosted checks remain required before merge.
+
+## Observability Reliability And Fixed-Cursor Follow-Up
+
+Date: 2026-11-24. Branch: `fix/observability-reliability-timeline`, based on
+main `a8e9ad0`. Scope: the owner's reported SQLite 6410 error, blocked history
+pages, duplicate unchanged state observations and reference-aligned timeline;
+LIVE-003 retention, source enablement and independent databases are unchanged.
+
+### Storage And Sparse-State Evidence
+
+- SQLite 6410 is `SQLITE_IOERR_GETTEMPPATH`. The previous chart window query
+  reproduced this exact error with 43,200 samples in an unprivileged chroot
+  containing writable `/data` but no temporary directory. The replacement
+  index-ordered stream passed the same fixture, checking the newest reading in
+  every one of 120 buckets for each of 12 containers. This is a scratch-like
+  filesystem reproduction, not evidence from the owner's actual Docker host.
+  No writable-root workaround, temp-store policy or schema change was added.
+- Chart iteration is linear in matching samples, with output-bounded
+  container/bucket memory and sorted container IDs. Selected-container filtering,
+  missing buckets and unsigned memory readings retain existing behavior.
+- Sampling and event/scope reconciliation now compare against one state cache
+  under the existing persistence mutex. The focused shared-writer regression
+  verifies two actual observations survive four unchanged subsequent cycles
+  and that a delayed sample cannot rewind a newer state. Local and shared gaps
+  still require a newer reconnect observation. Existing retained duplicates
+  are not retroactively erased.
+- Focused metrics/web race checks passed for shared sparse history, state-only
+  lifecycle capture and unavailable-history navigation. The lifecycle fixture
+  uses inspection acknowledgements rather than a five-second polling race.
+- The initial full `make check QUIET=1` passed vet and all other Go packages,
+  but stopped at `TestCollectorRunOptInPersistsEventsAndStopsOnDisable`'s
+  existing five-second activation deadline. An isolated run also failed.
+  Replacing both collector owners with unchanged main sources through a Go
+  overlay reproduced the same deadline failure before first-cycle completion.
+  This is a local baseline limitation, not a passing full-suite result.
+
+The precise cause of the owner's intermittent Observability hang and every
+deployed duplicate record has not been traced on their host. Query reproduction
+and shared-cache regressions establish narrower fixes; they do not prove every
+deployment issue resolved or authorize destructive database cleanup.
