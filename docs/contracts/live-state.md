@@ -639,6 +639,12 @@ alignment pass may follow. Overview and read-only Configuration, an interactive
 desktop background and a full-width narrow-screen dialog are implementation
 defaults for this bounded slice, not separately approved permanent policies.
 Action placement, editable settings and unsaved-edit handling remain to refine.
+**Owner decision, 2026-11-24:** Future manual quick actions must open a
+confirmation popup/modal before execution. The owner's suggestion that all
+actions should require confirmation is tentative, not an adopted universal
+policy; other entry points, action types and unattended CI remain to refine.
+This decision does not authorize implementing actions or changing the existing
+permission-only Activate control.
 During implementation the owner explicitly requested removing stack-row
 expansion: stacks and containers use the same list component, and the drawer
 is the single resource-details surface. The existing permission-only Activate
@@ -690,6 +696,9 @@ This is not whole-LIVE approval or fulfillment.
 - Stack rows do not expand into a second details surface. Both resource
   inventories use the shared list component; keyboard-accessible name links
   open details, with whole-row selection as a pointer enhancement.
+- When a future manual quick action is offered, choosing it opens a confirmation
+  popup/modal; the action is not executed without confirmation. Quick actions
+  are not implemented or verified in the current slice.
 - Resource settings/actions must retain their owning permission and execution
   policies. Reference-only controls and deferred tags/groups are not presented
   as working capabilities merely to fill the drawer.

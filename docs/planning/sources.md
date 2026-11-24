@@ -396,6 +396,13 @@ the same component as the container list. Details consolidate in the drawer;
 the existing permission-only Activate form retains its backend/CSRF/eligibility
 rules rather than being dropped or replaced with a lifecycle action.
 
+On 2026-11-24 the owner required a confirmation popup/modal for future quick
+actions, and tentatively suggested confirmation might be appropriate for all
+actions. The explicit quick-action requirement is recorded in LIVE-004; the
+universal policy, sidebar action placement and operation-output experience
+remain open. This does not authorize runtime action implementation or imply a
+confirmation requirement for unattended CI.
+
 The owner also reported the first post-merge main CI failure: macOS Intel
 `TestChartSeriesLargeHistory` exceeded its 30-second context. Its diagnostic
 screenshot is saved unchanged and SHA-256 verified privately as
