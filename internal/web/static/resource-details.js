@@ -50,7 +50,6 @@
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
     const tabs = [...dialog.querySelectorAll('[data-resource-tab]')];
     dialog.querySelector('.resource-details-tabs').setAttribute('role', 'tablist');
-    dialog.classList.add('resource-details-enhanced');
     function select(tab, focus = false) {
       for (const candidate of tabs) {
         const selected = candidate === tab;
@@ -81,6 +80,12 @@
     highlight();
   }
 
+  document.addEventListener('click', event => {
+    if (event.target instanceof Element && event.target.closest('[data-resource-details-open]') &&
+        (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0)) {
+      event.stopPropagation();
+    }
+  }, true);
   document.addEventListener('click', event => {
     if (!(event.target instanceof Element)) return;
     if (event.target.closest('[data-resource-details-close]')) {

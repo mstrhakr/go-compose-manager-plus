@@ -47,6 +47,7 @@ test('stack details overlay the shared inventory table without displacement and 
   const cspErrors = [];
   page.on('console', message => { if (/content.security.policy|refused to execute/i.test(message.text())) cspErrors.push(message.text()); });
   await page.goto('/projects');
+  await expect(page.locator('#projects-list-title')).toContainText('media-services');
   const main = page.locator('main');
   const before = await main.boundingBox();
   const link = page.getByRole('link', { name: 'media-services', exact: true });
@@ -116,10 +117,13 @@ test('container selection replaces pending requests, reports errors and cannot r
   await expect(page.locator('[data-resource-details-request]')).toContainText('Loading details');
   await expect.poll(() => typeof release).toBe('function');
   const aborted = page.waitForEvent('requestfailed', request => request.url().includes(firstID));
+  await page.evaluate(() => { window.drawerSettled = new Promise(resolve => document.addEventListener('htmx:afterSettle', resolve, { once: true })); });
   await second.click();
   await aborted;
+  await page.evaluate(() => window.drawerSettled);
   const dialog = page.getByRole('dialog');
   await expect(dialog).toHaveAccessibleName('media-services-database-1');
+  await expect(dialog.locator('.resource-details-fallback-heading').first()).toBeHidden();
   const late = new Promise(resolve => { fulfilled = resolve; });
   release();
   await late;
@@ -150,6 +154,10 @@ test('container selection replaces pending requests, reports errors and cannot r
   await first.click();
   await expect(dialog).toHaveAccessibleName('media-services-web-1');
   await expect(dialog.getByRole('alert')).toBeHidden();
+  await page.evaluate(() => { window.drawerSettled = new Promise(resolve => document.addEventListener('htmx:afterSettle', resolve, { once: true })); });
+  await dialog.getByRole('link', { name: 'Refresh details' }).click();
+  await page.evaluate(() => window.drawerSettled);
+  await expect(dialog.locator('.resource-details-fallback-heading').first()).toBeHidden();
   if (testInfo.project.name === 'chromium') {
     for (const theme of ['dark', 'light']) {
       await page.emulateMedia({ colorScheme: theme });
@@ -160,6 +168,32 @@ test('container selection replaces pending requests, reports errors and cannot r
     await page.screenshot({ path: 'test-results/resource-details-container-configuration.png' });
   }
   expect(errors).toEqual([]);
+});
+
+test('modified resource links open a new tab without changing the existing drawer', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name !== 'chromium', 'Desktop Chromium verifies native modified-click navigation.');
+  await context.route('**/containers*', route => serve(route));
+  await page.goto('/containers');
+  const first = page.getByRole('link', { name: 'media-services-web-1', exact: true });
+  let popupPromise = context.waitForEvent('page');
+  await first.click({ modifiers: ['Control'] });
+  let popup = await popupPromise;
+  await popup.waitForLoadState();
+  await expect(popup).toHaveURL(new RegExp(`details=${firstID}`));
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await popup.close();
+  await first.click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toHaveAccessibleName('media-services-web-1');
+  await dialog.evaluate(element => { window.originalDrawer = element; });
+  popupPromise = context.waitForEvent('page');
+  await dialog.getByRole('link', { name: 'Refresh details' }).click({ modifiers: ['Control'] });
+  popup = await popupPromise;
+  await popup.waitForLoadState();
+  await expect(popup).toHaveURL(new RegExp(`details=${firstID}`));
+  await expect(dialog).toHaveAccessibleName('media-services-web-1');
+  expect(await dialog.evaluate(element => element === window.originalDrawer)).toBe(true);
+  await popup.close();
 });
 
 test('narrow details use the full screen, contain long content and scroll independently', async ({ page }, testInfo) => {

@@ -76,7 +76,7 @@ tr[data-resource-row] { cursor: pointer; }
 .resource-details-card > p, .resource-details-notice { margin: 0; padding: 0 14px 12px; font-size: 11px; color: var(--muted); line-height: 1.6; overflow-wrap: anywhere; }
 .resource-details-notice { padding: 0 0 16px; }
 .resource-details-notice:empty { display: none; }
-.resource-details-enhanced .resource-details-fallback-heading { display: none; }
+.resource-details[data-initialized="true"] .resource-details-fallback-heading { display: none; }
 .resource-details-refresh { display: inline-flex; min-height: 36px; align-items: center; }
 .resource-details-activation { margin-bottom: 16px; }
 .resource-details-activation p { color: var(--muted); font-size: 11px; line-height: 1.6; }

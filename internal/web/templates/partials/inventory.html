@@ -2,7 +2,7 @@
 <div class="inventory-toolbar"><div><h1>Compose projects</h1><p>{{.Filters.Shown}} of {{.Filters.Total}} projects</p></div><a class="inventory-filter-link" href="#inventory-filter-toggle">Filters &amp; sort</a><span>{{.RuntimeMessage}}</span></div>
 {{if .Error}}<p class="form-error" role="alert">{{.Error}}</p>{{end}}
 {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
-<div class="inventory-panel">{{template "list-panel" .ProjectList}}</div>
+<div class="inventory-panel" id="projects-list-title">{{template "list-panel" .ProjectList}}</div>
 <p class="inventory-footnote">Availability reflects the last successful scan. Projects sharing a Compose name show the same containers; this does not establish ownership.</p>
 {{end}}
 

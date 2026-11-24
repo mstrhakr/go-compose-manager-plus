@@ -250,6 +250,8 @@ test('first login forces password setup before protected dashboard and works on 
     await expect(projectRow).toContainText('Active');
     await page.getByRole('link', { name: 'Overview', exact: true }).click();
     await page.getByRole('button', { name: 'Refresh Docker status' }).click();
+    await expect(page).toHaveURL(/\/projects\?runtime=1#projects-list-title$/);
+    await expect(page.locator('#projects-list-title')).toContainText(basename(project));
     await expect(page.getByText('Docker status unavailable: no socket configured.').first()).toBeVisible();
     await page.getByRole('link', { name: 'Containers', exact: true }).click();
     await expect(page).toHaveURL(/\/containers$/);
