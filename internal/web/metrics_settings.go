@@ -502,7 +502,7 @@ func (server *authServer) saveMetricsSettings(w http.ResponseWriter, r *http.Req
 		settings.Profile = metrics.ProfileCustom
 	}
 	stateEnabled := form.StateScope != "off"
-	if (form.Enabled || form.LogsEnabled || stateEnabled) && server.docker == nil {
+	if (form.Enabled || form.LogsProfile != "off" || stateEnabled) && server.docker == nil {
 		fail("Configure a Docker socket before enabling collection.")
 		return
 	}
