@@ -1657,3 +1657,32 @@ The full default local gate is therefore **not green**. Native macOS/Windows
 and hosted CI on this branch, live Docker-host checks, and packaging/workflow
 checks were not executed for this slice. No platform support or production-host
 recovery is inferred from Linux tests or synthetic previews.
+
+## Main CI Chart-History Deadline Correction
+
+**2026-11-24, same branch:** the owner explicitly included the post-merge
+[main CI failure](https://github.com/mstrhakr/go-compose-manager-plus/actions/runs/45423136665)
+at `5f75bba`. Its macOS Intel race job failed
+`TestChartSeriesLargeHistory` at `store_test.go:196` with
+`read chart metrics: context deadline exceeded`, after 30.01 seconds.
+
+The test created its 30-second context before opening the database, constructing
+43,200 observations and inserting/indexing the fixture. The chart read inherited
+only the remaining time. A local race-enabled CPU profile of the uncorrected
+test took 27.76 seconds total; fixture insertion accounted for substantially
+more CPU than chart selection. This is evidence of a shared preparation/read
+budget, not proof of a failing SQL query or a new production timeout requirement.
+
+The fixture now uses the test lifecycle context. Only after insertion does the
+test start its **unchanged 30-second chart-read deadline**. Preparation and read
+durations are logged separately. All 12 containers, 120 buckets per container
+and exact latest-recorded CPU values are still checked. No samples were removed,
+assertions skipped, SQL/window sorting reintroduced, or production/CI timeout
+increased.
+
+`CGO_ENABLED=1 go test -race ./internal/metrics -run
+'^TestChartSeriesLargeHistory$' -count=3 -v` passed on Linux: preparation took
+15.36, 15.48 and 16.68 seconds; reads took 4.52, 4.49 and 4.33 seconds.
+The corrected test also passed in the first full Go race suite described above.
+Native macOS Intel reproduction and hosted CI verification on this branch remain
+unexecuted; local success does not establish a native-platform CI pass.
