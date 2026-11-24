@@ -450,6 +450,22 @@ named storage presets or settle accounting, eviction, migration or the other
 source preference seeds. No one-hour guarantee is implied: the sample-only
 benchmark and variable log-volume limitations were explained before selection.
 
+The owner next selected **rolling history within each history database** under
+pressure. Remove oldest eligible records in bounded batches before their
+normal one-hour expiry when needed: samples in `metrics.db`, logs in `logs.db`.
+This does not authorize early pressure eviction of state/event history,
+cross-database eviction or budget borrowing. Report shortened sample and log
+history separately. Logs reaching their own budget must not pause otherwise
+healthy metrics; shared host disk-full errors can still affect multiple stores.
+
+Reuse existing SQLite safeguards independently: account for each database's
+DB/WAL/SHM footprint and reusable pages, and pause affected history writes when
+maintenance cannot verify room. Do not automatically shrink database files.
+Retention, checkpoints and retry maintenance can recover usable space, but
+recovery is not guaranteed and may require an operator to increase the target.
+This approves rolling eviction and source-local safeguards, not a hard disk
+quota, complete replay, Custom delivery/flush or detailed migration/recovery.
+
 A possible dedicated logs navigation view with stack, container and network
 filters is a follow-up idea, not an approved complete feature set. Network
 filtering needs evidence and time-bound association rules; current inventory
@@ -736,8 +752,8 @@ was adopted to bypass the gates below.
   shown only for Live. Terminology, save cadence, periodic flush behavior and
   validity limits remain proposals, not settled runtime policy.
 - Named storage-preset mappings for the selected separate sample/log
-  budgets, source accounting/eviction, shared physical pressure and
-  shortened-history reporting.
+  budgets and implementation verification of selected DB/WAL/SHM accounting,
+  source-local rolling eviction, pause/retry and shortened-history reporting.
 - Stream bounds, replay/cancellation/reconciliation, baseline cleanup and
   collection-disable/history-retention effects.
 - Save/navigation handling of dirty forms and final reference alignment.

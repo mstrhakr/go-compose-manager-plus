@@ -419,6 +419,19 @@ with collection intensity, and does not overwrite existing configured amounts.
 Named storage presets, accounting, eviction, migration and remaining source
 preference seeds are not approved by this amount selection.
 
+The owner next selected
+"A — Rolling history: evict oldest eligible records within that database".
+This is the later, per-database option A, not approval of the earlier global
+oldest-first sample/log proposal. Samples and logs may be removed oldest-first
+in bounded batches within their respective history databases before ordinary
+expiry; event/state retention stays unchanged and neither source evicts the
+other's records or borrows its budget. Show separate shortened-history warnings.
+The offered boundary reuses DB/WAL/SHM accounting, reusable-page awareness and
+pause/retry safeguards, with no automatic file shrink. A log-budget problem
+does not pause healthy metrics, but host disk-full errors can affect both.
+Complete replay, Custom delivery/flush, Off behavior and detailed migration or
+recovery are not approved by this pressure choice.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

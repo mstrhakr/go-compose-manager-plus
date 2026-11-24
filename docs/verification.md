@@ -1298,3 +1298,10 @@ on new installs and existing configured amounts preserved. This is an approved
 amount decision, not executed defaults/migration enforcement or a capacity
 guarantee. Named storage-preset mappings, file accounting and pressure behavior
 remain unsettled.
+
+The owner then selected source-local rolling eviction: oldest eligible samples
+or logs may be removed in bounded batches within their own database, with
+separate shortened-history warnings and existing file/reusable-page/pause/retry
+safeguards. No cross-store eviction, borrowing or early state/event pressure
+eviction is selected. This is not executed pressure verification; the
+foundation still lacks managed production log writes and a dedicated log DB.

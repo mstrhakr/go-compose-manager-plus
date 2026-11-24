@@ -112,8 +112,10 @@ durable application state/settings in `app.db`. TimescaleDB is deferred for
 longer metric/log history. Separate sample/log budgets were selected on
 2026-11-24. The owner subsequently selected independent starting targets of
 128 MB for metrics history and 256 MB for logs, without changing collection
-profiles or overwriting existing configured amounts. Named storage-preset
-mappings, accounting and pressure behavior remain undecided.
+profiles or overwriting existing configured amounts. Rolling eviction and
+DB/WAL/SHM/reusable-page safeguards are now selected independently per history
+database, without cross-store eviction, budget borrowing or early state/event
+pressure eviction. Named storage presets and enforcement remain unverified.
 The owner selected the three-database layout on 2026-11-24, amending the
 earlier same-history-file request; the log foundation still uses `metrics.db`.
 Layout migration, budget enforcement and implementation of the
