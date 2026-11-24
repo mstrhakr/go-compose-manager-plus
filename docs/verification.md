@@ -1572,3 +1572,15 @@ corrected check verifies the title matches the full accessible timestamp.
 New generated screenshots preserve both themes and the disconnection hover.
 Hosted CI passed all gates at `aaf57a3`, before these review follow-ups; final
 revision results remain a separate delivery gate.
+
+All hosted Go platform checks passed at `1911f90`; WebKit found a pointer-test
+geometry issue. The downloaded trace showed the now-hoverable selected-time
+label covering the default center of the event button at maximum zoom. The
+event-count badge itself remains visible beside the label, so both count-hover
+checks now target that visible badge instead of an occluded part of its parent.
+No forced pointer action, larger timeout or pointer-inaccessible timestamp was
+used to bypass the failure. Copilot's follow-up on `1911f90` reported no open
+findings; deployment-specific uncertainty and local gate failures remain noted.
+The corrected scenario then passed in all four local browser projects with the
+previously disclosed 90-second shared-host budget; Firefox took 51.8 seconds and
+WebKit 32.0 seconds. The repository's default CI timeout remains unchanged.

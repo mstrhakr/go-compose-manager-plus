@@ -110,7 +110,8 @@ test('timeline scrolls under a fixed cursor, splits clusters with zoom, and expl
   await timeline.locator('[data-timeline-output]').hover();
   await expect(timeline.locator('[data-timeline-output]')).toHaveAttribute('title', await slider.getAttribute('aria-valuetext'));
   const group = timeline.locator('[data-timeline-group]').first();
-  await group.hover();
+  const groupBadge = group.locator('.timeline-badge');
+  await groupBadge.hover();
   const contrastRatio = control => control.evaluate(element => {
     const luminance = color => color.match(/\d+/g).slice(0, 3).map(Number).map(value => {
       const channel = value / 255;
@@ -120,7 +121,7 @@ test('timeline scrolls under a fixed cursor, splits clusters with zoom, and expl
     const values = [luminance(style.color), luminance(style.backgroundColor)].sort((a, b) => b - a);
     return (values[0] + 0.05) / (values[1] + 0.05);
   });
-  expect(await contrastRatio(group.locator('.timeline-badge'))).toBeGreaterThanOrEqual(4.5);
+  expect(await contrastRatio(groupBadge)).toBeGreaterThanOrEqual(4.5);
   expect(await contrastRatio(timeline.getByRole('button', { name: 'Select end of displayed hour' }))).toBeGreaterThanOrEqual(3);
   const selected = await timeline.getAttribute('data-selected');
   await timeline.locator('[data-timeline-group]').first().press('Enter');
@@ -134,7 +135,7 @@ test('timeline scrolls under a fixed cursor, splits clusters with zoom, and expl
     element.dispatchEvent(new Event('input', { bubbles: true }));
   }, start + 42 * 60 * 1000);
   await setZoom(6);
-  await timeline.locator('[data-timeline-group]').hover();
+  await timeline.locator('[data-timeline-group] .timeline-badge').hover();
   await expect(tooltip).toContainText('Maximum timeline zoom');
   await timeline.locator('[data-timeline-group]').press('Enter');
   await expect(zoom).toHaveValue('6');
