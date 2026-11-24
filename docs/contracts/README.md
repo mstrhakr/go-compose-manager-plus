@@ -29,6 +29,11 @@ description of every implementation detail or a substitute for tests.
 | [LIVE](live-state.md) | Dashboard home and live delivery | Draft; approved source/preset Settings, consent-preserving defaults/migration, separate metrics/log targets and managed databases, source-local pressure, Off/history visibility, sparse state baselines and gap precedence implemented with local regression evidence; advanced Custom delivery, named storage presets, destructive legacy-log migration, stop/cleanup/exactly-once recovery details and physical/native-platform verification remain unresolved or unverified |
 | [AUTH](authentication.md) | App login and shared authentication boundary | Draft; AUTH-001 through AUTH-006 approved within stated scope; local-auth/dashboard-shell slice partially implemented and verified on `feat/local-auth`; OIDC, recovery, detailed security cases and Compose operations remain deferred or unverified |
 
+The owner-requested [LIVE-004](live-state.md#live-004-shared-resource-details-drawer)
+adds a shared stack/container overlay-drawer direction. Content and interaction
+refinement, implementation and verification remain pending; tags/groups may be
+deferred.
+
 ## Shared Format
 
 Use the sections shown in the example: Purpose And Scope, Ownership,

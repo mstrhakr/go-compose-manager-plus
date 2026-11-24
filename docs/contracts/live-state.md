@@ -4,8 +4,8 @@ weight = 8
 +++
 # LIVE: Dashboard And Live State
 
-**Status:** Draft / bounded dashboard, container-history and Settings design
-decisions recorded; detailed collection, storage and recovery policies remain
+**Status:** Draft / bounded dashboard, container-history, resource-drawer and
+Settings design decisions recorded; detailed collection, storage and recovery policies remain
 partially unresolved. Approval is not implementation verification.
 
 **Baseline:** 2026-11-19, product `68ab9d2`, documentation-only planning. Plugin
@@ -623,6 +623,27 @@ test-only Docker/tstorage feasibility spike is recorded in
 [verification](../verification.md#docker-metrics-storage-proof-of-concept); it
 does not implement these behaviors.
 
+### LIVE-004: Shared Resource Details Drawer
+
+Provide a right-hand details drawer for a selected stack or container as the
+resource-specific home for details, settings and approved actions. On desktop
+it overlays the current screen content rather than resizing or displacing that
+content. Follow the supplied UniFi references approximately for placement,
+proportions and design vocabulary; their device/network fields and capabilities
+are not standalone feature requirements or assets to ship.
+
+**Approval:** Owner-requested presentation direction on 2026-11-24. The exact
+tabs/content, background interaction, narrow-screen behavior, navigation and
+unsaved-edit handling remain to refine. This does not authorize management
+operations, arbitrary configuration editing or new telemetry. Tags/groups are
+requested future organization capability, explicitly deferrable from this slice.
+
+**Source provenance:** Seven owner-provided reference images, preserved unchanged
+and privately; see the [source register](../planning/sources.md).
+
+**Enforcement:** Not implemented or verified. Existing inventory/Observability
+panels do not establish this overlay behavior.
+
 ## Dependencies
 
 - Depends on [AUTH-001 through AUTH-006](authentication.md) for user-bound local-session
@@ -638,6 +659,14 @@ does not implement these behaviors.
   Desktop/mobile presentation does not grant authority to execute actions.
 
 ## Acceptance Cases
+
+### Resource Details Drawer (LIVE-004)
+
+- Opening stack/container details on desktop overlays a right-hand drawer while
+  the underlying content keeps its layout; it does not open a new layout column.
+- Resource settings/actions must retain their owning permission and execution
+  policies. Reference-only controls and deferred tags/groups are not presented
+  as working capabilities merely to fill the drawer.
 
 ### Current Settings Design Summary
 

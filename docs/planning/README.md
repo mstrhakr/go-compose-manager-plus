@@ -190,6 +190,19 @@ has a contained time label and an end-of-window shortcut. The
 is scoped to those outcomes. Full source controls, sparse state spans and
 production collection remain subject to the gates above.
 
+### Resource Details Drawer Direction
+
+On 2026-11-24 the owner requested a shared right-hand stack/container details
+drawer as a prerequisite to the manual-action workflow. It overlays screen
+content without displacing it and is the resource-specific home for details,
+settings and approved actions. Seven private UniFi references guide approximate
+placement and design, not adoption of the pictured networking features.
+[LIVE-004](../contracts/live-state.md#live-004-shared-resource-details-drawer)
+records the bounded direction and remaining interaction/content decisions.
+Tags/groups are a requested later organization feature, not required for this
+drawer slice. Global application/collection settings retain their existing owner.
+No new mutation or action/job policy is approved by selecting this UI surface.
+
 ### Settings Organization Candidates
 
 **2026-11-23:** owner accepted the resource-first organization direction, not

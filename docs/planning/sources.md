@@ -369,6 +369,22 @@ container message bytes or exposing credentials/resolved configuration.
 The owner also requested preserving the screenshot/compare/iterate workflow as
 a reusable repository skill; it does not authorize additional product features.
 
+On 2026-11-24, after the observability reliability PR merged, the owner supplied
+seven additional resource-details references: inventory/overlay placement, a
+switch's overview/activity/settings, and a client's overview/activity/settings.
+Byte-identical SHA-256-verified copies are saved privately under
+`scratch/ui-references/` as `resource-details-01-inventory-overlay-placement.png`,
+`resource-details-02-switch-overview.png`, `resource-details-03-switch-activity.png`,
+`resource-details-04-switch-settings.png`, `resource-details-05-client-overview.png`,
+`resource-details-06-client-activity.png` and
+`resource-details-07-client-settings-groups.png`. Originals were not edited.
+The owner requested a shared right-hand stack/container details/settings/action
+surface that overlays rather than displaces screen content. Tags/groups are a
+requested organization feature that may be deferred. Exact tabs, modal versus
+interactive background behavior, dimensions and editing/navigation policy are
+not approved merely by the references. LIVE-004 records this bounded direction;
+no private images or pictured device data are published or shipped.
+
 The owner then requested a broad future-settings inventory before selecting the
 hierarchy. The assistant compared existing product/contract scope with
 exploratory future candidates; no source-plugin capability was automatically
