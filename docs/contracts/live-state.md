@@ -764,17 +764,26 @@ was adopted to bypass the gates below.
 
 #### Remaining Implementation Gates
 
-- Remaining initial log/source child preferences;
-  approved new-install/upgrade policy still needs migration/runtime verification.
+The 2026-11-24 [source/capture integration](../verification.md#independent-observability-sources-and-production-capture)
+now implements the approved preset-only production transports, independent
+source controls, transactional consent-preserving migration, Off/Custom
+restoration, source-local managed `logs.db`, sparse state baselines and truthful
+observation-gap overlays. This supersedes the earlier subset's implementation
+limits, not the unresolved requirements below. Local full application,
+documentation and security checks passed; simulated Docker streams do not
+establish real driver continuity or physical disk-full recovery.
+
+- Remaining advanced log/source child preferences.
 - Custom log delivery design: the owner proposed an Off/Low/Medium/Live/Custom
   delivery selector, with Custom poll interval 0 meaning Live and a save interval
   shown only for Live. Terminology, save cadence, periodic flush behavior and
   validity limits remain proposals, not settled runtime policy.
 - Named storage-preset mappings for the selected separate sample/log
-  budgets and implementation verification of selected DB/WAL/SHM accounting,
-  source-local rolling eviction, pause/retry and shortened-history reporting.
-- Stream bounds, replay/cancellation/reconciliation, baseline cleanup and
-  collection-disable/history-retention effects.
+  budgets. Selected DB/WAL/SHM accounting, source-local rolling eviction,
+  pause/retry and shortened-history reporting have local regression evidence;
+  physical disk-full and native-platform verification remain separate.
+- Exactly-once replay, detailed in-flight stop/flush guarantees, destructive
+  cross-store legacy-log migration and identity/baseline cleanup lifetime.
 - Save/navigation handling of dirty forms, in-flight stop/flush behavior,
   dormant-store cleanup and final reference alignment.
 

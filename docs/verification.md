@@ -1353,3 +1353,61 @@ native-platform CI.
 Production transport/UI integration, cross-store migration, advanced Custom
 delivery, in-flight stop/flush and cleanup/replay policies are not verified by
 these storage checks.
+
+## Independent Observability Sources And Production Capture
+
+**2026-11-24:** implemented the approved LIVE-003 source/settings and capture
+subset on `feat/container-log-collection`. New installations keep all sources
+Off. Application schema 6 preserves legacy stats settings, target and state
+enablement without enabling logs. A single transaction saves overall/source
+revisions and retained Off/Custom preferences; configuration reads use one
+consistent SQLite snapshot. Explicit Custom does not revert merely because its
+values match a preset.
+
+The source cards expose stats presets/current readonly values, independent
+state/event scopes including stopped-container context, and log Low/Medium
+periodic backlog versus High live-follow. Separate exact decimal storage targets
+are not replaced by collection presets. Log Custom edits scope while preserving
+an explicitly established preset delivery; advanced transport/save controls
+remain unavailable. Off hides history without erasing preferences; overall
+Off-to-Custom restores the preceding source selections. No-JavaScript users
+save a selection before editing its values, as explained in the page.
+
+Production capture uses the dedicated managed log store. Fake Docker streams
+exercise a quiet live message becoming readable before stream closure, bounded
+periodic capture, original bytes and legitimate duplicates, stopped backlog,
+source isolation, cancellation and retention. Review corrections avoid replaying
+acknowledged committed batches, advancing reconnect cursors to wall-clock time,
+blocking all readable targets behind one unreadable container, or reporting
+healthy collection while a follower/storage failure remains.
+
+State capture persists sparse lifecycle/health changes, retains one
+pre-window baseline and projects explicitly recorded unavailable-observation
+intervals. Shared outages are recorded once, with target-specific inspection
+gaps separate. Grey unavailable spans override striped unhealthy spans; truncated
+state results suppress unsafe interval inference. Reconnect labels describe
+the new observation, not an invented transition timestamp. Lifecycle tests cover
+pause/unpause and newly observed containers as well as running/exited states.
+
+Focused combined runtime/auth/metrics/web race suites and Chromium preview tests
+passed during iteration. Settings browser regressions cover readonly preset
+values, current-value Custom, source siblings, overall Off/Custom restoration,
+storage edits, no-JavaScript fallback, and compact containment. The authenticated
+browser flow also verifies saving Off preferences, explicit enablement requiring
+a Docker socket, and touch access. The first complete browser run found stale
+stats-only labels in that authenticated flow; these expectations were updated
+to the independent-source UI and the exact test then passed.
+
+The subsequent complete `GOFLAGS="-p=1" make check QUIET=1` passed Go vet,
+all Go race suites, build, Node/HTTP tests, the four-project browser suite,
+asset verification and contract structure. `make docs check-docs check-security
+QUIET=1` passed documentation variants/links and dependency checks. No workflow
+files or dependency manifests changed; container publication and native
+Windows/macOS execution await hosted CI.
+
+Limits remain: capture is not an exactly-once log archive; Docker reconnection
+can replay output and cannot establish complete continuity. Advanced Custom
+transport/save cadence, destructive legacy-log migration, explicit clear-history
+controls, identity/baseline cleanup lifetime and manager lifecycle actions are
+not implemented or approved by these checks. Private visual references and
+synthetic screenshots are not Docker/native-platform verification.

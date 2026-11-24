@@ -115,14 +115,16 @@ longer metric/log history. Separate sample/log budgets were selected on
 profiles or overwriting existing configured amounts. Rolling eviction and
 DB/WAL/SHM/reusable-page safeguards are now selected independently per history
 database, without cross-store eviction, budget borrowing or early state/event
-pressure eviction. Named storage presets and enforcement remain unverified.
+pressure eviction. Named storage presets remain undecided; managed-store
+enforcement has local regression coverage.
 The owner selected hiding retained history while a source is Off without
 erasing it; normal age eligibility and preserved preferences remain. Dormant
 cleanup and in-flight stop/flush are separate pending decisions.
 The owner selected the three-database layout on 2026-11-24, amending the
-earlier same-history-file request; the log foundation still uses `metrics.db`.
-Layout migration, budget enforcement and implementation of the
-approved defaults/migration policy remain production-collection gates under
+earlier same-history-file request. Production capture now uses managed
+`logs.db`, preserving legacy rows in `metrics.db` without destructive migration.
+Independent source controls, preset transports, budget enforcement and the
+approved defaults/migration policy have local implementation evidence under
 [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
 a dedicated log view and network-aware filters remain follow-up ideas.
 The owner subsequently approved beginning the Docker API implementation that
@@ -139,8 +141,8 @@ were subsequently selected. The owner approved all sources Off on new installs;
 upgrades preserve existing stats settings, state/event capture enablement and
 storage budget while leaving logs Off until explicitly enabled and saved.
 Mixed sources show overall Custom without applying a preset during migration.
-Remaining log child preferences still require refinement; migration/runtime
-enforcement remains unverified. State/event choices are Off, Activated stacks
+Advanced log child preferences still require refinement; migration/runtime
+enforcement is covered by local regression tests. State/event choices are Off, Activated stacks
 and All containers: overall Low/Medium select Activated stacks, High selects
 All containers, and initial scope is Activated stacks while Off. State scopes
 include stopped-container context without changing running-only numeric stats.
