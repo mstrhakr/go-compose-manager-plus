@@ -1162,3 +1162,31 @@ quota. Production capture, durable managed log writes, reconnect deduplication,
 capture-disabled lifecycle/access behavior, log tabs/aggregation, TimescaleDB
 and dedicated log infrastructure remain pending. No workflows, container image
 or dependency manifests changed; workflow/container checks were not run.
+
+## Observability PR Review Corrections
+
+2026-11-23, Linux development container, PR #23, based on `2ef2b29` with
+corrections uncommitted during validation. Three Copilot review findings were
+confirmed and corrected:
+
+- Selected-container chart reads pass the ID through the collector and managed
+  store, restricting SQL rows before window ranking and bucket allocation.
+  Overview retains the all-container query. Regressions check query routing,
+  exact selected readings/gaps, missing and invalid IDs, and isolation from an
+  unreadable sample belonging to another container.
+- The bounded compact name sidebar retains internal scrolling despite the
+  general compact-shell overflow rule. Browser regressions add a long list,
+  check containment at 900/620/390 CSS pixels and focus-scroll to the last link.
+- An unavailable Docker snapshot displays its unavailable message rather than
+  asserting an empty snapshot. Authenticated HTTP regressions distinguish no
+  configured socket, failed snapshot and successful empty inventory.
+
+`go test -race ./internal/metrics ./internal/web` and the focused compact-sidebar
+browser test passed. The latter passed Chromium, Firefox, WebKit and mobile
+Chromium after correcting the test's focus reset between viewport cases.
+`make check docs check-docs QUIET=1` passed Go vet/race tests/build,
+Node/HTTP/browser suites, assets/contracts and public/opt-in documentation
+builds/local links. Commands used `/config/.local/bin` prepended to `PATH`.
+Security checks passed earlier on the same PR before these corrections; no
+dependency, workflow or container surface changed. No new live-Docker,
+native-device or physical-pressure verification is claimed.

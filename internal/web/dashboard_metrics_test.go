@@ -24,17 +24,29 @@ import (
 )
 
 type dashboardMetricsCollectorStub struct {
-	status metrics.CollectorStatus
-	series []metrics.ContainerChartSeries
-	events []metrics.Event
+	status   metrics.CollectorStatus
+	series   []metrics.ContainerChartSeries
+	events   []metrics.Event
+	chartIDs *[]string
 }
 
 func (collector dashboardMetricsCollectorStub) Status() metrics.CollectorStatus {
 	return collector.status
 }
 
-func (collector dashboardMetricsCollectorStub) SelectChartSeries(context.Context, time.Time, time.Time, time.Duration) ([]metrics.ContainerChartSeries, error) {
-	return collector.series, nil
+func (collector dashboardMetricsCollectorStub) SelectChartSeries(_ context.Context, id string, _, _ time.Time, _ time.Duration) ([]metrics.ContainerChartSeries, error) {
+	if collector.chartIDs != nil {
+		*collector.chartIDs = append(*collector.chartIDs, id)
+	}
+	if id == "" {
+		return collector.series, nil
+	}
+	for _, series := range collector.series {
+		if series.ContainerID == id {
+			return []metrics.ContainerChartSeries{series}, nil
+		}
+	}
+	return nil, nil
 }
 
 func (collector dashboardMetricsCollectorStub) SelectTimelineEvents(_ context.Context, id string, _, _ time.Time, limit int) ([]metrics.Event, error) {
@@ -318,8 +330,10 @@ func TestDashboardChartsKeepRetainedHistoryWhenCollectionIsDegraded(t *testing.T
 	}
 
 	cpu, memory, receive, transmit := 25.0, 1024.0, 2.0, 3.0
+	var chartIDs []string
 	collector := dashboardMetricsCollectorStub{
-		status: metrics.CollectorStatus{Enabled: true, Problem: "Docker stats failed"},
+		chartIDs: &chartIDs,
+		status:   metrics.CollectorStatus{Enabled: true, Problem: "Docker stats failed"},
 		series: []metrics.ContainerChartSeries{{
 			ContainerID: strings.Repeat("a", 64),
 			Points: []metrics.ChartPoint{{
@@ -363,6 +377,9 @@ func TestDashboardChartsKeepRetainedHistoryWhenCollectionIsDegraded(t *testing.T
 	}
 	if len(observabilityCPU.Series) != 1 || observabilityCPU.Series[0].Label != "Container aaaaaaaaaaaa" {
 		t.Fatalf("observability CPU chart was aggregated: %#v", observabilityCPU.Series)
+	}
+	if !reflect.DeepEqual(chartIDs, []string{"", collector.series[0].ContainerID}) {
+		t.Fatalf("Overview and Observability query scopes = %v", chartIDs)
 	}
 }
 

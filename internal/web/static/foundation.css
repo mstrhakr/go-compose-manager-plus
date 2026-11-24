@@ -382,7 +382,7 @@ circle.chart-line { fill: currentColor; stroke: none; }
 .observability-logs, .observability-records:has(input[value="logs"]:checked) .timeline-events { display: none; }
 .observability-records:has(input[value="logs"]:checked) .observability-logs { display: block; }
 @media (max-width: 900px) {
-  .observability-sidebar { max-height: 240px; }
+  .host-sidebar.observability-sidebar { max-height: 240px; overflow-y: auto; }
   .observability-container-list { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
   .observability-workspace { grid-template-columns: 100px minmax(0, 1fr); gap: 10px; }
   .observability-workspace .timeline-panel { height: 540px; }

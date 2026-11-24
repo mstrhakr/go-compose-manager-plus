@@ -119,7 +119,7 @@
         {{range .ObservedContainers}}<a href="{{.Href}}" title="{{.Label}} · {{.ID}} · {{.State}}" {{if .Current}}aria-current="page"{{end}}><span class="state-dot state-dot-{{if eq .State "running"}}running{{else if or (eq .State "created") (eq .State "exited") (eq .State "dead")}}stopped{{else}}unknown{{end}}" aria-hidden="true"></span><span>{{.Label}}</span></a>{{end}}
       </nav>
       {{if .Notice}}<p class="discovery-notice" role="status">{{.Notice}}</p>{{end}}
-      {{if not .ObservedContainers}}<p class="inventory-footnote">{{if .Filters.Total}}No containers match these filters.{{else}}No containers available in the snapshot or retained history.{{end}}</p>{{end}}
+      {{if not .ObservedContainers}}<p class="inventory-footnote">{{if .Filters.Total}}No containers match these filters.{{else if eq .RuntimeState "Unavailable"}}{{.RuntimeMessage}}{{else}}No containers available in the snapshot or retained history.{{end}}</p>{{end}}
     </aside>
     {{else if ne .View "settings"}}
     {{template "inventory-filters" .}}

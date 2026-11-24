@@ -89,7 +89,7 @@ func TestChartSeriesKeepsContainerReadingsAndBucketGaps(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := store.SelectChartSeries(ctx, start, start.Add(3*time.Second), time.Second)
+	got, err := store.SelectChartSeries(ctx, "", start, start.Add(3*time.Second), time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,6 +108,20 @@ func TestChartSeriesKeepsContainerReadingsAndBucketGaps(t *testing.T) {
 	if got[1].Points[0].CPUPercent != nil || got[1].Points[1].NetworkTxBytesPerSec == nil ||
 		*got[1].Points[1].NetworkTxBytesPerSec != rx || got[1].Points[2].NetworkTxBytesPerSec != nil {
 		t.Fatalf("second container readings = %#v", got[1].Points)
+	}
+	if _, err := store.db.ExecContext(ctx, `UPDATE samples SET cpu_percent = 'unreadable' WHERE container_id = ?`, second); err != nil {
+		t.Fatal(err)
+	}
+	selected, err := store.SelectChartSeries(ctx, first, start, start.Add(3*time.Second), time.Second)
+	if err != nil || !reflect.DeepEqual(selected, got[:1]) {
+		t.Fatalf("selected history affected by unrelated corrupt sample: %#v, %v", selected, err)
+	}
+	missing, err := store.SelectChartSeries(ctx, strings.Repeat("c", 64), start, start.Add(3*time.Second), time.Second)
+	if err != nil || len(missing) != 0 {
+		t.Fatalf("missing container returned unrelated history: %#v, %v", missing, err)
+	}
+	if _, err := store.SelectChartSeries(ctx, "invalid", start, start.Add(3*time.Second), time.Second); err == nil {
+		t.Fatal("invalid chart container ID accepted")
 	}
 }
 
@@ -129,7 +143,7 @@ func TestSelectChartSeriesRejectsUnboundedRanges(t *testing.T) {
 		{name: "nonpositive bucket", end: start.Add(time.Minute), bucket: 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if _, err := store.SelectChartSeries(ctx, start, test.end, test.bucket); err == nil {
+			if _, err := store.SelectChartSeries(ctx, "", start, test.end, test.bucket); err == nil {
 				t.Fatal("expected invalid chart range error")
 			}
 		})

@@ -262,13 +262,13 @@ func (c *Collector) collect(ctx context.Context, settings Settings) error {
 	}
 }
 
-func (c *Collector) SelectChartSeries(ctx context.Context, start, end time.Time, bucket time.Duration) ([]ContainerChartSeries, error) {
+func (c *Collector) SelectChartSeries(ctx context.Context, id string, start, end time.Time, bucket time.Duration) ([]ContainerChartSeries, error) {
 	c.storeMu.RLock()
 	defer c.storeMu.RUnlock()
 	if c.store == nil {
 		return nil, nil
 	}
-	return c.store.SelectChartSeries(ctx, start, end, bucket)
+	return c.store.SelectChartSeries(ctx, id, start, end, bucket)
 }
 
 func (c *Collector) SelectTimelineEvents(ctx context.Context, id string, start, end time.Time, limit int) ([]Event, error) {

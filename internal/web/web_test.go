@@ -93,7 +93,9 @@ func TestAuthenticationSetupAndDashboardFlow(t *testing.T) {
 	}
 	response = perform(handler, http.MethodGet, "/containers/observability", nil, cookies, "")
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "data-timeline-vertical") ||
-		!strings.Contains(response.Body.String(), "Observability") || !strings.Contains(response.Body.String(), "Metrics collection is disabled") {
+		!strings.Contains(response.Body.String(), "Observability") || !strings.Contains(response.Body.String(), "Metrics collection is disabled") ||
+		!strings.Contains(response.Body.String(), "Docker status unavailable: no socket configured.") ||
+		strings.Contains(response.Body.String(), "No containers available in the snapshot") {
 		t.Fatalf("observability page = %d %q", response.Code, response.Body.String())
 	}
 	response = perform(handler, http.MethodGet, "/containers/observability?container=all", nil, cookies, "")
@@ -416,12 +418,17 @@ func TestRuntimeSnapshotIsAuthenticatedOnDemandAndNameScoped(t *testing.T) {
 	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "No containers found in this snapshot.") {
 		t.Fatalf("empty inventory = %d %s", response.Code, response.Body.String())
 	}
+	response = perform(handler, http.MethodGet, "/containers/observability", nil, cookies, "")
+	if response.Code != http.StatusOK || !strings.Contains(response.Body.String(), "No containers available in the snapshot or retained history.") {
+		t.Fatalf("empty observability inventory = %d %s", response.Code, response.Body.String())
+	}
 	empty.Store(false)
 	failure.Store(true)
 	for _, path := range []string{"/?runtime=1", "/projects", "/containers", "/containers/observability"} {
 		response = perform(handler, http.MethodGet, path, nil, cookies, "")
 		body = response.Body.String()
-		if !strings.Contains(body, "Docker status unavailable") || strings.Contains(body, "No matching containers") || strings.Contains(body, "No containers found") {
+		if !strings.Contains(body, "Docker status unavailable") || strings.Contains(body, "No matching containers") ||
+			strings.Contains(body, "No containers found") || strings.Contains(body, "No containers available in the snapshot") {
 			t.Fatalf("failed snapshot displayed as empty at %s: %s", path, body)
 		}
 	}

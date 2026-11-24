@@ -438,7 +438,13 @@ func (s *Store) Select(ctx context.Context, id string, start, end time.Time, lim
 // SelectChartSeries returns at most one recorded observation per container and
 // display bucket. It does not combine values across containers; missing buckets
 // remain nil and display selection does not alter retained samples.
-func (s *Store) SelectChartSeries(ctx context.Context, start, end time.Time, bucket time.Duration) ([]ContainerChartSeries, error) {
+// An empty id selects all containers; a nonempty id scopes rows before ranking.
+func (s *Store) SelectChartSeries(ctx context.Context, id string, start, end time.Time, bucket time.Duration) ([]ContainerChartSeries, error) {
+	if id != "" {
+		if err := validateID(id); err != nil {
+			return nil, err
+		}
+	}
 	from, err := timestamp(start)
 	if err != nil {
 		return nil, fmt.Errorf("invalid chart start: %w", err)
@@ -457,6 +463,12 @@ func (s *Store) SelectChartSeries(ctx context.Context, start, end time.Time, buc
 		return nil, errors.New("chart range exceeds 120 buckets")
 	}
 	bucketCount := int((rangeNS-1)/bucketNS + 1)
+	filter := ""
+	args := []any{from, bucketNS, from, bucketNS, from, to}
+	if id != "" {
+		filter = " AND container_id = ?"
+		args = append(args, id)
+	}
 	rows, err := s.db.QueryContext(ctx, `WITH ranked AS (
 		SELECT container_id, observed_ns,
 			((observed_ns - ?) / ?) AS bucket_index,
@@ -467,12 +479,12 @@ func (s *Store) SelectChartSeries(ctx context.Context, start, end time.Time, buc
 				ORDER BY observed_ns DESC
 			) AS sample_rank
 		FROM samples
-		WHERE observed_ns >= ? AND observed_ns < ?
+		WHERE observed_ns >= ? AND observed_ns < ?`+filter+`
 	)
 	SELECT container_id, bucket_index, observed_ns, cpu_percent, memory_usage_bytes,
 		network_rx_bytes_per_sec, network_tx_bytes_per_sec
 	FROM ranked WHERE sample_rank = 1
-	ORDER BY container_id, bucket_index`, from, bucketNS, from, bucketNS, from, to)
+	ORDER BY container_id, bucket_index`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query chart metrics: %w", err)
 	}

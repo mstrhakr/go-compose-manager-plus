@@ -32,6 +32,40 @@ function serveObservability(route) {
   });
 }
 
+test('compact observability keeps long container lists inside their scrolling pane', async ({ page }) => {
+  await page.route('**/containers/observability*', serveObservability);
+  await page.goto('/containers/observability');
+  const pane = page.getByRole('complementary', { name: 'Filtered containers' });
+  const names = pane.getByRole('navigation', { name: 'Filtered containers' });
+  await names.evaluate(element => {
+    const original = element.firstElementChild;
+    for (let index = 0; index < 80; index++) {
+      const link = original.cloneNode(true);
+      link.removeAttribute('aria-current');
+      link.lastElementChild.textContent = `extra-container-${index}`;
+      element.append(link);
+    }
+  });
+  for (const width of [900, 620, 390]) {
+    await page.setViewportSize({ width, height: 800 });
+    const before = await pane.evaluate(element => ({
+      height: element.clientHeight, content: element.scrollHeight,
+      bottom: element.getBoundingClientRect().bottom,
+    }));
+    expect(before.height).toBeLessThanOrEqual(240);
+    expect(before.content).toBeGreaterThan(before.height);
+    const toolbar = await page.locator('.workspace-toolbar').boundingBox();
+    expect(toolbar.y).toBeGreaterThanOrEqual(before.bottom);
+    await page.locator('.console-main').focus();
+    await names.getByRole('link').last().focus();
+    await expect.poll(() => pane.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    const last = await names.getByRole('link').last().boundingBox();
+    const bounds = await pane.boundingBox();
+    expect(last.y + last.height).toBeLessThanOrEqual(bounds.y + bounds.height + 1);
+    await pane.evaluate(element => { element.scrollTop = 0; });
+  }
+});
+
 test('single-container observability has a vertical synchronized timeline and stacked records', async ({ page }, testInfo) => {
   await page.route('**/containers/observability*', serveObservability);
   await page.goto('/containers/observability');

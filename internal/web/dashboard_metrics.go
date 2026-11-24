@@ -19,7 +19,7 @@ var chartColors = []string{"blue", "amber", "purple", "green", "red"}
 
 type dashboardMetricsCollector interface {
 	Status() metrics.CollectorStatus
-	SelectChartSeries(context.Context, time.Time, time.Time, time.Duration) ([]metrics.ContainerChartSeries, error)
+	SelectChartSeries(context.Context, string, time.Time, time.Time, time.Duration) ([]metrics.ContainerChartSeries, error)
 	SelectTimelineEvents(context.Context, string, time.Time, time.Time, int) ([]metrics.Event, error)
 	SelectObservedContainers(context.Context, time.Time, time.Time) ([]string, error)
 }
@@ -77,20 +77,14 @@ func (server *authServer) dashboardChartsForRange(ctx context.Context, start, en
 		return emptyDashboardCharts("No container selected", "Select a container to view its last-hour history.", false), "No selection"
 	}
 	status := server.collector.Status()
-	series, err := server.collector.SelectChartSeries(ctx, start, end, chartBucket)
+	queryID := containerID
+	if aggregate {
+		queryID = ""
+	}
+	series, err := server.collector.SelectChartSeries(ctx, queryID, start, end, chartBucket)
 	if err != nil {
 		server.logger.ErrorContext(ctx, "read dashboard metrics", "error", err)
 		return emptyDashboardCharts("Unavailable", "Stored metrics could not be loaded.", aggregate), "Unavailable"
-	}
-	if !aggregate {
-		selected := []metrics.ContainerChartSeries{}
-		for _, container := range series {
-			if container.ContainerID == containerID {
-				selected = append(selected, container)
-				break
-			}
-		}
-		series = selected
 	}
 	if len(series) == 0 {
 		if status.Problem != "" {
