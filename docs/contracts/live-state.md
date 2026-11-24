@@ -172,10 +172,21 @@ direction does not authorize a mutation executor or settle operation-history
 retention, durability, actor fields or result semantics.
 
 Manager operation status is owned by [OPS](operation-coordination.md), not
-deduced from Docker events. Whether a selected-container activity tab also shows
-associated manager operations, and the evidence required to link those records,
-remain to be refined. Temporal proximity alone does not establish causation.
+deduced from Docker events. The owner clarified that this slice's selected-
+container records focus on container-specific events, not associated stack
+operations. A stack-level Observability page is a later direction, not part
+of this slice or authorization to implement stack aggregation.
+Temporal proximity alone does not establish causation.
 Created-event ingestion is not implemented by the existing event collector.
+
+Shared system events such as manager startup and Docker connection lost/restored
+may be projected onto a container's timeline, but must be recorded once at the
+shared system-history owner, not copied into each container's history. The
+container view combines relevant shared records/gaps with that container's
+events at read/presentation time. Do not invent container-specific disconnect
+events or make storage grow by duplicating one system event per container.
+This settles record ownership and projection, not a complete system-event
+catalog, persistence schema, retention or connection-state detection policy.
 
 The owner further specified a distinct grey timeline area for Docker
 disconnections, following the supplied reference presentation. This area

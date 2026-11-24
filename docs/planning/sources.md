@@ -281,6 +281,14 @@ that sequence for every Up. Container-operation linking and activity lifetime
 remain unresolved; the request does not authorize action execution. Existing
 Docker event ingestion lacks Created events and no manager executor exists.
 
+The owner clarified that the current Observability slice is container-specific;
+stack-level Observability will come later. Shared system events (examples:
+manager started, Docker lost/restored) may appear on container timelines but
+must be stored once, never duplicated into every container's event history.
+Container timelines project relevant shared records alongside their own events.
+This resolves container-activity scope and shared record ownership, not system
+catalog/retention or stack-view implementation.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
