@@ -1514,3 +1514,33 @@ ten-minute suite budget while executing SQLite filesystem synchronization.
 Other Go packages passed. This remains failed local full-suite evidence.
 Node/HTTP tests, docs variants/links and dependency checks passed separately;
 final hosted checks remain required.
+
+### Structured Troubleshooting Diagnostics
+
+The owner's follow-up requested useful Debug output and uniform manager log
+formatting. Startup/database timings, source configuration/session boundaries,
+metrics-cycle counts/timings, bounded live-log status and workspace/history/HTTP
+route timings now use the existing application logger. Info remains quiet.
+Routes are logged by their matched pattern, not query strings or request data.
+Live log ingestion itself does not emit per-message diagnostics, avoiding a
+self-capture feedback loop.
+
+The differently formatted obsolete-`version` warning was traced to compose-go's
+logrus logger, not an external Docker CLI process. A startup bridge preserves
+severity/message/fields through the application's JSON handler. Standard-library
+logs and HTTP server errors use the same handler. SDK debug/trace dumps stay
+disabled even when application Debug is selected. The existing pinned logrus
+dependency is now direct; no dependency version changed.
+
+Race tests passed using an actual Compose file that triggers the obsolete
+attribute warning, checking single-line JSON, preserved severity/fields,
+newline/quote escaping, standard logging and repeated configuration without
+duplicate hooks. The request regression verifies useful matched-route timing,
+excludes query/body/cookie/authorization sentinels, and remains silent at Info.
+Targeted metrics/web/logging race checks passed across sampling, state-only
+capture, sparse/committed state history and independent log health. The live-log
+integration case initially missed its short deadline in a combined run; isolated
+unchanged-main and current-source runs both passed. Vet/build, Node unit tests,
+asset verification, contract structure, docs variants/links and dependency
+checks passed. The previously documented full local gate failures remain
+qualifications, not converted to successes by these focused checks.

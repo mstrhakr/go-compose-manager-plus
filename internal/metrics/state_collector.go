@@ -171,6 +171,11 @@ func (c *Collector) beginStateOnlySession() {
 }
 
 func (c *Collector) collectStateOnlySession(ctx context.Context, settings Settings, sources SourceSettings) error {
+	started := time.Now()
+	c.logger.DebugContext(ctx, "state history session started", "database", "metrics.db", "scope", sources.StateScope)
+	defer func() {
+		c.logger.DebugContext(ctx, "state history session finished", "duration_ms", time.Since(started).Milliseconds())
+	}()
 	c.beginStateOnlySession()
 	store, err := OpenManaged(ctx, c.dataDir, settings.StorageLimit)
 	if err != nil {
@@ -289,6 +294,7 @@ func (c *Collector) watchStateEvents(ctx context.Context, store *ManagedStore, s
 	}()
 	for ctx.Err() == nil {
 		err := c.docker.WatchContainerEventsWithConnect(ctx, func() {
+			c.logger.DebugContext(ctx, "Docker event stream connected", "source", "state_history")
 			connected.Store(true)
 			c.updateStatus(func(status *CollectorStatus) {
 				status.StateEnabled = true

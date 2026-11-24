@@ -361,6 +361,14 @@ presentation within the existing one-hour history, not the pictured product's
 24-hour retention, networking capabilities or an unapproved live-refresh source.
 The images remain private research references, not shipped product assets.
 
+The owner subsequently requested more useful application Debug diagnostics and
+consistent structured formatting for the differently formatted Docker/Compose
+warning. This authorizes operational troubleshooting output and normalization
+of the embedded Compose SDK's diagnostics, not parsing/reformatting collected
+container message bytes or exposing credentials/resolved configuration.
+The owner also requested preserving the screenshot/compare/iterate workflow as
+a reusable repository skill; it does not authorize additional product features.
+
 The owner then requested a broad future-settings inventory before selecting the
 hierarchy. The assistant compared existing product/contract scope with
 exploratory future candidates; no source-plugin capability was automatically

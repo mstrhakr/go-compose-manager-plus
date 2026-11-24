@@ -83,6 +83,9 @@ func (c *Collector) updateStatus(update func(*CollectorStatus)) {
 }
 
 func (c *Collector) Run(ctx context.Context) error {
+	var lastSettings Settings
+	var lastSources SourceSettings
+	configurationLogged := false
 	logsDone := make(chan struct{})
 	go func() {
 		defer close(logsDone)
@@ -110,6 +113,17 @@ func (c *Collector) Run(ctx context.Context) error {
 				return err
 			}
 			continue
+		}
+		if !configurationLogged || settings != lastSettings || sources != lastSources {
+			c.logger.DebugContext(ctx, "observability configuration loaded",
+				"stats_enabled", settings.Enabled, "stats_profile", settings.Profile,
+				"stats_scope", settings.Scope, "stats_interval_ms", settings.Interval.Milliseconds(),
+				"metrics_target_bytes", settings.StorageLimit,
+				"state_enabled", sources.StateEnabled, "state_scope", sources.StateScope,
+				"logs_enabled", sources.Logs.Configured && sources.Logs.Enabled,
+				"logs_profile", sources.Logs.Profile, "logs_scope", sources.Logs.Scope,
+				"logs_delivery", sources.Logs.DeliveryPreset, "logs_target_bytes", sources.Logs.StorageLimit)
+			lastSettings, lastSources, configurationLogged = settings, sources, true
 		}
 		if !settings.Enabled {
 			c.updateStatus(func(status *CollectorStatus) {
@@ -190,6 +204,11 @@ func (state *eventContinuity) snapshot() (bool, uint64) {
 }
 
 func (c *Collector) collect(ctx context.Context, settings Settings, sources SourceSettings) error {
+	started := time.Now()
+	c.logger.DebugContext(ctx, "metrics collection session started", "database", "metrics.db")
+	defer func() {
+		c.logger.DebugContext(ctx, "metrics collection session finished", "duration_ms", time.Since(started).Milliseconds())
+	}()
 	var err error
 	store, err := OpenManaged(ctx, c.dataDir, settings.StorageLimit)
 	if err != nil {
@@ -366,6 +385,7 @@ func (c *Collector) collectCycleWithState(ctx context.Context, settings Settings
 }
 
 func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Settings, stateScope CollectionScope, store *ManagedStore, continuity *eventContinuity, samplers map[string]*Sampler, previousCycleOK *bool, previousGeneration *uint64, persistStates bool) error {
+	started := time.Now()
 	snapshot, err := c.docker.Snapshot(ctx)
 	if err != nil {
 		*previousCycleOK = false
@@ -532,6 +552,9 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 		}
 	}
 	now := time.Now().UTC()
+	c.logger.DebugContext(ctx, "metrics cycle observations ready",
+		"eligible_containers", len(metricsEligible), "samples_attempted", len(samples),
+		"state_observations", len(states), "unavailable_state_targets", len(unavailableStateIDs))
 	var stateErr error
 	if persistStates {
 		c.statePersistMu.Lock()
@@ -610,6 +633,8 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 			status.Problem = ""
 		}
 	})
+	c.logger.DebugContext(ctx, "metrics collection cycle finished",
+		"duration_ms", time.Since(started).Milliseconds(), "successful", cycleErr == nil)
 	return cycleErr
 }
 
@@ -757,6 +782,7 @@ func (c *Collector) watchEvents(ctx context.Context, store *ManagedStore, contin
 	defer func() { <-refreshDone }()
 	for ctx.Err() == nil {
 		err := c.docker.WatchContainerEventsWithConnect(ctx, func() {
+			c.logger.DebugContext(ctx, "Docker event stream connected", "source", "metrics", "state_history", persistEvents)
 			continuity.setConnected(true)
 			connected.Store(true)
 			c.updateStatus(func(status *CollectorStatus) {

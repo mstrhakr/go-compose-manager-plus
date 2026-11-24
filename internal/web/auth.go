@@ -172,6 +172,12 @@ func (server *authServer) observabilityPage(w http.ResponseWriter, r *http.Reque
 }
 
 func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view string) {
+	started := time.Now()
+	server.logger.DebugContext(r.Context(), "workspace load started", "view", view)
+	defer func() {
+		server.logger.DebugContext(r.Context(), "workspace load finished",
+			"view", view, "duration_ms", time.Since(started).Milliseconds())
+	}()
 	user, _, err := server.manager.CurrentUser(r.Context())
 	if err != nil {
 		http.Error(w, "Unable to verify session", http.StatusInternalServerError)
@@ -306,6 +312,8 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 	if view == "observability" {
 		historyCtx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
+		historyStarted := time.Now()
+		server.logger.DebugContext(r.Context(), "observability history read started", "timeout_ms", 5000)
 		start, end := dashboardTimeRange()
 		observed, selected, filters, err = server.observabilityContainers(historyCtx, start, end, containers, r.URL.Query())
 		if err != nil {
@@ -319,6 +327,10 @@ func (server *authServer) workspace(w http.ResponseWriter, r *http.Request, view
 		charts, metricsStatus = server.dashboardChartsForRange(historyCtx, start, end, false, selected)
 		timeline = server.dashboardTimeline(historyCtx, start, end, selected)
 		logHistory = server.dashboardLogs(historyCtx, start, end, selected)
+		server.logger.DebugContext(r.Context(), "observability history read finished",
+			"duration_ms", time.Since(historyStarted).Milliseconds(), "containers", len(observed),
+			"charts", len(charts), "event_records", len(timeline.Events), "log_records", len(logHistory.Entries),
+			"timed_out", errors.Is(historyCtx.Err(), context.DeadlineExceeded))
 	}
 	pageError := server.manager.SessionManager().PopString(r.Context(), "discovery_error")
 	if historyError != "" {

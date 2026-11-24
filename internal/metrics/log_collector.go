@@ -94,6 +94,12 @@ func (c *Collector) setLogProblem(err error) {
 }
 
 func (c *Collector) collectLogSession(ctx context.Context, settings LogSettings) error {
+	started := time.Now()
+	c.logger.DebugContext(ctx, "log capture session started", "database", "logs.db",
+		"scope", settings.Scope, "delivery", settings.DeliveryPreset)
+	defer func() {
+		c.logger.DebugContext(ctx, "log capture session finished", "duration_ms", time.Since(started).Milliseconds())
+	}()
 	store, err := OpenManagedLogs(ctx, c.dataDir, settings.StorageLimit)
 	if err != nil {
 		return fmt.Errorf("open managed log store: %w", err)
@@ -292,6 +298,9 @@ func (c *Collector) collectLiveLogs(ctx context.Context, settings LogSettings, s
 			if err := c.refreshLogEvictions(ctx, store); err != nil {
 				c.logger.WarnContext(ctx, "read log storage status", "error", err)
 			}
+			status := c.Status()
+			c.logger.DebugContext(ctx, "live log collection status",
+				"containers", status.LogsContainers, "successful", status.LogsCollecting)
 		}
 	}
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/mstrhakr/go-compose-manager-plus/internal/auth"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/config"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/discovery"
+	"github.com/mstrhakr/go-compose-manager-plus/internal/logging"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/metrics"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/runtime"
 	"github.com/mstrhakr/go-compose-manager-plus/internal/web"
@@ -35,12 +36,15 @@ func main() {
 		fmt.Printf("%s commit=%s built=%s\n", version, commit, date)
 		return
 	}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	logging.Configure(logger)
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Error("configuration failed", "error", err)
+		logger.Error("configuration failed", "error", err)
 		os.Exit(1)
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
+	logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
+	logging.Configure(logger)
 	if *healthcheck {
 		err = checkHealth(cfg.Addr)
 	} else {
@@ -58,11 +62,14 @@ func run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if ctx.Err() != nil {
 		return nil
 	}
+	started := time.Now()
+	logger.DebugContext(ctx, "opening application database", "database", "app.db")
 	database, err := auth.OpenDatabase(ctx, cfg.DataDir)
 	if err != nil {
 		return fmt.Errorf("open application state: %w", err)
 	}
 	defer database.SQL.Close()
+	logger.DebugContext(ctx, "application database opened", "database", "app.db", "duration_ms", time.Since(started).Milliseconds())
 	authManager, err := auth.NewManager(ctx, database, cfg.PublicURL.Scheme == "https", cfg.TrustedProxyRanges)
 	if err != nil {
 		return fmt.Errorf("initialize authentication: %w", err)
@@ -74,6 +81,7 @@ func run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	if cfg.DockerSocket != "" {
 		docker = runtime.NewClient(cfg.DockerSocket)
 	}
+	logger.DebugContext(ctx, "application initialized", "version", version, "commit", commit, "docker_configured", docker != nil)
 	metricsSettings := metrics.NewSettingsStore(database.SQL)
 	collector, err := metrics.NewCollector(cfg.DataDir, metricsSettings, discovery.NewStore(database.SQL), docker, logger)
 	if err != nil {
@@ -98,6 +106,7 @@ func run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 		MaxHeaderBytes:    1 << 20,
+		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}
 	result := make(chan error, 1)
 	go func() { result <- server.ListenAndServe() }()

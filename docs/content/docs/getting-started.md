@@ -165,6 +165,28 @@ history may also be unavailable. Refresh after checking collection status.
 Previously recorded duplicate state rows are not deleted by an upgrade; normal
 retention removes old in-window rows.</p>
 
+## Troubleshooting logs
+
+<p>Set <code>APP_LOG_LEVEL=debug</code> and restart the manager for additional
+diagnostics. Debug output includes startup/database timing, loaded collection
+profiles and scopes, source-session starts/stops, metrics-cycle counts/timing,
+live-log collection status, page/history-read timing and matched HTTP routes.
+Normal Info logging remains quieter. Health checks and static-file requests
+are excluded from request diagnostics.</p>
+<p>Application diagnostics, standard-library server messages and Compose SDK
+warnings use the same newline-delimited JSON format. Compose messages have
+<code>source: "compose"</code>, preserve warning/error severity and may identify
+the affected Compose file. This reformats the warning; it does not fix an obsolete
+Compose attribute. Debug diagnostics do not copy request query strings, bodies,
+cookies, authorization headers or captured container message text. SDK
+debug/trace configuration dumps remain disabled. Per-message log-ingestion
+diagnostics are deliberately omitted so collecting the manager's own container
+does not create a logging feedback loop.</p>
+<p>When sharing troubleshooting output, include the relevant timestamps, source
+settings and errors, and review it for sensitive application details first.
+These manager diagnostics are separate from the collected container output
+shown in Observability.</p>
+
 ## Configuration
 
 <p>The native binary reads exported environment variables, not dotenv files.</p>
