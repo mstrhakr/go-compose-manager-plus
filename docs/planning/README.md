@@ -122,6 +122,11 @@ Low/Medium/High sets both sources, including enabling logs when saved; Off
 sets both Off, and individual source changes make the overall value Custom.
 Effects must be visible before Save. Concrete log preset values, migration
 defaults and Off-history effects still require refinement before implementation.
+Individual settings reuse the selector style with meaningful setting-specific
+choices (including named scopes), optional positions and parent-dependent
+visibility. Storage presets reveal a reusable exact amount/unit input under
+Custom; concrete default sizes and child-value lifecycle remain undecided.
+Not every future setting must conform to this pattern.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,

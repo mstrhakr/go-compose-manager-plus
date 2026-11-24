@@ -195,6 +195,17 @@ the earlier overall-selector inclusion/consent question, not log preset
 parameters, initial/migration defaults, Off-history effects or shared pressure
 policy. No runtime or settings implementation changed during this refinement.
 
+The owner then refined the reusable Settings pattern on 2026-11-23: individual
+settings use the same discrete slider/selector styling with their own meaningful
+labels/options, not necessarily Off/Low/Medium/High/Custom. Off or Medium may
+be omitted. Scope uses named scope choices within that presentation. Storage
+uses preset amounts plus Custom, revealing the existing amount/unit input as a
+reusable component; exact preset sizes remain unselected/unmeasured. Dependent
+controls show/hide with parent enablement. The owner explicitly allows settings
+that cannot reasonably conform. Hidden-child preservation/reset, custom-value
+restoration and nested preset propagation remain undecided; no runtime/component
+implementation is authorized merely by approval of this interaction pattern.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
