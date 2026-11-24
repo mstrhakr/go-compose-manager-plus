@@ -303,6 +303,9 @@ func TestVersionThreeMigrationRecordsEviction(t *testing.T) {
 	if _, err := store.db.ExecContext(ctx, `DROP TABLE event_dedup`); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := store.db.ExecContext(ctx, `DROP TABLE container_logs`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := store.db.ExecContext(ctx, `PRAGMA user_version = 3`); err != nil {
 		t.Fatal(err)
 	}
@@ -485,7 +488,7 @@ func TestOpenRejectsUnknownSchema(t *testing.T) {
 		name string
 		sql  string
 	}{
-		{"newer version", `PRAGMA user_version = 8`},
+		{"newer version", fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion+1)},
 		{"unversioned database", `CREATE TABLE unrelated (id INTEGER)`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

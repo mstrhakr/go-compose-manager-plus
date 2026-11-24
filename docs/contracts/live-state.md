@@ -161,15 +161,31 @@ logs are already collected. Log-source compatibility, collection consent,
 access, synchronization, shared-budget pressure behavior and unavailable
 states remain to be settled and verified.
 
-Proposed first source: read-only Docker container stdout/stderr, using Docker
-timestamps and immutable container IDs, without reading arbitrary host files or
-changing a container's logging driver. Application output can contain sensitive
-data. An additional default-off "Collect container logs" option, within the
-existing collection opt-in and selected-container scope, is recommended but
+The owner then approved read-only Docker container stdout/stderr as the initial
+source and authorized beginning implementation. Preserve the original message
+alongside Docker timestamp, receipt timestamp, immutable container ID and stream;
+decode transport framing rather than storing raw Docker wire frames. Structured
+application fields may later be parsed without replacing the original message;
+non-JSON output and parse failures must not be discarded, and stderr alone must
+not be interpreted as error severity. Oversized records need explicit limits
+and truncation reporting. Do not read arbitrary host/container log files or
+change logging drivers. Driver/cache availability, rotation and disconnects
+prevent a guarantee of complete history.
+
+Application output can contain sensitive data. An additional default-off
+"Collect container logs" option, within the existing collection opt-in and
+selected-container scope, is recommended but
 not owner-approved; enabling numeric metrics must not be treated as evidence
 of a separate log-consent decision. The existing storage-pressure owner evicts
-metric samples only, so adding logs requires an explicit shared-budget policy
+metric samples only, so production capture requires an explicit shared-budget policy
 rather than pretending that sample eviction already bounds log storage.
+
+For later integration, the proposed shared-pressure policy is bounded eviction
+of the oldest sample/log records by observation time, preserving current
+event/state retention behavior and reporting shortened history separately for
+logs and samples. This is not approved yet; dedicated log budgets or prioritizing
+log removal are alternatives requiring an owner decision. No early log eviction
+or changed sample-eviction ordering is implemented by the foundation.
 
 A possible dedicated logs navigation view with stack, container and network
 filters is a follow-up idea, not an approved complete feature set. Network
@@ -291,7 +307,27 @@ observed events rather than asserting a complete lifecycle record. A bounded
 event list is explicitly marked when older events are omitted. No persisted
 per-container gap ledger, hard filesystem quota or measured preset
 sizing/throughput is implemented. Historical logs and TimescaleDB remain
-unimplemented. Platform behavior,
+unimplemented in the collector and web views. A bounded Docker API reader and
+SQLite log-persistence foundation are implemented separately: original message
+bytes and timestamp/stream/truncation metadata survive reopening; selected and
+aggregate queries are newest-first, limited and explicitly signal omitted rows;
+log-only identities join the existing history inventory. Shared maintenance
+expires logs atomically with samples/events/states using the same cutoff.
+The foundation does not enable log capture, add a background collector, choose
+replay deduplication, extend managed pressure eviction or provide log tabs.
+Source decoding preserves individual non-TTY Docker frame records, including
+multiline and non-newline-terminated output. TTY output is a merged, line-oriented
+stream; individual source-record boundaries and stdout/stderr separation cannot
+be reconstructed reliably for non-newline-terminated TTY output.
+The implementation bounds stored messages to 64 KiB, Docker frames to 1 MiB,
+insert batches to 128 records and query results to 1,000 records plus a 1 MiB
+message-byte budget over at most an hour. These are implementation resource
+guards, not measured owner-approved throughput targets. Truncation is metadata,
+oversized/malformed frames are
+explicit source errors, and following EOF reports lost continuity. Plain store
+writes require managed-store integration before production collection, including
+durable pending-write handling and the still-unresolved shared pressure policy.
+Platform behavior,
 live-Docker recovery and physical disk-full behavior remain unverified. A
 test-only Docker/tstorage feasibility spike is recorded in
 [verification](../verification.md#docker-metrics-storage-proof-of-concept); it
@@ -437,6 +473,14 @@ The single-container Observability refinement is recorded separately in
 It replaces the all-container presentation with selected-container charts and
 events, plus on-demand snapshot names and filtering. Historical logs and final
 mobile feature scope remain unresolved; no whole-contract fulfillment is claimed.
+
+The subsequent [Docker log API and SQLite foundation](../verification.md#docker-log-api-and-sqlite-foundation)
+was exercised separately with mock HTTP/Unix-socket data, reopen/migration,
+bounded-query and exact maintenance-cutoff checks. Application, documentation
+and dependency security checks passed; final finite/follow input refinements
+were rechecked with focused runtime/integration race tests. This does not
+verify production log collection, consent, pressure/replay policy, log UI,
+live Docker driver behavior or secure erasure of expired data.
 
 The desktop shell's independent main/sidebar scrolling was exercised on Linux
 on 2026-11-23. `make check QUIET=1`, `make docs && make check-docs`, and

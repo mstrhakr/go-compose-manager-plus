@@ -31,8 +31,11 @@ func TestExpireHistoryBeforeIsAtomicAndPreservesCutoff(t *testing.T) {
 		if err := store.InsertStates(ctx, []State{{ContainerID: id, Time: at, State: "running", Health: HealthNone}}); err != nil {
 			t.Fatal(err)
 		}
+		if err := store.InsertLogs(ctx, at, []Log{{ContainerID: id, Time: at, ReceivedAt: at, Stream: runtime.LogStdout, Message: "message"}}); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if _, err := store.db.ExecContext(ctx, `CREATE TRIGGER expiry_failure BEFORE DELETE ON container_states BEGIN SELECT RAISE(ABORT, 'injected expiry failure'); END`); err != nil {
+	if _, err := store.db.ExecContext(ctx, `CREATE TRIGGER expiry_failure BEFORE DELETE ON container_logs BEGIN SELECT RAISE(ABORT, 'injected expiry failure'); END`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.ExpireHistoryBefore(ctx, cutoff); err == nil {
@@ -46,6 +49,14 @@ func TestExpireHistoryBeforeIsAtomicAndPreservesCutoff(t *testing.T) {
 	if err != nil || len(events) != 3 {
 		t.Fatalf("failed transaction changed events: %d, %v", len(events), err)
 	}
+	states, err := store.SelectStates(ctx, id, times[0], now.Add(time.Second), 10)
+	if err != nil || len(states) != 3 {
+		t.Fatalf("failed transaction changed states: %d, %v", len(states), err)
+	}
+	logs, err := store.SelectLogs(ctx, id, times[0], cutoff.Add(time.Minute), 10)
+	if err != nil || len(logs.Logs) != 2 {
+		t.Fatalf("failed transaction changed logs: %#v, %v", logs, err)
+	}
 	var identities int
 	if err := store.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM event_dedup`).Scan(&identities); err != nil || identities != 3 {
 		t.Fatalf("failed transaction changed replay identities: %d, %v", identities, err)
@@ -54,7 +65,7 @@ func TestExpireHistoryBeforeIsAtomicAndPreservesCutoff(t *testing.T) {
 		t.Fatal(err)
 	}
 	counts, err := store.ExpireHistoryBefore(ctx, cutoff)
-	if err != nil || counts != (ExpiredHistory{Samples: 1, Events: 1, States: 1}) {
+	if err != nil || counts != (ExpiredHistory{Samples: 1, Events: 1, States: 1, Logs: 1}) {
 		t.Fatalf("expiry counts = %#v, error %v", counts, err)
 	}
 	if err := store.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM event_dedup`).Scan(&identities); err != nil || identities != 2 {
@@ -80,9 +91,13 @@ func TestExpireHistoryBeforeIsAtomicAndPreservesCutoff(t *testing.T) {
 	if err != nil || len(events) != 2 || !events[0].Time.Equal(cutoff) || !events[1].Time.Equal(now) {
 		t.Fatalf("remaining events = %#v, error %v", events, err)
 	}
-	states, err := store.SelectStates(ctx, id, times[0], now.Add(time.Second), 10)
+	states, err = store.SelectStates(ctx, id, times[0], now.Add(time.Second), 10)
 	if err != nil || len(states) != 2 || !states[0].Time.Equal(cutoff) || !states[1].Time.Equal(now) {
 		t.Fatalf("remaining states = %#v, error %v", states, err)
+	}
+	logs, err = store.SelectLogs(ctx, id, cutoff, now, 10)
+	if err != nil || len(logs.Logs) != 1 || !logs.Logs[0].Time.Equal(cutoff) {
+		t.Fatalf("remaining logs = %#v, error %v", logs, err)
 	}
 	counts, err = store.ExpireHistoryBefore(ctx, cutoff)
 	if err != nil || !reflect.DeepEqual(counts, ExpiredHistory{}) {

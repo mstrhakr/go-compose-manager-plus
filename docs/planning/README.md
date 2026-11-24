@@ -109,8 +109,12 @@ parity. The next requested observability slice is container-log collection in
 the same local SQLite history store, retaining one hour, followed by an
 aggregated dashboard log view. TimescaleDB is deferred for longer metric/log
 history. Collection consent and shared log/metric storage-pressure behavior
-remain implementation gates under [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
+remain production-collection gates under [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
 a dedicated log view and network-aware filters remain follow-up ideas.
+The owner subsequently approved beginning the Docker API implementation that
+preserves original messages and metadata. The first bounded API/SQLite
+foundation does not enable production collection or resolve the unanswered
+consent/pressure gates.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,

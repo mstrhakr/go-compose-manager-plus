@@ -128,6 +128,9 @@ func TestVersionFiveMigrationCreatesPendingWrite(t *testing.T) {
 	if _, err := store.db.ExecContext(ctx, `DROP TABLE event_dedup`); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := store.db.ExecContext(ctx, `DROP TABLE container_logs`); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := store.db.ExecContext(ctx, `PRAGMA user_version = 5`); err != nil {
 		t.Fatal(err)
 	}
@@ -164,6 +167,9 @@ func TestEventReplayDeduplicatesAndMigrationPreservesHistory(t *testing.T) {
 		}
 	}
 	if _, err := store.db.ExecContext(ctx, `DROP TABLE event_dedup`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.db.ExecContext(ctx, `DROP TABLE container_logs`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := store.db.ExecContext(ctx, `PRAGMA user_version = 6`); err != nil {

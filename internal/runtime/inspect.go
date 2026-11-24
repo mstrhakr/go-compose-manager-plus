@@ -18,6 +18,7 @@ type ContainerInspection struct {
 	State     string
 	Health    string
 	StartedAt time.Time
+	TTY       *bool
 }
 
 // InspectContainer queries the read-only Docker container inspection endpoint.
@@ -50,6 +51,7 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (ContainerInsp
 	var raw struct {
 		ID     string `json:"Id"`
 		Config *struct {
+			TTY         *bool `json:"Tty"`
 			Healthcheck *struct {
 				Test []string `json:"Test"`
 			} `json:"Healthcheck"`
@@ -94,5 +96,9 @@ func (c *Client) InspectContainer(ctx context.Context, id string) (ContainerInsp
 			return ContainerInspection{}, fmt.Errorf("invalid Docker start time: %w", err)
 		}
 	}
-	return ContainerInspection{ID: id, State: state, Health: health, StartedAt: started}, nil
+	result := ContainerInspection{ID: id, State: state, Health: health, StartedAt: started}
+	if raw.Config != nil {
+		result.TTY = raw.Config.TTY
+	}
+	return result, nil
 }

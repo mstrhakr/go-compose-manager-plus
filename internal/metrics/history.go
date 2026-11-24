@@ -276,7 +276,7 @@ func (s *Store) SelectTimelineEvents(ctx context.Context, id string, start, end 
 	return result, nil
 }
 
-// SelectObservedContainers includes event/state-only identities without a live snapshot.
+// SelectObservedContainers includes history-only identities without a live snapshot.
 func (s *Store) SelectObservedContainers(ctx context.Context, start, end time.Time) ([]string, error) {
 	from, to, err := historyTimeRange(start, end, 1)
 	if err != nil {
@@ -288,7 +288,8 @@ func (s *Store) SelectObservedContainers(ctx context.Context, start, end time.Ti
 	rows, err := s.db.QueryContext(ctx, `SELECT container_id FROM samples WHERE observed_ns >= ? AND observed_ns < ?
 		UNION SELECT container_id FROM container_events WHERE observed_ns >= ? AND observed_ns < ?
 		UNION SELECT container_id FROM container_states WHERE observed_ns >= ? AND observed_ns < ?
-		ORDER BY container_id`, from, to, from, to, from, to)
+		UNION SELECT container_id FROM container_logs WHERE observed_ns >= ? AND observed_ns < ?
+		ORDER BY container_id`, from, to, from, to, from, to, from, to)
 	if err != nil {
 		return nil, fmt.Errorf("query observed containers: %w", err)
 	}

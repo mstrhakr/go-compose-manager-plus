@@ -52,8 +52,8 @@ light/dark 2560×1440, reduced-content-area and compact screenshots under
 <code>test-results/observability-single-container-*.png</code>. Synthetic
 snapshot names are test-only; real names and filters use an on-demand read-only
 Docker snapshot, with retained IDs used for history absent from the snapshot.
-The container-log section is explicitly unavailable until a log source and
-retention/access policy are configured; it does not invent historical logs.</p>
+The container-log section is explicitly unavailable until production collection
+and access policy are implemented; it does not invent historical logs.</p>
 <p>Go tests use the standard testing and httptest packages. Add table-driven
 configuration tests and handler tests near the implementation. For an individual
 package, run <code>go test -race ./internal/web</code>.</p>
@@ -107,6 +107,28 @@ it on each collection cycle, and limits concurrent observations to eight.
 Rates require an uninterrupted event stream and a stable container start time;
 disconnects and errors discard rate continuity. Sampling intervals are targets,
 not schedule guarantees.</p>
+<p>The initial log foundation uses the read-only Docker logs API, inspecting the
+container's TTY setting before decoding. Finite reads require an end time;
+live following uses an open-ended range with a caller-owned backfill start.
+Production collection must choose a start within the retained window; the
+store validates the current one-hour write boundary.
+Non-TTY frames preserve individual
+Docker messages, including multiline and non-newline-terminated output; TTY
+output is merged and line-oriented, without reliable individual partial-record
+boundaries or stdout/stderr separation. It preserves message bytes with Docker
+and receipt timestamps, container identity, stream and explicit truncation.
+Messages are bounded to 64 KiB and frames to 1 MiB; malformed/oversized frames,
+unavailable sources, consumer failures and following EOF return errors.
+It does not parse application JSON, infer severity from stderr, reconnect or
+enable production capture. SQLite log batches are bounded to 128 records;
+selected-container and aggregate queries return at most 1,000 newest records
+with a 1 MiB message-byte budget over a range of at most an hour, explicitly
+indicating omitted results.
+Duplicate output is preserved rather than silently treated as replay. Shared
+maintenance expires logs with the same one-hour cutoff as metrics/events/states.
+Consent, durable managed log writes, shared pressure/replay policy and log UI
+wiring remain pending; no Docker connection or log output is collected merely
+by adding this foundation.</p>
 <p>The SQLite metrics persistence foundation stores observations in a
 separate <code>metrics.db</code>, preserving unavailable fields as SQL NULL.
 Memory values use decimal text to retain the full unsigned Docker counter range.
@@ -118,7 +140,7 @@ cannot restore events missed during a disconnect. The approved inference of
 zero values from specific known states, such as stopped, remains
 unimplemented; an absent observation alone is not evidence of zero. A caller
 can atomically delete
-sample, event and state records before a cutoff, inspect SQLite file lengths,
+sample, event, state and log records before a cutoff, inspect SQLite file lengths,
 inspect logical database page counts and reusable pages, attempt a WAL
 checkpoint, and remove batches of oldest samples. Reusable pages are still in
 the database file; reusing them can require additional WAL space. Each nonempty

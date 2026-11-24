@@ -18,7 +18,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 7
+const schemaVersion = 8
 
 // ErrWriteOutcomeUnknown means a database commit failed and its outcome must
 // be reconciled before retrying the same batch.
@@ -269,6 +269,27 @@ func initialize(ctx context.Context, db *sql.DB) error {
 		} {
 			if _, err := tx.ExecContext(ctx, statement); err != nil {
 				return fmt.Errorf("migrate metrics schema to version 7: %w", err)
+			}
+		}
+		version = 7
+	}
+	if version == 7 {
+		for _, statement := range []string{
+			`CREATE TABLE container_logs (
+				sequence INTEGER PRIMARY KEY,
+				container_id TEXT NOT NULL,
+				observed_ns INTEGER NOT NULL CHECK (observed_ns > 0),
+				received_ns INTEGER NOT NULL CHECK (received_ns > 0),
+				stream TEXT NOT NULL CHECK (stream IN ('stdout', 'stderr', 'tty')),
+				message TEXT NOT NULL CHECK (length(CAST(message AS BLOB)) <= 65536),
+				truncated INTEGER NOT NULL CHECK (truncated IN (0, 1))
+			)`,
+			`CREATE INDEX container_logs_time ON container_logs(observed_ns, sequence)`,
+			`CREATE INDEX container_logs_container_time ON container_logs(container_id, observed_ns, sequence)`,
+			`PRAGMA user_version = 8`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement); err != nil {
+				return fmt.Errorf("migrate metrics schema to version 8: %w", err)
 			}
 		}
 	}

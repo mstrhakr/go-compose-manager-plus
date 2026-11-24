@@ -156,10 +156,32 @@ The owner requested container-log collection in the same local observability
 SQLite database with one-hour retention, deferring TimescaleDB for longer log
 and metric history. An aggregated dashboard log view is requested; a separate
 logs navigation view with stack/container/network filtering remains a tentative
-follow-up. Docker stdout/stderr and an additional default-off log-collection
-option are proposals, not settled source/consent policy. The log opt-in question
-has not received an owner answer. Shared storage-pressure handling currently
-evicts samples only and needs a bounded policy for logs before implementation.
+follow-up. At that stage, Docker stdout/stderr and an additional default-off
+log-collection option were proposals, not settled source/consent policy. The
+log opt-in question has not received an owner answer. Shared storage-pressure
+handling currently evicts samples only and needs a bounded policy for logs
+before production capture.
+
+The owner subsequently agreed with the Docker API/original-message-plus-metadata
+model and requested beginning implementation, with contract refinement as needed
+throughout. This approves the initial stdout/stderr source, SQLite prototype and
+optional later TimescaleDB direction, not the earlier unanswered consent choice.
+The first bounded slice provides API decoding, SQLite persistence and shared
+one-hour expiry without enabling capture or selecting managed pressure/replay
+policy. Optional JSON parsing and production collector/web integration remain
+pending. Dedicated log infrastructure such as Loki is a later option justified
+by actual volume/search needs, not a new prototype dependency.
+
+Protocol evidence consulted: Docker's
+[logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
+and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
+plus Moby `v28.5.1`
+[log-stream writer](https://github.com/moby/moby/blob/v28.5.1/api/server/httputils/write_log_stream.go).
+Moby prefixes each non-TTY framed message with its timestamp even for partial
+lines, so newline-based frame concatenation would alter messages. TTY streams
+have no equivalent frame boundary. The product retains its existing v1.40 API
+request version; these references are protocol evidence, not live-driver or
+daemon-version compatibility verification.
 
 2026-11-22: for the first read-only runtime snapshot the owner selected
 associating discovered projects with Docker containers by their resolved Compose

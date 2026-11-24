@@ -1100,3 +1100,65 @@ events as application logs. Mobile feature scope remains undecided after the
 owner questioned desktop parity: existing access is preserved with bounded
 reflow, not certified as a final phone experience. No workflow changes or
 workflow checks are part of this slice.
+
+## Docker Log API And SQLite Foundation
+
+2026-11-23, Linux development container, branch
+`feat/dashboard-aggregate-overview`, starting at `e5b8282` with the foundation
+uncommitted during checks. The owner approved beginning Docker API log
+collection with original messages plus metadata, local one-hour SQLite history
+and optional longer-history infrastructure later. This slice implements the
+API/storage foundation only; production collector, settings and log views are
+not wired while consent and shared pressure/replay policy remain unresolved.
+Commands below used `/config/.local/bin` prepended to `PATH` for the persistent
+Make/GCC tools.
+
+- `go test -race ./internal/runtime ./internal/metrics`: passed. An initial
+  upgrade regression caught the version-8 migration nested inside the version-6
+  path: a genuine version-7 database did not acquire the log table. The migration
+  was corrected and rechecked against fresh and legacy databases, including a
+  surviving pending event-write marker.
+- `make check QUIET=1`: passed Go vet, all race tests/build, Node/HTTP tests,
+  Chromium/Firefox/WebKit/mobile Chromium, assets and contract structure.
+  These are existing UI regression checks, not verification of a new log UI.
+- `make docs check-docs check-security QUIET=1`: passed default/opt-in Hugo
+  variants and local links, npm audit and Go vulnerability analysis; no findings.
+- Final finite/follow input guards were validated with
+  `go test -race ./internal/runtime ./internal/metrics -run 'Test(ReadContainerLog|DockerLogAPI)'`:
+  passed. The caller owns live-follow backfill selection; elapsed time between
+  calculating a full-hour start and opening the reader must not spuriously
+  reject that start. Finite reads have an explicit end and following reads are
+  open-ended, with EOF reporting unavailable continuity.
+
+Regressions preserve individual stdout/stderr frame messages under fragmented
+HTTP reads, including multiline text and consecutive non-newline-terminated
+records. Protocol review against Moby `v28.5.1` corrected initial newline-based
+frame concatenation: Docker timestamps each frame, including partial lines.
+TTY output is a merged line-oriented stream, with explicit limitations on
+reconstructing individual partial-record boundaries and source stream identity.
+Tests cover exact nanosecond filtering despite second-granular request bounds,
+64 KiB message truncation followed by an intact next record, malformed/oversized
+frames, unavailable sources, consumer errors and idle-follow cancellation.
+Source-error messages do not reproduce application output.
+
+SQLite regressions preserve original message bytes, including whitespace, CRLF,
+NUL and non-UTF-8 bytes, timestamp/stream/truncation metadata, and legitimate
+identical messages across reopening. Queries filter one container before
+newest-first limiting, support explicit aggregate reads and signal omitted
+records. Results are bounded to 1,000 records and 1 MiB of message bytes; an
+exact-byte-budget test verifies the threshold, not just record count.
+Batch validation/SQL failure rolls back all writes. Log-only identities join
+the existing history inventory without fabricated names or associations.
+An actual runtime-client-to-SQLite test uses the existing temporary mock Docker
+Unix socket, then runs the real managed maintenance owner: a record at exactly
+one hour survives, and at one hour plus one nanosecond it expires. A failure on
+log expiry rolls back sample/event/state/log deletion and event replay expiry.
+
+No real Docker socket or workload, live logging-driver/cache/rotation/recovery
+behavior, native Windows/macOS, physical disk-full or secure-erasure behavior
+was exercised. Logical expiry does not guarantee forensic removal of bytes from
+SQLite pages or media, and the existing byte target is not a hard filesystem
+quota. Production capture, durable managed log writes, reconnect deduplication,
+capture-disabled lifecycle/access behavior, log tabs/aggregation, TimescaleDB
+and dedicated log infrastructure remain pending. No workflows, container image
+or dependency manifests changed; workflow/container checks were not run.
