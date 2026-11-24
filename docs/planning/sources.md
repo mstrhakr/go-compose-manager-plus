@@ -408,6 +408,17 @@ disk and application process. Defaults, file/index/WAL accounting, migration,
 cross-store expiry/recovery and eviction are not settled by the layout choice.
 No runtime or migration verification is implied by this decision record.
 
+The owner next selected
+"128 MB metrics / 256 MB logs — recommended" as independent initial targets
+using decimal MB (128,000,000 / 256,000,000 bytes). The offered scenario included
+the executed 50-container, one-second sample-only measurement (49.73 MB at
+ingestion end including WAL/SHM), its state/event/log and peak-usage exclusions,
+and variable log-volume limitations. The approved boundary keeps new sources
+Off, does not reserve disk space, does not automatically change these amounts
+with collection intensity, and does not overwrite existing configured amounts.
+Named storage presets, accounting, eviction, migration and remaining source
+preference seeds are not approved by this amount selection.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

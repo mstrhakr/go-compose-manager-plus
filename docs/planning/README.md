@@ -110,8 +110,10 @@ its own SQLite `logs.db` with one-hour retention, followed by an aggregated
 dashboard log view. Stats/state/event history remains in `metrics.db`, and
 durable application state/settings in `app.db`. TimescaleDB is deferred for
 longer metric/log history. Separate sample/log budgets were selected on
-2026-11-24; sensible default
-amounts, accounting and pressure behavior remain undecided.
+2026-11-24. The owner subsequently selected independent starting targets of
+128 MB for metrics history and 256 MB for logs, without changing collection
+profiles or overwriting existing configured amounts. Named storage-preset
+mappings, accounting and pressure behavior remain undecided.
 The owner selected the three-database layout on 2026-11-24, amending the
 earlier same-history-file request; the log foundation still uses `metrics.db`.
 Layout migration, budget enforcement and implementation of the

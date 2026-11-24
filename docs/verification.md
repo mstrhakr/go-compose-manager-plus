@@ -1291,3 +1291,10 @@ not executed migration: existing application state/settings remain in `app.db`,
 and the current log API/SQLite foundation still stores logs in `metrics.db`.
 The intended `logs.db` split, its defaults/accounting/maintenance, cross-store
 expiry/recovery and migration remain unimplemented and unverified.
+
+The owner subsequently chose independent initial storage targets of 128 MB
+for metrics history and 256 MB for logs, in decimal units, with all sources Off
+on new installs and existing configured amounts preserved. This is an approved
+amount decision, not executed defaults/migration enforcement or a capacity
+guarantee. Named storage-preset mappings, file accounting and pressure behavior
+remain unsettled.

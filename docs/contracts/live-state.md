@@ -289,7 +289,7 @@ selected. This separates the two history files, not their host disk or the
 application process. One-hour history, single-copy event ownership and explicit
 log enablement remain unchanged. The log foundation still resides in
 `metrics.db`; the selected layout is not implemented or migration-verified.
-Layout approval does not settle default amounts, per-database file/index/WAL
+Layout approval alone does not settle default amounts, per-database file/index/WAL
 accounting, cross-store expiry/recovery, migration or eviction policy.
 
 The owner then approved read-only Docker container stdout/stderr as the initial
@@ -430,7 +430,7 @@ On 2026-11-24 the owner selected separate budgets for metric samples and logs
 (option C), adding that sensible default sizes were uncertain. This approves
 the source-budget separation direction, not default amounts or a complete
 pressure implementation. Existing event/state retention and pause/retry
-safeguards remain unchanged within this decision's boundary. Concrete amounts,
+safeguards remain unchanged within this decision's boundary. Storage-preset mappings,
 per-database/index/WAL accounting, source-specific eviction and shared physical
 pressure behavior still require refinement and runtime verification.
 
@@ -439,6 +439,16 @@ together by observation time, with separate shortened-history reporting. It
 was not approved and was not selected in this decision; logs-first eviction
 was not selected either. No early log eviction, new budgets or changed
 sample-eviction ordering is implemented by recording the answer.
+
+The owner subsequently selected starting targets of **128 MB for `metrics.db`
+and 256 MB for `logs.db`**, using decimal units: **128,000,000 bytes and
+256,000,000 bytes**. These are independent initial storage preferences, not
+reserved disk space or amounts automatically changed by collection
+Low/Medium/High. New installations still start all sources Off, and existing
+configured amounts are not overwritten on upgrade. The answer does not assign
+named storage presets or settle accounting, eviction, migration or the other
+source preference seeds. No one-hour guarantee is implied: the sample-only
+benchmark and variable log-volume limitations were explained before selection.
 
 A possible dedicated logs navigation view with stack, container and network
 filters is a follow-up idea, not an approved complete feature set. Network
@@ -719,13 +729,13 @@ was adopted to bypass the gates below.
 
 #### Remaining Implementation Gates
 
-- Concrete state/event preset mappings and initial child preference values;
+- Concrete state/event preset mappings and remaining initial child preferences;
   approved new-install/upgrade policy still needs migration/runtime verification.
 - Custom log delivery design: the owner proposed an Off/Low/Medium/Live/Custom
   delivery selector, with Custom poll interval 0 meaning Live and a save interval
   shown only for Live. Terminology, save cadence, periodic flush behavior and
   validity limits remain proposals, not settled runtime policy.
-- Concrete amounts/preset mappings for the selected separate sample/log
+- Named storage-preset mappings for the selected separate sample/log
   budgets, source accounting/eviction, shared physical pressure and
   shortened-history reporting.
 - Stream bounds, replay/cancellation/reconciliation, baseline cleanup and
