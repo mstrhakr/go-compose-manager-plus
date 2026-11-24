@@ -185,6 +185,16 @@ need refinement before implementation. Existing code still has one four-choice
 metrics profile plus a separate enabled checkbox, no independent log settings,
 and no production log collector.
 
+The owner subsequently answered "i choose A" to the reviewed overall-Low
+scenario on 2026-11-23. The overall selector is approved as a category-wide
+preset: Low/Medium/High sets both sources to the corresponding preset,
+including enabling previously Off logs when saved; Off sets both sources Off.
+Individual source changes make the overall selection Custom. Effects are
+visible before Save, not applied immediately by slider movement. This settles
+the earlier overall-selector inclusion/consent question, not log preset
+parameters, initial/migration defaults, Off-history effects or shared pressure
+policy. No runtime or settings implementation changed during this refinement.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

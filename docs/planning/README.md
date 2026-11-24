@@ -117,9 +117,11 @@ foundation does not enable production collection or resolve the unanswered
 consent/pressure gates.
 The owner next requested separate five-position Docker stats and Container logs
 controls under Metrics, with each source's expanded settings contained in its
-own card/panel. An optional overall five-position selector remains a proposal;
-its effects on source profiles and log consent, log preset values and migration
-defaults require refinement before implementing the new settings model.
+own card/panel. The owner then selected a category-wide overall preset:
+Low/Medium/High sets both sources, including enabling logs when saved; Off
+sets both Off, and individual source changes make the overall value Custom.
+Effects must be visible before Save. Concrete log preset values, migration
+defaults and Off-history effects still require refinement before implementation.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,

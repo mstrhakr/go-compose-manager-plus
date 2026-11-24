@@ -185,14 +185,18 @@ not log preset values, default/migration behavior or production capture.
 The existing Docker stats sampling targets remain unchanged by this presentation
 decision.
 
-The owner also suggested an overarching Off/Low/Medium/High/Custom selector for
-Metrics as a whole. Its inclusion and interaction with source controls remain
-proposed: applying presets to both sources, separately gating their saved
-preferences, or initially omitting the overall selector are distinct choices.
-For example, with Docker stats High and Container logs Off, choosing overall
-Low could enable logs under an all-source preset but leave them disabled under
-a gate. This consent effect must be settled before implementation; existing
-numeric-metrics enablement is not permission to silently start capturing logs.
+On 2026-11-23 the owner selected option A for the overarching
+Off/Low/Medium/High/Custom Metrics selector: it is a category-wide preset,
+not an independent effective-profile gate. Selecting Low, Medium or High sets
+both Docker stats and Container logs to that preset, including a previously
+Off source. In the reviewed scenario, Docker stats High plus Container logs Off
+becomes Low for both when overall Low is saved, enabling log capture. Overall
+Off sets both sources Off. Individual source changes afterward make the overall
+selection Custom. Preset effects, particularly enabling logs, must be clearly
+visible before Save; selecting a control does not itself apply collection changes.
+This approval replaces the tentative overall-selector proposal and permits
+explicit category-wide log enablement on Save, not automatic enablement through
+migration or merely because existing numeric metrics were enabled.
 New log defaults and the effects of Off on retained history and other observed
 state/event collection remain separate lifecycle decisions.
 
@@ -383,8 +387,9 @@ does not implement these behaviors.
 - On 2026-11-23 the owner requested Docker stats and Container logs profile
   controls together in Metrics, each with Off/Low/Medium/High/Custom positions.
   Expanded source settings stay contained with their own selector in a
-  card/panel rather than spilling into another source's controls. The optional
-  overall selector and its effects remain proposed; no log preset, default,
+  card/panel rather than spilling into another source's controls. The overall
+  selector applies the owner-approved category-wide preset described above;
+  no concrete log preset value, default,
   migration, shared-budget or collection implementation is approved merely by
   approving this presentation.
 - Storage targets accept B, KB, MB and GB, convert using decimal units to exact
