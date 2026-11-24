@@ -456,11 +456,14 @@ func (c *Collector) persistObservedState(ctx context.Context, store *ManagedStor
 		return nil
 	}
 	current = changed[0]
-	if err := c.reconcileWrite(ctx, store, store.InsertStates(ctx, time.Now().UTC(), changed)); err != nil {
-		return fmt.Errorf("persist changed container state: %w", err)
+	writeErr := c.reconcileWrite(ctx, store, store.InsertStates(ctx, time.Now().UTC(), changed))
+	if writeErr == nil || errors.Is(writeErr, ErrWriteCommitted) {
+		known[current.ContainerID] = current
+		c.rememberStates(changed)
 	}
-	known[current.ContainerID] = current
-	c.rememberStates([]State{current})
+	if writeErr != nil {
+		return fmt.Errorf("persist changed container state: %w", writeErr)
+	}
 	c.clearStateStorageProblem()
 	if gapOpen {
 		if err := store.EndStateGap(ctx, current.ContainerID, current.Time); err != nil {

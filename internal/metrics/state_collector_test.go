@@ -215,6 +215,45 @@ func TestStateWritersShareSparseHistory(t *testing.T) {
 	}
 }
 
+func TestStateWriterRemembersCommitDespiteMaintenanceFailure(t *testing.T) {
+	ctx := context.Background()
+	store, start := newCollectorTestStore(t)
+	id := strings.Repeat("a", 64)
+	collector := &Collector{}
+	known := make(map[string]State)
+	current := State{ContainerID: id, Time: start.Add(-time.Minute), State: "running", Health: HealthHealthy}
+	if err := collector.persistObservedState(ctx, store, known, current); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.store.db.ExecContext(ctx, `CREATE TRIGGER fail_state_cleanup BEFORE DELETE ON pending_write
+		BEGIN SELECT RAISE(FAIL, 'cleanup failed'); END`); err != nil {
+		t.Fatal(err)
+	}
+	current.Time = current.Time.Add(time.Second)
+	current.Health = HealthUnhealthy
+	if err := collector.persistObservedState(ctx, store, known, current); !errors.Is(err, ErrWriteCommitted) {
+		t.Fatalf("committed observation hid its maintenance failure: %v", err)
+	}
+	if _, err := store.store.db.ExecContext(ctx, `DROP TRIGGER fail_state_cleanup`); err != nil {
+		t.Fatal(err)
+	}
+	if pending, err := store.ReconcilePendingWrite(ctx); err != nil || pending == nil || !pending.Committed {
+		t.Fatalf("reconcile committed observation: %#v, %v", pending, err)
+	}
+	current.Time = current.Time.Add(time.Second)
+	if err := collector.persistObservedState(ctx, store, known, current); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := collector.changedStates(ctx, store, []State{current})
+	if err != nil || len(changed) != 0 {
+		t.Fatalf("sampler would repeat committed observation: %#v, %v", changed, err)
+	}
+	states, err := store.SelectStates(ctx, id, start.Add(-time.Minute), start, 10)
+	if err != nil || len(states) != 2 {
+		t.Fatalf("committed state was repeated after maintenance recovery: %#v, %v", states, err)
+	}
+}
+
 func TestStateReconciliationKeepsSharedGapUntilFailureFreeRestartSnapshot(t *testing.T) {
 	ctx := context.Background()
 	firstID, secondID := strings.Repeat("b", 64), strings.Repeat("c", 64)

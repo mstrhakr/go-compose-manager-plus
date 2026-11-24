@@ -1460,6 +1460,11 @@ LIVE-003 retention, source enablement and independent databases are unchanged.
   and that a delayed sample cannot rewind a newer state. Local and shared gaps
   still require a newer reconnect observation. Existing retained duplicates
   are not retroactively erased.
+- A follow-up focused race regression also verifies that a confirmed committed
+  state write advances the shared cache even if subsequent maintenance fails.
+  The maintenance error remains visible; after explicit pending-write
+  reconciliation, unchanged inspection/sampling does not repeat that committed
+  observation. Both state writers retain this acknowledgement boundary.
 - Focused metrics/web race checks passed for shared sparse history, state-only
   lifecycle capture and unavailable-history navigation. The lifecycle fixture
   uses inspection acknowledgements rather than a five-second polling race.

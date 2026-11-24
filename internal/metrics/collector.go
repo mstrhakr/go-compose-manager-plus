@@ -546,6 +546,9 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 				stateErr = errors.Join(stateErr, err)
 			} else if len(changed) != 0 {
 				writeErr := store.InsertStates(ctx, now, changed)
+				if writeErr == nil || errors.Is(writeErr, ErrWriteCommitted) {
+					c.rememberStates(changed)
+				}
 				if writeErr == nil {
 					for _, state := range changed {
 						gapOpen, err := store.HasOpenStateGap(ctx, state.ContainerID)
@@ -561,7 +564,6 @@ func (c *Collector) collectCycleWithScopes(ctx context.Context, settings Setting
 					}
 				}
 				if writeErr == nil {
-					c.rememberStates(changed)
 					c.clearStateStorageProblem()
 				}
 				stateErr = errors.Join(stateErr, writeErr)
