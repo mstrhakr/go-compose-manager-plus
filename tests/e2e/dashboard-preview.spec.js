@@ -112,6 +112,13 @@ test('single-container observability has a vertical synchronized timeline and st
     }));
   });
   await expect(unavailableSpan).toBeVisible();
+  if (testInfo.project.name === 'chromium') {
+    for (const theme of ['light', 'dark']) {
+      await page.emulateMedia({ colorScheme: theme });
+      await page.screenshot({ path: `test-results/observability-state-spans-${theme}.png` });
+    }
+    await page.emulateMedia({ colorScheme: 'light' });
+  }
   await expect(page.locator('.timeline-event').filter({ hasText: 'Observed healthy on reconnect' })).toBeVisible();
   const charts = page.locator('[data-chart]');
   await expect(charts).toHaveCount(3);

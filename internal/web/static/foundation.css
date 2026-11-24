@@ -387,7 +387,7 @@ circle.chart-line { fill: currentColor; stroke: none; }
 .observability-workspace .timeline-track { position: absolute; inset: 0 24px 0 auto; width: 24px; height: auto; margin: 0; border: 0; }
 .observability-workspace .timeline-span { position: absolute; left: 50%; width: 10px; min-height: 2px; transform: translateX(-50%); }
 .observability-workspace .timeline-span-unhealthy { z-index: 0; border: 1px solid var(--danger); background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--danger) 80%, transparent) 0 3px, transparent 3px 6px); }
-.observability-workspace .timeline-span-unavailable { z-index: 2; background: rgba(145, 153, 170, .88); }
+.observability-workspace .timeline-span-unavailable { z-index: 2; background: rgb(145, 153, 170); }
 .observability-workspace .timeline-marker { left: 50%; bottom: auto; transform: translate(-50%, -50%); z-index: 3; }
 .observability-workspace .timeline-marker:focus-visible, .observability-workspace .timeline-marker:hover { z-index: 3; }
 .observability-workspace .timeline-slider { position: absolute; inset: 0 0 0 auto; width: 24px; height: 100%; min-height: 0; margin: 0; appearance: none; background: transparent; writing-mode: vertical-lr; direction: rtl; cursor: ns-resize; }
