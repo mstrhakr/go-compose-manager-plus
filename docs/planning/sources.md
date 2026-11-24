@@ -289,6 +289,13 @@ Container timelines project relevant shared records alongside their own events.
 This resolves container-activity scope and shared record ownership, not system
 catalog/retention or stack-view implementation.
 
+The owner selected retaining one latest pre-window state baseline per container
+plus in-window transitions. This supplies context for unchanged containers,
+not repeated events or an assertion of uninterrupted state across shared gaps.
+Raw logs/metrics retain their one-hour boundary; baseline removal/cleanup and
+reconciliation remain unresolved. The owner reiterated TimescaleDB and possible
+Grafana output/integration are deferred, not part of this slice.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

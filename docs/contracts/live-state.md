@@ -188,6 +188,18 @@ events or make storage grow by duplicating one system event per container.
 This settles record ownership and projection, not a complete system-event
 catalog, persistence schema, retention or connection-state detection policy.
 
+The owner selected retaining one latest pre-window state baseline per container
+for sparse state history on 2026-11-23, in addition to in-window changes. This
+establishes starting context for unchanged containers without fabricating a
+new change event at the window boundary. Shared observation gaps still interrupt
+continuity; an old baseline is not proof of uninterrupted health. This is a
+bounded exception for state context, not longer retention of raw metrics/logs
+or all older transitions. Container removal, baseline cleanup and restart/
+reconciliation behavior remain to be refined before implementation.
+The owner reiterated future TimescaleDB support and possible Grafana output/
+integration are deferred; no exporter, endpoint or additional backend is
+authorized by this baseline decision.
+
 The owner further specified a distinct grey timeline area for Docker
 disconnections, following the supplied reference presentation. This area
 represents unavailable Docker observation, not proof that the container was
