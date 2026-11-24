@@ -108,7 +108,9 @@ reduced advanced views to be designed later rather than requiring desktop
 parity. The next requested observability slice is container-log collection in
 the same local SQLite history store, retaining one hour, followed by an
 aggregated dashboard log view. TimescaleDB is deferred for longer metric/log
-history. Shared log/metric storage-pressure behavior and implementation of the
+history. Separate sample/log budgets were selected on 2026-11-24; sensible default
+amounts, accounting and pressure behavior remain undecided.
+Their implementation and implementation of the
 approved defaults/migration policy remain production-collection gates under
 [LIVE-003](../contracts/live-state.md#live-003-opt-in-container-metrics-and-historical-views);
 a dedicated log view and network-aware filters remain follow-up ideas.

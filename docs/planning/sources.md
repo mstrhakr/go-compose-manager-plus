@@ -386,6 +386,16 @@ This does not settle child preference seed values, state/event preset mappings,
 Custom delivery, shared pressure or disable/history-retention policy, and no
 migration/runtime outcome has been verified by recording the answer.
 
+On 2026-11-24 the owner answered "c but also im not sure what sensible defaults
+are for these sizes" to the choice between globally oldest-first sample/log
+eviction, logs-first eviction and separate source budgets. Option C selects
+separate metric-sample and log budgets, while explicitly leaving their amounts
+open. The offered boundary preserves existing event/state retention and
+pause/retry safeguards. This is not approval of initial amounts, preset
+mappings, accounting, source eviction, shared physical pressure or runtime
+implementation. The earlier globally oldest-first proposal was not approved
+and is not the selected direction. LIVE-003 owns this standalone decision.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),

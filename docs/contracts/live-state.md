@@ -414,12 +414,19 @@ The existing storage-pressure owner evicts
 metric samples only, so production capture requires an explicit shared-budget policy
 rather than pretending that sample eviction already bounds log storage.
 
-For later integration, the proposed shared-pressure policy is bounded eviction
-of the oldest sample/log records by observation time, preserving current
-event/state retention behavior and reporting shortened history separately for
-logs and samples. This is not approved yet; dedicated log budgets or prioritizing
-log removal are alternatives requiring an owner decision. No early log eviction
-or changed sample-eviction ordering is implemented by the foundation.
+On 2026-11-24 the owner selected separate budgets for metric samples and logs
+(option C), adding that sensible default sizes were uncertain. This approves
+the source-budget separation direction, not default amounts or a complete
+pressure implementation. Existing event/state retention and pause/retry
+safeguards remain unchanged within this decision's boundary. Concrete amounts,
+shared-file/index/WAL accounting, source-specific eviction and shared physical
+pressure behavior still require refinement and runtime verification.
+
+The earlier proposal was bounded eviction of the oldest sample/log records
+together by observation time, with separate shortened-history reporting. It
+was not approved and was not selected in this decision; logs-first eviction
+was not selected either. No early log eviction, new budgets or changed
+sample-eviction ordering is implemented by recording the answer.
 
 A possible dedicated logs navigation view with stack, container and network
 filters is a follow-up idea, not an approved complete feature set. Network
@@ -706,8 +713,9 @@ was adopted to bypass the gates below.
   delivery selector, with Custom poll interval 0 meaning Live and a save interval
   shown only for Live. Terminology, save cadence, periodic flush behavior and
   validity limits remain proposals, not settled runtime policy.
-- Measured/selected storage preset amounts, shared pressure eviction and
-  shortened-history reporting for logs versus samples.
+- Concrete amounts/preset mappings for the selected separate sample/log
+  budgets, source accounting/eviction, shared physical pressure and
+  shortened-history reporting.
 - Stream bounds, replay/cancellation/reconciliation, baseline cleanup and
   collection-disable/history-retention effects.
 - Save/navigation handling of dirty forms and final reference alignment.

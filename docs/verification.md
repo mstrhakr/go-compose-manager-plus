@@ -1254,3 +1254,31 @@ health/unavailable spans are inferred from missing metric samples. No live
 Docker, native-device, physical-pressure, container or hosted-CI verification
 is claimed for this presentation-only subset; workflow/dependency/container
 surfaces were unchanged.
+
+## Separate Observability Budget Sizing Evidence
+
+**2026-11-24:** the owner selected separate metric-sample and log budgets, but
+did not choose default amounts. Ran the existing opt-in measurement:
+
+```sh
+PATH="/config/.local/bin:$PATH" CMP_METRICS_SQLITE_CAPACITY_TEST=1 \
+  go test ./internal/metrics -run '^TestSyntheticHourSQLiteCapacity$' -count=1 -v
+```
+
+All four cases passed and reopened/checked all samples. Each represents one
+synthetic hour at one sample per second per container, inserted in minute
+batches. Rounded decimal MB:
+
+| Containers | Samples | DB + WAL + SHM at ingestion end | DB after close |
+| --- | --- | --- | --- |
+| 1 | 3,600 | 3.41 MB | 0.98 MB |
+| 5 | 18,000 | 7.59 MB | 4.57 MB |
+| 25 | 90,000 | 26.66 MB | 22.84 MB |
+| 50 | 180,000 | 49.73 MB | 45.33 MB |
+
+These are sample-only storage observations, not peak file usage, per-source
+quota accounting, live throughput or a production one-hour guarantee.
+State/event/log records are absent; log-driver volume, original message sizes,
+index overhead, WAL activity and source accounting still need consideration.
+The measurement does not approve any default or preset amount and does not
+change existing collection or pressure behavior.
