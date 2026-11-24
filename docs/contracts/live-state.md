@@ -180,6 +180,18 @@ through the gap. If reconnect inspection finds Healthy, record "Observed
 healthy on reconnect" at observation time, not a fabricated exact recovery time
 inside the gap. Exact visual styling remains to be aligned separately.
 
+The owner further reframed the Settings category as Observability rather than
+Metrics: metrics are one part of the category, alongside logs and state/events.
+Observability settings should logically separate collection types according to
+the Docker API/backend work they require, enabling the necessary tracking for
+the selected level. The earlier category-wide preset and reusable-setting
+decisions continue to apply under the revised category name; this is not
+approval of exact new source cards, mappings or default enablement.
+Shared backend dependencies must be traced before implementation: existing
+stats sampling uses inspections and event continuity as well as stats requests.
+Detailed separation of history enablement from supporting safety observations,
+and how shared API work is deduplicated, remain to be refined.
+
 The owner further distinguished overall action/activity history from selected
 container history on 2026-11-23. Up, Down, Stop, Restart and Update are distinct
 manager actions to record on the overall timeline and in an activity record,

@@ -148,6 +148,10 @@ alongside the log slice. State history should appear beside logs in Observabilit
 repeating unchanged status events; vocabulary, reconciliation and uncertain
 timeline spans remain undecided. Update-status history remains a candidate,
 not an authorized new checker.
+The Settings category is now owner-directed as Observability rather than
+Metrics, with collection controls grouped by required API/backend work.
+Exact source separation and shared dependency enablement remain to be refined;
+existing preset/UI decisions apply to the renamed category.
 
 Read [contract reuse](contract-reuse.md), [source evidence](sources.md), and
 [verification](../verification.md) alongside this plan. The template's development,

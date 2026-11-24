@@ -309,6 +309,14 @@ A healthy reconnect observation is labeled as observed on reconnect, never a
 claimed exact recovery time within the gap. This resolves overlap precedence,
 not exact rendering or all reconnect/retention mechanics.
 
+The owner reframed the category as Observability, not merely Metrics, with all
+observability options grouped logically by collection type and required API/
+backend tracking. Exact independent source controls remain unresolved. Existing
+stats collection depends on inspect requests and shared event continuity;
+endpoint overlap must not silently remove required safety observations or
+justify duplicate collector work. Prior preset/UI decisions apply to the
+renamed category, not newly invented source mappings or defaults.
+
 Protocol evidence consulted: Docker's
 [logs API](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerLogs/)
 and [stream format](https://docs.docker.com/reference/api/engine/version/v1.57/operations/ContainerAttach/),
