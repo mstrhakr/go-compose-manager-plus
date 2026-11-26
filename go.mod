@@ -8,8 +8,8 @@ require (
 	github.com/compose-spec/compose-go/v2 v2.17.0
 	github.com/justinas/nosurf v1.2.0
 	github.com/nakabonne/tstorage v0.3.6
-	github.com/sirupsen/logrus v1.10.1
-	modernc.org/sqlite v1.62.0
+	github.com/sirupsen/logrus v1.10.2
+	modernc.org/sqlite v1.63.0
 )
 
 require (
